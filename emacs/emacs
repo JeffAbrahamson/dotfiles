@@ -1,0 +1,19 @@
+(put 'eval-expression 'disabled nil)
+(put 'downcase-region 'disabled nil)
+(global-font-lock-mode 1)
+(auto-compression-mode 1)
+(tool-bar-mode 0)
+(require 'iso-cvt)
+
+;;(set-default-font ("9x15"))
+(setq inhibit-startup-message t)
+
+
+(load-file "~/elisp/useful.el")
+(load-file "~/elisp/mode-hooks.el")
+(load-file "~/elisp/post.el")
+(load-file "~/elisp/mutt-alias.el")
+(load-file "~/elisp/dict.el")
+(load-file "~/elisp/evan.el")
+(load-file "~/elisp/jma.el")
+(load-file "~/elisp/misc.el")

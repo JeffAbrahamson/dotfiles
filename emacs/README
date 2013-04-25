@@ -1,0 +1,2 @@
+These are my emacs initialization files.  The file emacs gets
+installed to ~/.emacs.  The contents of elisp goes in ~/elisp/.
