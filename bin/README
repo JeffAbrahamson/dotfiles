@@ -1,0 +1,5 @@
+Programs I want to be available in my PATH.
+
+I separate those I maintain via other mechanisms from those I maintain
+via github dotfiles.  My concern is being able to check, in a pinch,
+that I haven't forgotten something.
