@@ -1,0 +1,228 @@
+alias which="type -path"
+
+case "X$TERM" in
+    "Xxterm") alias ls="/bin/ls -F --color=auto"
+esac
+alias ll="ls -l"
+alias la="ls -a"
+alias lf="ls -F"
+alias lr="ls -R"
+alias lth="ls -lt|head"
+alias ltm="ls -lt|more"
+alias ltl="ls -lt|less"    # Effectively the same thing
+alias mv="mv -i"
+alias cp="cp -i"
+
+alias h="history"
+alias hg="history | grep"
+ht() { history | tail -20; }
+msw() { catdoc $1 | tr '\r' '\n'; }
+
+alias ag="alias | grep"
+alias eg="env | grep"
+
+p() { pwd; }
+alias ..="cd .."
+alias m="less"
+alias pg="ps ax | grep"
+j() { jobs; }
+
+alias mk="make"
+mcm() { make clean; make; }
+
+
+# X stuff
+
+#xtd() { sleep 3; xt; }
+# emacs -fn 9x15 causes a display bug.  GNU Emacs 23.3.1.  2012-02-06.
+# Cf.  https://bugs.launchpad.net/ubuntu/+source/emacs23/+bug/913771
+#e() { emacs -fn 9x15 $* & }
+e() { emacs $* & }
+efr() { LANG=fr_FR.UTF-8 e $* & }
+ec() { emacsclient -n $*; }
+
+ssh-mult() { echo ssh; (cd $HOME/.ssh/; ssh-add id_rsa id_rsa.drexel id_rsa.github id_rsa.vu;) ; }
+
+if [ -f $HOME/bash/rsync ]; then
+   . $HOME/bash/rsync
+fi
+
+if [ -f $HOME/bash/pictools ]; then
+   . $HOME/bash/pictools
+fi
+
+#
+# ssh login
+#
+tux() { xrlogin $tux; }
+php() { ssh -X purple@blog.purple.com; }
+
+mirror-slow() { wget --wait=30 --random-wait --no-host-directories --convert-links --mirror --no-parent $1; }
+mirror() { wget --wait=10 --random-wait --no-host-directories --convert-links --mirror --no-parent $1; }
+mirror-fast() { echo fast mirror; wget --no-host-directories --convert-links --mirror --no-parent $1; }
+get-music() { wget -nH -nd -r -N -l 1 --accept=.ogg,.mp3 $1; }
+
+
+# To burn CD's:
+# mkisofs -r -o /tmp/cd_image $1
+#
+#   as root:
+# mount -t iso9660 -o ro,loop /tmp/cd_image /cdrom
+# cdrecord -v speed=2 dev=0,0,0 -data /tmp/cd_image
+# Use -blank to rewrite
+# Stream: mkisofs -r $1 | cdrecord -v speed=2 dev=0,0,0 -data -
+#
+# For kernel 2.6 this seems to work:
+mkisofs_options="-r -T -J"
+burn() { if [ "X$1" = "X" ]; then burn_path=. ; else burn_path="$*"; fi; mkisofs $mkisofs_options $burn_path | cdrecord -v -eject speed=2 dev=/dev/cdrom -data -; unset burn_path; }
+# And a version that follows symlinks
+burn-sl() { if [ "X$1" = "X" ]; then burn_path=. ; else burn_path="$*"; fi; mkisofs -f $mkisofs_options $burn_path | cdrecord -v -eject speed=2 dev=/dev/cdrom -data -; unset burn_path; }
+
+cf-mv() { if [ "X$1" != "X" ]; then tmp=cflash_$$-$1 && mkdir $tmp && cd $tmp; fi; \
+    /bin/mv -i $cflash/* . && \
+    chmod -x *; }
+cf-cp() { if [ "X$1" != "X" ]; then tmp=cflash_$$-$1 && mkdir $tmp && cd $tmp; fi; \
+    /bin/cp -i --preserve=timestamps $cflash/* . && \
+    chmod -x *; }
+
+rmthisdir() { p_=`pwd`; b_=`basename $p_`; cd ..; /bin/rmdir $b_; unset p_ b_; }
+
+undup() { if [ $# != 2 ]; then echo Usage: undup dir1 dir2; return; fi
+    dir1=$1; dir2=$2;
+    for f in "$dir1"/*.jpg "$dir1"/*.JPG; do
+	b=$(basename "$f")
+	if ( cmp -s "$f" "$dir2/$b") ; then
+	    # Files are the same
+	    echo cmp "$f" "$dir2/$b"
+	    echo rm $f
+	fi
+    done; }
+
+google() { w3m lynx http://www.google.com/; }
+citeseer() { w3m http://citeseer.nj.nec.com/cs; }
+jeff() { w3m http://localhost/~jeff/purple/jeff/private/jeff.html; }
+xjeff() { gnome-terminal --hide-menubar --disable-factory --geometry=90x60 --window-with-profile=w3m; }
+
+gpg-update-keys() { gpg --recv-keys `gpg --list-keys|grep pub|awk '{print $2}'|awk -F/ '{print $2}'`; }
+gpg-update-sigs() { gpg --recv-keys `gpg --list-sigs $1|grep sig|cut -c 12-20|sort -u`; }
+signed-me-verbose() { gpg --list-sigs |egrep '(^pub|jeff@purple.com)'| perl -wne 'my $last_line = ""; while(my $line = <>) { if($line !~ /^pub/) { print $last_line; print $line; } $last_line = $line; }'; }
+signed-me() { gpg --list-sigs |egrep '(^pub|jeff@purple.com)'| perl -wne 'my $last_line = ""; while(my $line = <>) { if($line !~ /^pub/ and $last_line =~ /^pub/) { print $last_line; } $last_line = $line; }'; }
+
+#mutt-term() { gnome-terminal --window-with-profile=mutt --hide-menubar & }
+
+# # PLUG admin
+# plug-announce() { mutt -f pop://plug-announce@lists.netisland.net; }
+# plug() { mutt -f pop://plug@lists.netisland.net; }
+
+alias ff=firefox
+alias ffn="firefox --new-window"
+alias cb=chromium-browser
+alias cbn="chromium-browser --new-window"
+#www_browser="firefox"
+www_browser=chromium-browser
+view-urls-by-file() {
+    first_window=true;
+    for p in $(egrep -v '^#' $1); do 
+	if( $first_window ); then
+	    $www_browser --new-window "$p"; 
+	    first_window=false;
+	else
+	    $www_browser "$p"; 
+	fi
+    done;
+    unset first_window
+}
+morning() {
+    view-urls-by-file $HOME/data/morning-web
+    (
+    #birthdays;
+    #pilot-agenda;
+    cat $HOME/common/data/to-do.txt | egrep -v '^#';
+    ) | more
+}
+afternoon() { 
+    view-urls-by-file $HOME/data/afternoon-web
+    (
+    cat $HOME/common/data/to-do.txt | egrep -v '^#';
+    ) | more
+}
+
+gq-slideshow() {
+    if [ $# -gt 0 ]; then
+	images=$*
+    elif [ -e laptop ]; then
+	images=laptop/*.jpg
+    else
+	images=*.jpg
+    fi
+    geeqie $images --remote --slideshow-start --fullscreen-start --delay=1
+}
+gqselect() { wc -l $1; geeqie --remote file $(cat $1) 2>/dev/null; }
+gq() { geeqie --remote file $* 2>/dev/null; }
+gq-make-laptop() {
+    if [ ! -d laptop ]; then mkdir laptop; fi
+    for f in *jpg; do if [ ! -e laptop/$f ]; then echo $f; convert -geometry 1366x768 $f laptop/$f; fi; done
+}
+
+
+checksum() { find . -type f -exec sha1sum \{\} \; ; }
+
+separator() { echo ======================================================================; }
+
+
+## Bulk-converting ogg-vorbis to mp3:
+# d=...
+# for f in $(find . -name '*ogg'); do
+#     b=$(basename $f .ogg);
+#     ffmpeg -i $f ~/to-nantes/$d/$b.mp3;
+# done
+
+## To compute ssh host key fingerprints:
+# ssh-keygen -l -f /etc/ssh/ssh_host_rsa_key
+# ssh-keygen -l -f /etc/ssh/ssh_host_dsa_key
+
+#move-window-to-upper-left() { sawfish-client -c '(move-window-to (select-window) 0 0)'; }
+
+data-notes() {
+    cd $HOME/common/work/employment/Goldman-Sachs/data-notes/;
+    tr 'n-za-mN-ZA-M5-90-4' 'a-zA-Z0-9' < /tmp/gs.tgz | uudecode;
+    tar xzf gs.tgz;
+    rm gs.tgz;
+};
+
+# cd to wherever I'm currently playing most
+prog() { cd $HOME/work/src/jma/cryptar/src/; }
+internet() {
+    in_out=$(ifconfig wlan0 | grep bytes | perl -pwe 's/^.*:([0-9]+).*:([0-9]+).*$/$1 $2/;');
+    RX_old=$(echo $in_out | awk '{print $1}');
+    TX_old=$(echo $in_out | awk '{print $2}');
+    sleep 10
+    in_out=$(ifconfig wlan0 | grep bytes | perl -pwe 's/^.*:([0-9]+).*:([0-9]+).*$/$1 $2/;');
+    RX_new=$(echo $in_out | awk '{print $1}');
+    TX_new=$(echo $in_out | awk '{print $2}');
+    echo RX: $((6 * (RX_new - $RX_old) )) bytes/minute;
+    echo TX: $((6 * (TX_new - $TX_old) )) bytes/minute;
+}
+cppdoc() { ff $HOME/work/c++-docs/cpp.html & }
+
+workm-periodic() { while true; do date; workm force-put; sleep 900; separator; done; }
+workm-push() { workm force-put; }
+srdro() { srd --database-dir $HOME/srd-ro/ $*; }
+
+rpass() { head -c $((500 + $RANDOM)) < /dev/urandom | sha1sum; }
+voyages() { gnumeric $HOME/common/work/financial/France/impots/2013/voyages.gnumeric & }
+cheque() { gnumeric $HOME/data/chequier.gnumeric & }
+house() { gnumeric $HOME/common/work/financial/real_estate/Nantes/Metzinger/costs.gnumeric & }
+snap() { gnome-screenshot --area --clipboard; }
+snapf() { gnome-screenshot --area; }
+term() { terminator -b -m & }
+#recipes() { xpdf $HOME/common/work/recipes/recipes.pdf & }
+recipes() { evince $HOME/common/work/recipes/recipes.pdf & }
+pm() { ogg=$(/bin/ls *ogg */*ogg 2>/dev/null); mp3=$(/bin/ls *mp3 */*mp3 2>/dev/null); if [ "x$ogg" != x ]; then ogg123 $ogg; fi; if [ "x$mp3" != x ]; then mpg123 $mp3; fi; unset mp3; unset ogg; }
+secu() { gnumeric $HOME/data/secu.gnumeric & }
+git-log() { git log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit; }
+# git config --global alias.lg "log --color --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit"
+# git lg
+# git lg -p
+punch() { e $HOME/common/work/financial/real_estate/Nantes/Metzinger/punch-list.txt; }
+script() { SCRIPT_NAME="$1" /usr/bin/script "$@"; }

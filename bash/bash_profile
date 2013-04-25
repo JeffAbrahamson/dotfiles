@@ -1,0 +1,66 @@
+# .bash_profile
+
+# the default umask is set in /etc/profile; for setting the umask
+# for ssh logins, install and configure the libpam-umask package.
+#umask 022
+
+#PATH=$PATH:$HOME/bin/:$HOME/common/Base/bin
+PATH=$PATH:$HOME/bin/:$HOME/bin-elf/
+#export CDPATH=.:~/work/Drexel/mst-image:~/work/Drexel/mst-image/cvs/jeff
+
+export EDITOR=emacs
+#export EMACSLOADPATH="$HOME/elisp"
+#export BROWSER=/usr/bin/w3m
+
+export LESS="rEMX"
+
+# CVS stuff
+export CVSROOT=jeff@mst.cs.drexel.edu:/home/cvsroot
+export CVS_RSH=ssh
+
+export PYTHONPATH=$HOME/local/python
+
+export CS_PAPER_DIR=$HOME/mst/work/Research/papers/
+export TSD_DIR=$HOME/common/data/tsd/
+
+#export cflash=/cflash/dcim/100nikon
+#export cflash=/cflash/dcim/100canon
+#export cflash='/cflash/dcim/1*canon'
+#export cflash_ro='/cflash/dcim/1*canon'
+#export cflash='/media/CANON_DC/dcim/[0-9]*canon'
+#export cflash='/media/EOS_DIGITAL/dcim/[0-9]*canon'
+#export cflash='/cflash/dcim/[0-9]*canon'
+#export cflash='/media/EOS_DIGITAL/DCIM/[0-9]*CANON'
+export cflash='/media/jeff/EOS_DIGITAL/DCIM/[0-9]*CANON'
+
+
+# My native language
+#export LANG=en_US
+
+# For SLang (for mutt)
+export COLORFGBG="black;lightgray"
+
+export vu="ftp.ece.vill.edu"
+export mst=mst.cs.drexel.edu
+export tux=jeffa@tux.cs.drexel.edu
+
+export BASH_PROFILE="LOADED"
+
+# if running bash
+if [ -n "$BASH_VERSION" ]; then
+    if [ "X$BASHRC" != "XLOADED" -a -f $HOME/.bashrc ]; then
+	. $HOME/.bashrc
+	export BASHRC="LOADED"
+    fi
+fi
+
+# In an attempt to disable the gnome-keyring-daemon, I typed this:
+#    gconftool-2 --set -t bool /apps/gnome-keyring/daemon-components/ssh false
+#
+# According to --get, there was no value previously set.
+#    gconftool-2 --get /apps/gnome-keyring/daemon-components/ssh
+#
+# I subsequently unset it.
+#    gconftool-2 --unset /apps/gnome-keyring/daemon-components/ssh
+#
+# 8 Jan 2012

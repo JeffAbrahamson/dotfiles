@@ -1,0 +1,29 @@
+#!/bin/bash
+function setup_prompt {
+local       BLUE="\[\033[0;34m\]"
+local        RED="\[\033[0;31m\]"
+local     PURPLE="\[\033[0;35m\]"
+local      BLACK="\[\033[0;30m\]"
+
+script_name=
+if [ "X$SCRIPT_NAME" != X ]; then
+    script_name="[$SCRIPT_NAME] "
+fi
+case $TERM in
+    xterm*)
+        TITLEBAR='\[\033]0;\u@\h:\w\007\]'
+	PS1="${TITLEBAR}\
+$script_name$BLUE\u@\h:$RED\W $PURPLE\$ $BLACK"
+PS2='$PURPLE> $BLACK'
+PS4='$PURPLE+ $BLACK'
+        ;;
+    *)
+        TITLEBAR=""
+	PS1='\u@\h:\W \$ '
+        ;;
+esac
+
+}
+
+setup_prompt
+
