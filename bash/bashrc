@@ -69,7 +69,7 @@ esac
 
 # enable color support of ls and also add handy aliases
 if [ -x /usr/bin/dircolors ]; then
-    test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
+    test -r $HOME/.dircolors && eval "$(dircolors -b $HOME/.dircolors)" || eval "$(dircolors -b)"
     alias ls='ls --color=auto'
 
     alias grep='grep --color=auto'
@@ -78,17 +78,17 @@ if [ -x /usr/bin/dircolors ]; then
 fi
 
 # Source global definitions
-if [ "X$BASH_PROFILE" != "XLOADED" -a -f ~/.bash_profile ]; then
-    . ~/.bash_profile
+if [ "X$BASH_PROFILE" != "XLOADED" -a -f $HOME/.bash_profile ]; then
+    . $HOME/.bash_profile
 fi
 
 # Alias definitions.
 # You may want to put all your additions into a separate file like
-# ~/.bash_aliases, instead of adding them here directly.
+# $HOME/.bash_aliases, instead of adding them here directly.
 # See /usr/share/doc/bash-doc/examples in the bash-doc package.
 
-if [ -f ~/bash/aliases ]; then
-    . ~/bash/aliases
+if [ -f $HOME/bash/aliases ]; then
+    . $HOME/bash/aliases
 fi
 
 # enable programmable completion features (you don't need to enable
@@ -131,8 +131,8 @@ complete -F _tsd tsd
 # compile just once (create a .pyc).
 tsd() { tsd.py $*; }
 
-if [ -f ~/bash/prompt ]; then
-	. ~/bash/prompt
+if [ -f $HOME/bash/prompt ]; then
+	. $HOME/bash/prompt
 fi
 
 shopt -s cdspell
