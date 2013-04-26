@@ -1,4 +1,4 @@
-# Jeff Abrahamson does dotfiles
+# Jeff Abrahamson's dotfiles
 
 ## Dotfiles
 
