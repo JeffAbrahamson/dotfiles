@@ -11,6 +11,9 @@ fi
 install_to_dot $force bashrc
 install_to_dot $force bash_profile
 install_to_dot $force bash_logout
-for f in bash/*; do
-    install_to $force $f $HOME/bash/;
-done
+(
+    cd bash
+    for f in *; do
+	install_to $force $f $HOME/bash/;
+    done
+)

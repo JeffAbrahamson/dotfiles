@@ -8,6 +8,9 @@ fi
 
 . ../scripts/lib.sh
 
-for f in bin/*; do
-    install_to $force $f $HOME/bin-dot/;
-done
+(
+    cd bin
+    for f in *; do
+	install_to $force $f $HOME/bin-dot/;
+    done
+)

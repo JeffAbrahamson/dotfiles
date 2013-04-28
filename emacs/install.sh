@@ -9,6 +9,9 @@ fi
 . ../scripts/lib.sh
 
 install_to_dot $force emacs
-for f in elisp/*; do
-    install_to $force $f $HOME/elisp/;
-done
+(
+    cd elisp
+    for f in *; do
+	install_to $force $f $HOME/elisp/;
+    done
+)

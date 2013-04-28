@@ -1,3 +1,6 @@
 #!/bin/bash
 
-echo Not yet implemented.
+# For the moment, lamely assume running from ../
+(cd ../bash  && ./install.sh)
+(cd ../bin   && ./install.sh)
+(cd ../emacs && ./install.sh)
