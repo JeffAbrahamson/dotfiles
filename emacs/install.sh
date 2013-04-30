@@ -6,7 +6,7 @@ else
     force=
 fi
 
-. ../scripts/lib.sh
+. ../script/lib.sh
 
 install_to_dot $force emacs
 (
