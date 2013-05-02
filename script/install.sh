@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# For the moment, lamely assume running from ../
-(cd ../bash  && ./install.sh)
-(cd ../bin   && ./install.sh)
-(cd ../emacs && ./install.sh)
+cd $(pwd)/$(dirname $0)
+(echo bash; cd ../bash  && ./install.sh)
+(echo bin; cd ../bin   && ./install.sh)
+(echo emacs; cd ../emacs && ./install.sh)

@@ -1,16 +1,17 @@
 #!/bin/bash
 
 if [ "X$1" = Xforce ]; then
-    force="-f"
+    force=y
 else
-    force=
+    force=n
 fi
 
 . ../script/lib.sh
 
+maybe_mkdir $HOME/bin/
 (
     cd bin
     for f in *; do
-	install_to $force $f $HOME/bin-dot/;
+	install_to $force $f $HOME/bin/;
     done
 )
