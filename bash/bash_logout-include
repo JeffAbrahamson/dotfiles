@@ -1,0 +1,3 @@
+if [ -f $HOME/bash/logout ]; then
+    . $HOME/bash/logout
+fi
