@@ -18,7 +18,7 @@
 ;;      'grep-mode)))
 
 (defun jma-grep (pattern prefix)
-  "Search for pattern in the files u:data/notes/*txt.
+  "Search for pattern in the files $HOME/data/notes/*txt.
 Search is case insensitive unless  a prefix argument is provided,
 in which case the search becomes case-sensitive."
   (interactive "sPattern: \np")
@@ -26,7 +26,8 @@ in which case the search becomes case-sensitive."
 	(args (split-string pattern)))
     (let ((cmd (concat "grep " flag
 		       " -n -e \"" (car args) "\" "
-		       "u:data/notes/*.txt")))
+		       (getenv "HOME")
+		       "/data/notes/*.txt")))
       (compilation-start
        (jma-grep-sub cmd flag (cdr args))
        'grep-mode))))
@@ -70,14 +71,14 @@ flag should be valid grep flags (typically '-i') or else the empty string."
 (defun jma-daily-log ()
   "Find my daily change log and add an entry about what I did today"
   (interactive)
-  (let ((daily-log-file "u:data/daily.log"))
+  (let ((daily-log-file (concat (getenv "HOME") "/data/daily.log")))
     (find-file daily-log-file)
     (add-change-log-entry nil daily-log-file nil t)))
 
 (defun jma-weekly-log ()
   "Find my weekly change log and add an entry"
   (interactive)
-  (let ((weekly-log-file "u:/data/weekly.log"))
+  (let ((weekly-log-file (concat (getenv "HOME") "/data/weekly.log")))
     (find-file weekly-log-file)
     (goto-char (point-min))
     (insert (format-time-string "%Y-%m-%d") "    " "\n")
