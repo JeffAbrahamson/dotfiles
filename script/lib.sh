@@ -39,6 +39,7 @@ install_to_dot()
     copy_to $_force $_src_name $_dst_dir/.$_src_name
 }
 
+
 maybe_mkdir()
 {
     if [ ! -d "$1" ]; then
@@ -46,3 +47,16 @@ maybe_mkdir()
     fi
 }
 
+
+# Append the contents of file $3 to the file $1
+# if the string $2 is not present in $1.
+maybe_append()
+{
+    include_from=$1
+    include_this=$2
+    include_template=$3
+    grep -q $include_this $HOME/$include_from 2> /dev/null
+    if [ 0 != $? ]; then
+	cat $include_template >> $HOME/$include_from
+    fi
+}

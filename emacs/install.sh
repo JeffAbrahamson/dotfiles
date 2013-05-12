@@ -2,7 +2,6 @@
 
 . ../script/lib.sh
 
-install_to_dot emacs
 maybe_mkdir $HOME/elisp/
 (
     cd elisp
@@ -10,3 +9,5 @@ maybe_mkdir $HOME/elisp/
 	install_to $f $HOME/elisp/;
     done
 )
+
+maybe_append .emacs /elisp/emacs.el emacs-include
