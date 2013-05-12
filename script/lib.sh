@@ -7,14 +7,18 @@
 copy_to()
 {
     _src_name="$1"
-    _dst_name="$2/$1"
+    if [ -d "$2" ]; then
+	_dst_name="$2/$1"
+    else
+	_dst_name="$2"
+    fi
     if ! cmp --quiet "$_src_name" "$_dst_name"; then
 	# If the files are the same, we don't need to do anything.
 	if [ -e "$_dst_name" ]; then
 	    # Backup $_dst_file if it already exists
-	    echo /bin/mv "$_dst_name" "$_dst_name".$(date '+%Y%m%d-%H:%M:%S')
+	    /bin/mv "$_dst_name" "$_dst_name".$(date '+%Y%m%d-%H:%M:%S')
 	fi
-	echo /bin/cp "$_src_name" "$_dst_name"
+	/bin/cp "$_src_name" "$_dst_name"
     fi
 }
 
