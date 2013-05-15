@@ -1,3 +1,10 @@
+;; This should be the first block of this file.
+;; The file site-begin.el should not be included with
+;; this distribution.  It is for user customization.
+(if (file-readable-p (concat (getenv "HOME") "/elisp/site-begin.el"))
+    (load-file (concat (getenv "HOME") "/elisp/site-begin.el")))
+;; End of first block
+
 (put 'eval-expression 'disabled nil)
 (put 'downcase-region 'disabled nil)
 (global-font-lock-mode 1)
@@ -17,3 +24,9 @@
 (load-file (concat (getenv "HOME") "/elisp/evan.el"))
 (load-file (concat (getenv "HOME") "/elisp/jma.el"))
 (load-file (concat (getenv "HOME") "/elisp/misc.el"))
+
+;; This should be the last block of this file.
+;; The file site-end.el should not be included with
+;; this distribution.  It is for user customization.
+(if (file-readable-p (concat (getenv "HOME") "/elisp/site-end.el"))
+    (load-file (concat (getenv "HOME") "/elisp/site-end.el")))
