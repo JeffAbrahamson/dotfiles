@@ -1,5 +1,15 @@
 # .bash_profile
 
+## This should be the first block of this file after the
+## interactivity check.
+# For local customization, at beginning of bash_profile
+# This file should not be included with this distribution, as
+# the whole point is to let the user customize as he sees fit.
+if [ -f $HOME/bash/site_profile_begin ]; then
+	. $HOME/bash/site_profile_begin
+fi
+## This is the end of this beginning block.
+
 # the default umask is set in /etc/profile; for setting the umask
 # for ssh logins, install and configure the libpam-umask package.
 #umask 022
@@ -64,3 +74,12 @@ fi
 #    gconftool-2 --unset /apps/gnome-keyring/daemon-components/ssh
 #
 # 8 Jan 2012
+
+## This should be the last block of this file
+# For local customization, at end of bash_profile
+# This file should not be included with this distribution, as
+# the whole point is to let the user customize as he sees fit.
+if [ -f $HOME/bash/site_profile_end ]; then
+	. $HOME/bash/site_profile_end
+fi
+## This file should end here

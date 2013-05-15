@@ -12,8 +12,8 @@ test_file()
 }
 
 ok=0
-test_file bashrc
-test_file bash_profile
-test_file bash_logout
+test_file bashrc-include
+test_file bash_profile-include
+test_file bash_logout-include
 
 exit $ok

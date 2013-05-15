@@ -5,6 +5,16 @@
 # If not running interactively, don't do anything
 [ -z "$PS1" ] && return
 
+## This should be the first block of this file after the
+## interactivity check.
+# For local customization, at beginning of bashrc
+# This file should not be included with this distribution, as
+# the whole point is to let the user customize as he sees fit.
+if [ -f $HOME/bash/site_begin ]; then
+	. $HOME/bash/site_begin
+fi
+## This is the end of this beginning block.
+
 # don't put duplicate lines in the history. See bash(1) for more options
 # don't overwrite GNU Midnight Commander's setting of `ignorespace'.
 #HISTCONTROL=$HISTCONTROL${HISTCONTROL+,}ignoredups
@@ -136,3 +146,12 @@ if [ -f $HOME/bash/prompt ]; then
 fi
 
 shopt -s cdspell
+
+## This should be the last block of this file
+# For local customization, at end of bashrc
+# This file should not be included with this distribution, as
+# the whole point is to let the user customize as he sees fit.
+if [ -f $HOME/bash/site_end ]; then
+	. $HOME/bash/site_end
+fi
+## This file should end here
