@@ -1,0 +1,95 @@
+#!/usr/bin/perl -w
+#
+# nsra
+#
+# Recursively rename files to change spaces to underscores.
+#
+# Usage: nsra
+# 
+# -- Ed Avis, epa98@doc.ic.ac.uk, 2000-07-06
+#
+
+use strict;
+
+########
+# Configuration
+
+# On a case-insensitive filesystem, it might not be possible to rename
+# 'FOO' to 'foo', as they are considered 'the same'.  You can give an
+# intermediate filename to be used to overcome this problem - if it is
+# not defined, this kludge won't be used.
+# 
+#my $INTERMEDIATE = '_NSRATMP';
+my $INTERMEDIATE = undef;
+
+########
+# End of configuration
+
+
+
+# do_rename()
+# 
+# Rename a file, changing ' ' to '_'.
+# 
+# Parameters:
+#   directory file lives in
+#   basename (leaf name) of file
+# 
+sub do_rename($$) {
+    die 'usage: do_rename(PATH, BASE)' if @_ != 2;
+    my ($path, $base) = @_;
+    my $o = "$path/" . $base;
+
+    (my $nbase = $base) =~ tr/ /_/;
+    die if $nbase eq $base;
+    my $n = "$path/" . $nbase;
+    die if $n eq $o;
+
+    print "$o -> $n\n";
+
+    if (defined $INTERMEDIATE) {
+	my $i = "$path/$INTERMEDIATE";
+	unless (rename $o, $i) {
+	    warn "cannot rename $o to $i: $!";
+	    next;
+	}
+
+	unless (rename $i, $n) {
+	    warn "cannot rename $i to $n: $!";
+	    print "trying to rename $i back to $o... ";
+	    if (rename $i, $o) { print "OK\n" }
+	    else {
+		print "failed: $!\n";
+		die "got stuck renaming $o to $n, left as $i";
+	    }
+	}
+    }
+    else { rename $o, $n or warn "cannot rename $o to $n: $!" }
+}
+
+
+
+my $depth = 1;
+
+for (;;) {
+    open(FIND, "find . -mindepth $depth -maxdepth $depth |") or die;
+    $. = 0;
+
+    while (<FIND>) {
+	chomp;
+	stat or warn "cannot stat $_: $!, skipping", next;
+	my ($path, $base) = m!(.+)/(.+)! or die "bad line $_\n";
+	local $_ = $base;
+
+	next unless (-f _) or (-d _);
+
+	if (tr/ //) {
+	    do_rename($path, $_);
+	}
+    }
+
+    last if $. == 0;
+    ++ $depth;
+}
+
+
