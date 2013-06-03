@@ -47,7 +47,8 @@
 
 (add-hook 'c-mode-common-hook
 	  (function (lambda()
-		      (local-set-key [(return)] 'newline-and-indent) 
+		      (if (not buffer-read-only)
+			  (local-set-key [(return)] 'newline-and-indent))
 		      (setq c-basic-offset 8)
 		      (setq c-indent-level 8)
 		      (setq c-continued-statement-offset 8)

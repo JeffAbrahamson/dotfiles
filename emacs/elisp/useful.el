@@ -88,7 +88,8 @@
 
 (defun setup-programmer-keys ()
   "Set up some key bindings that are useful while programming."
-	(local-set-key '[return] 'newline-and-indent))
+  (if (not buffer-read-only)
+      (local-set-key [(return)] 'newline-and-indent)))
 
 ; (local-set-key '[M-delete] 'backward-kill-word)
 ; (local-set-key '(meta backspace) 'backward-kill-word)
