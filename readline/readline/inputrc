@@ -1,0 +1,17 @@
+$include /etc/inputrc
+
+set show-all-if-ambiguous on
+"\e[A": history-search-backward
+"\e[B": history-search-forward
+set bind-tty-special-chars Off
+
+# Interpret curly quotes as straight quotes:
+"\xE2\x80\x9C": "\""
+"\xE2\x80\x9D": "\""
+#
+# non-breaking space:
+"\xC2\xA0": " "
+#
+# single quotes:
+"\xE2\x80\x98": "'"
+"\xE2\x80\x99": "'"
