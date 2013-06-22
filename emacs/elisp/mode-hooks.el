@@ -68,13 +68,12 @@
 	   (lambda()
 	     (setup-programmer-keys))))
 
-;; (setq c++-mode-hook
-;;       (lambda ()
-;; 	(setup-programmer-keys)))
 (add-hook 'c++-mode-hook
 	  (function
 	   (lambda()
-	     (setup-programmer-keys))))
+	     (setup-programmer-keys)
+	     (local-set-key (kbd "C-M-;") 'jma-insert-jma-comment)
+	     )))
 
 ;; (setq emacs-lisp-mode-hook
 ;;       (lambda ()

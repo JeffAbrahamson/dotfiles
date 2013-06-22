@@ -171,3 +171,11 @@ flag should be valid grep flags (typically '-i') or else the empty string."
     (insert (concat "const " m_type " &" f_name "() const { return " m_name "; };"))
     (newline-and-indent)
     (insert (concat "void " f_name "(const " m_type " &in) { " m_name " = in; };\n"))))
+
+(defun jma-insert-jma-comment ()
+  "Insert a JMA-ish comment that I don't want to miss removing at commit."
+  ;; As written, this will do the wrong thing on regions, where this becomes
+  ;; comment-region.  The intent is to handle the case when no region is active.
+  (interactive)
+  (comment-dwim nil)
+  (insert-string "JMA JMA JMA  "))
