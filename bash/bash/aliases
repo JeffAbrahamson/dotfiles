@@ -231,3 +231,9 @@ pycd () {
         print _.dirname(_.realpath(${1}.__file__[:-1]))"
         )"
 }
+
+## Time-date conversion, because I forget the flags
+# Print current date as seconds since the epoch
+d2t() { date +%s; }
+# Translate epoch to human time
+t2d() { date -d @$1 -R; }
