@@ -18,6 +18,9 @@ sync-portable-640() { sync-to-here /media/jeff/Portable640; }
 sync-Black750() { sync-to-here /media/jeff/Black750; }
 sync-Black-1500() { sync-to-here /media/jeff/Black-1500; }
 
+sync-jeff-1TB-1() { sync-to-here /media/jeff/jeff-1TB-1/; }
+sync-jeff-1TB-2() { sync-to-here /media/jeff/jeff-1TB-2/; }
+
 ######################################################################
 # purple.com
 
