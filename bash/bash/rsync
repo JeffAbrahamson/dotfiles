@@ -16,10 +16,13 @@ sync-backup640() { sync-to-here /media/jeff/Backup640; }
 sync-red640() { sync-to-here /media/jeff/Red-640; }
 sync-portable-640() { sync-to-here /media/jeff/Portable640; }
 sync-Black750() { sync-to-here /media/jeff/Black750; }
-sync-Black-1500() { sync-to-here /media/jeff/Black-1500; }
+#sync-Black-1500() { sync-to-here /media/jeff/Black-1500; }
 
 sync-jeff-1TB-1() { sync-to-here /media/jeff/jeff-1TB-1/; }
 sync-jeff-1TB-2() { sync-to-here /media/jeff/jeff-1TB-2/; }
+
+sync-fileserver() { sync-to-here jeff@fileserver:/d1/jeff/$HOSTNAME/; }
+
 
 ######################################################################
 # purple.com
