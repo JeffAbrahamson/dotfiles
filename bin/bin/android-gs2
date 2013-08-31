@@ -1,0 +1,5 @@
+#!/bin/bash
+
+dest_dir=$HOME/android/gs2/
+
+rsync -va --exclude=cache --exclude=com.economist --exclude=.thumbnails --exclude Android ./ $dest_dir/

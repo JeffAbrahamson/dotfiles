@@ -1,0 +1,19 @@
+#!/bin/sh
+JOURNAL_DIR=$HOME/work/journal
+DATE=`date +%Y-%m-%d`
+FILE=$JOURNAL_DIR/entry_$DATE.txt
+OLD_FILE=$FILE~
+
+if [ -r $FILE ]; then
+    chmod 600 $FILE
+fi
+echo "
+$DATE      (`date`)
+" >> $FILE
+if [ "X$DISPLAY" = "X" ]; then
+    emacs -fn 9x15 -fg \#000000 -bg \#cccccc $FILE
+else
+    emacsclient $FILE
+fi
+rm $OLD_FILE
+chmod 400 $FILE
