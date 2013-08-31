@@ -1,0 +1,10 @@
+#!/bin/sh
+PATH=/usr/bin:/bin
+JOURNAL_DIR=$HOME/work/journal
+for f in `ls $JOURNAL_DIR/entry_*`; do
+    echo "";echo ""
+    echo "                                                       " `basename $f .txt`
+    echo
+    cat $f | fold -s
+done
+
