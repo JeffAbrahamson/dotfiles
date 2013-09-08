@@ -1,4 +1,4 @@
-# Jeff Abrahamson's dotfiles
+ # Jeff Abrahamson's dotfiles
 
 ## Dotfiles
 
@@ -13,8 +13,8 @@ I was motivated by [holman]() and [ryanb]().  And yet some bits of
 what they do doesn't sync with the way my brain works, or the way my
 fingers work, or my tastes at the moment.  Probably I mostly
 misunderstood them, for which I offer that engineer's or scientist's
-apology that mixes with great respect with bull-headed determination
-to do something else.  This works for me.  
+apology that mixes great respect with bull-headed determination
+to do something else:  this works for me.  
 
 I have a couple design criteria that are important to me.  My machine
 should be fully functional without a network connection (except for
@@ -29,10 +29,10 @@ new machine or updating an existing machine should be easy.
 Run this:
 
 ```sh
-git clone https://github.com/JeffAbrahamson/dotfiles.git dotfiles-JeffAbrahamson
-cd dotfiles-JeffAbrahamson
-script/test-dotfiles
-script/bootstrap
+git clone https://github.com/JeffAbrahamson/dotfiles.git
+cd dotfiles
+./test.sh
+./install.sh
 ```
 
 
@@ -54,7 +54,7 @@ I'd like this to be clean and elegant and to mostly work for everyone.
 That said, I don't often test as people who aren't me, and this is a
 background utility project, so goodness knows if it will really work
 for you out of the box.  I'm pretty sure it won't hurt, up to
-overwriting some of your dotfiles if you do script/bootstrap.
+overwriting some of your dotfiles if you run install.sh.
 
 If you see problems or opportunities for improvement, please [open an
 issue](https://github.com/JeffAbrahamson/dotfiles/issues) on this
