@@ -216,7 +216,13 @@ house() { gnumeric $HOME/common/work/financial/real_estate/Nantes/Metzinger/cost
 snap() { gnome-screenshot --area --clipboard; }
 snapf() { gnome-screenshot --area; }
 term() { terminator -b -m & }
-recipes() { evince $HOME/work/src/jma/recipes/pdf/recipes-gs3.pdf & }
+recipes() { case "X$HOSTNAME" in
+    Xlondon) file=$HOME/work/src/jma/recipes/pdf/recipes-gs3.pdf;;
+    Xlorax|Xnantes) file=$HOME/work/src/jma/recipes/pdf/recipes-laptop.pdf;;
+    esac
+    evince $file &
+}
+#recipes() { evince $HOME/work/src/jma/recipes/pdf/recipes-gs3.pdf & }
 pm() { ogg=$(/bin/ls *ogg */*ogg 2>/dev/null); mp3=$(/bin/ls *mp3 */*mp3 2>/dev/null); if [ "x$ogg" != x ]; then ogg123 $ogg; fi; if [ "x$mp3" != x ]; then mpg123 $mp3; fi; unset mp3; unset ogg; }
 secu() { gnumeric $HOME/data/secu.gnumeric & }
 git-log() { git log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit; }
