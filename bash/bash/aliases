@@ -244,4 +244,4 @@ d2t() { date +%s; }
 # Translate epoch to human time
 t2d() { date -d @$1 -R; }
 
-undisp() { DISPLAY_WAS="$DISPLAY"; unset DISPLAY; }
+undisp() { if [ $DISPLAY ]; then DISPLAY_WAS="$DISPLAY"; unset DISPLAY; fi; }
