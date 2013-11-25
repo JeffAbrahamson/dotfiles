@@ -30,21 +30,23 @@ fg_cyan="$(tput setaf 6)"
 fg_white="$(tput setaf 7)"
 reset="$(tput sgr0)"
 
+setup_prompt() {
+    case $TERM in
+	xterm*)
+            TITLEBAR='\[\033]0;\u@\h:\w\007\]'
+	    PS1="${TITLEBAR}\
+\[$fg_red\]\[$fg_green\]\${display_indicator_}\${script_indicator_}\$space_\[$fg_magenta\]\u@\h:\[$fg_red\]\W \[$fg_cyan\\]$ \[$fg_black\]"
+	    PS2='\[$fg_magenta\]> \[$BLACK\]'
+	    PS4='\[$fg_magenta\]+ \[$BLACK\]'
+            ;;
+	*)
+            TITLEBAR=""
+	    PS1='\u@\h:\W \$ '
+            ;;
+    esac
+}
+
 # Prompt command outputs nothing, only sets state.
 # The prompt itself computes nothing, only displays state.
-PROMPT_COMMAND="script_indicator; display_indicator;"
-
-case $TERM in
-    xterm*)
-        TITLEBAR='\[\033]0;\u@\h:\w\007\]'
-	PS1="${TITLEBAR}\
-$fg_green\$display_indicator_\$script_indicator_\$space_$fg_magenta\u@\h:$fg_red\W $fg_cyan\$ $fg_black"
-PS2='$fg_magenta> $BLACK'
-PS4='$fg_magenta+ $BLACK'
-        ;;
-    *)
-        TITLEBAR=""
-	PS1='\u@\h:\W \$ '
-        ;;
-esac
+PROMPT_COMMAND="script_indicator; display_indicator; setup_prompt"
 
