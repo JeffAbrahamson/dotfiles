@@ -1,29 +1,50 @@
 #!/bin/bash
-function setup_prompt {
-local       BLUE="\[\033[0;34m\]"
-local        RED="\[\033[0;31m\]"
-local     PURPLE="\[\033[0;35m\]"
-local      BLACK="\[\033[0;30m\]"
 
-script_name=
-if [ "X$SCRIPT_NAME" != X ]; then
-    script_name="[$SCRIPT_NAME] "
-fi
+# If we want a space before the user@host part, we'll set space_.
+space_=
+
+script_indicator() {
+    script_indicator_=
+    if [ "X$SCRIPT_NAME" != X ]; then
+	script_indicator_="[$SCRIPT_NAME] "
+	space_=' '
+    fi
+}
+
+display_indicator() {
+    display_indicator_=
+    if [ "X$DISPLAY" = X ]; then
+	display_indicator_='[T]'
+	space_=' '
+    fi
+}
+
+# Colors for terminal.
+fg_black="$(tput setaf 0)"
+fg_red="$(tput setaf 1)"
+fg_green="$(tput setaf 2)"
+fg_yellow="$(tput setaf 3)"
+fg_blue="$(tput setaf 4)"
+fg_magenta="$(tput setaf 5)"
+fg_cyan="$(tput setaf 6)"
+fg_white="$(tput setaf 7)"
+reset="$(tput sgr0)"
+
+# Prompt command outputs nothing, only sets state.
+# The prompt itself computes nothing, only displays state.
+PROMPT_COMMAND="script_indicator; display_indicator;"
+
 case $TERM in
     xterm*)
         TITLEBAR='\[\033]0;\u@\h:\w\007\]'
 	PS1="${TITLEBAR}\
-$script_name$BLUE\u@\h:$RED\W $PURPLE\$ $BLACK"
-PS2='$PURPLE> $BLACK'
-PS4='$PURPLE+ $BLACK'
+$fg_green\$display_indicator_\$script_indicator_\$space_$fg_magenta\u@\h:$fg_red\W $fg_cyan\$ $fg_black"
+PS2='$fg_magenta> $BLACK'
+PS4='$fg_magenta+ $BLACK'
         ;;
     *)
         TITLEBAR=""
 	PS1='\u@\h:\W \$ '
         ;;
 esac
-
-}
-
-setup_prompt
 
