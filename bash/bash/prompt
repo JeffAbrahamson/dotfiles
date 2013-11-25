@@ -1,7 +1,16 @@
 #!/bin/bash
 
-# If we want a space before the user@host part, we'll set space_.
-space_=
+# This function must be called first in PROMPT_COMMAND in order to capture $?.
+exit_status_indicator() {
+    # And this must be the first line:
+    exit_status_indicator_="$?,"
+    if [ $exit_status_indicator_ = 0, ]; then
+	exit_status_indicator_=
+	space_=''
+    else
+	space_=' '
+    fi
+}
 
 script_indicator() {
     script_indicator_=
@@ -35,7 +44,7 @@ setup_prompt() {
 	xterm*)
             TITLEBAR='\[\033]0;\u@\h:\w\007\]'
 	    PS1="${TITLEBAR}\
-\[$fg_red\]\[$fg_green\]\${display_indicator_}\${script_indicator_}\$space_\[$fg_magenta\]\u@\h:\[$fg_red\]\W \[$fg_cyan\\]$ \[$fg_black\]"
+\[$fg_red\]\${exit_status_indicator_}\[$fg_green\]\${display_indicator_}\${script_indicator_}\$space_\[$fg_magenta\]\u@\h:\[$fg_red\]\W \[$fg_cyan\\]$ \[$fg_black\]"
 	    PS2='\[$fg_magenta\]> \[$BLACK\]'
 	    PS4='\[$fg_magenta\]+ \[$BLACK\]'
             ;;
@@ -48,5 +57,5 @@ setup_prompt() {
 
 # Prompt command outputs nothing, only sets state.
 # The prompt itself computes nothing, only displays state.
-PROMPT_COMMAND="script_indicator; display_indicator; setup_prompt"
+PROMPT_COMMAND="exit_status_indicator; script_indicator; display_indicator; setup_prompt"
 
