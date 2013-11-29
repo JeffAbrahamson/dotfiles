@@ -1,5 +1,16 @@
 #!/bin/bash
 
+# Colors for terminal.
+fg_black="$(tput setaf 0)"
+fg_red="$(tput setaf 1)"
+fg_green="$(tput setaf 2)"
+fg_yellow="$(tput setaf 3)"
+fg_blue="$(tput setaf 4)"
+fg_magenta="$(tput setaf 5)"
+fg_cyan="$(tput setaf 6)"
+fg_white="$(tput setaf 7)"
+reset="$(tput sgr0)"
+
 # This function must be called first in PROMPT_COMMAND in order to capture $?.
 exit_status_indicator() {
     # And this must be the first line:
@@ -28,23 +39,20 @@ display_indicator() {
     fi
 }
 
-# Colors for terminal.
-fg_black="$(tput setaf 0)"
-fg_red="$(tput setaf 1)"
-fg_green="$(tput setaf 2)"
-fg_yellow="$(tput setaf 3)"
-fg_blue="$(tput setaf 4)"
-fg_magenta="$(tput setaf 5)"
-fg_cyan="$(tput setaf 6)"
-fg_white="$(tput setaf 7)"
-reset="$(tput sgr0)"
+screen_indicator() {
+    screen_indicator_=
+    if [ "X$TERM" = Xscreen ]; then
+	screen_indicator_="\[$fg_green\][S-\\l]"
+	space=' '
+    fi
+}
 
 setup_prompt() {
     case $TERM in
-	xterm*)
+	xterm*|screen)
             TITLEBAR='\[\033]0;\u@\h:\w\007\]'
 	    PS1="${TITLEBAR}\
-\[$fg_red\]\${exit_status_indicator_}\[$fg_green\]\${display_indicator_}\${script_indicator_}\$space_\[$fg_magenta\]\u@\h:\[$fg_red\]\W \[$fg_cyan\\]$ \[$fg_black\]"
+\[$fg_red\]\${exit_status_indicator_}${screen_indicator_}\[$fg_green\]\${display_indicator_}\${script_indicator_}\$space_\[$fg_magenta\]\u@\h:\[$fg_red\]\W \[$fg_cyan\\]$ \[$fg_black\]"
 	    PS2='\[$fg_magenta\]> \[$BLACK\]'
 	    PS4='\[$fg_magenta\]+ \[$BLACK\]'
             ;;
@@ -57,5 +65,5 @@ setup_prompt() {
 
 # Prompt command outputs nothing, only sets state.
 # The prompt itself computes nothing, only displays state.
-PROMPT_COMMAND="exit_status_indicator; script_indicator; display_indicator; setup_prompt"
+PROMPT_COMMAND="exit_status_indicator; script_indicator; display_indicator; screen_indicator; setup_prompt"
 
