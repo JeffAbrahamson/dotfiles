@@ -2,3 +2,9 @@ escape M-Tab
 
 # gnome-terminal is a decent terminal emulator, but the menu bar is unnecessary.
 bind c exec gnome-terminal --hide-menubar
+
+# On my acer 1410 laptop, the following three keys control volume.
+# Bug:  The audio mute does not properly unmute!
+definekey top XF86AudioLowerVolume exec amixer set Master 5%-
+definekey top XF86AudioRaiseVolume exec amixer set Master 5%+
+definekey top XF86AudioMute exec amixer set Master toggle
