@@ -10,3 +10,4 @@ definekey top XF86AudioRaiseVolume exec amixer set Master 5%+
 definekey top XF86AudioMute exec amixer set Master toggle
 
 bind e exec emacs
+bind f exec chromium-browser
