@@ -179,3 +179,19 @@ flag should be valid grep flags (typically '-i') or else the empty string."
   (interactive)
   (comment-dwim nil)
   (insert-string "JMA JMA JMA  "))
+
+(defun jma-dnc ()
+  "Insert a JMA-ish comment that I don't want to miss removing at commit."
+  ;; As written, this will do the wrong thing on regions, where this becomes
+  ;; comment-region. The intent is to handle the case when no region is active.
+  (interactive)
+  (comment-dwim nil)
+  (insert-string "JMA [DO NOT COMMIT] "))
+
+(defun jma-todo ()
+  "Insert a TODO comment for me."
+  ;; As written, this will do the wrong thing on regions, where this becomes
+  ;; comment-region. The intent is to handle the case when no region is active.
+  (interactive)
+  (comment-dwim nil)
+  (insert-string "TODO(JMA): "))
