@@ -2,12 +2,13 @@
 
 . ../script/lib.sh
 
-maybe_mkdir $HOME/elisp/
+dest=$HOME/.dotfiles/elisp/
+maybe_mkdir $dest
 (
     cd elisp
     for f in *; do
-	install_to $f $HOME/elisp/;
+	copy_to $f $dest
     done
 )
 
-maybe_append .emacs /elisp/emacs.el emacs-include
+maybe_append .emacs .dotfiles/elisp/emacs.el emacs-include

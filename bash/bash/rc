@@ -10,8 +10,8 @@
 # For local customization, at beginning of bashrc
 # This file should not be included with this distribution, as
 # the whole point is to let the user customize as he sees fit.
-if [ -f $HOME/bash/site_begin ]; then
-	. $HOME/bash/site_begin
+if [ -f $HOME/.dotfiles/bash/site_begin ]; then
+	. $HOME/.dotfiles/bash/site_begin
 fi
 ## This is the end of this beginning block.
 
@@ -97,8 +97,8 @@ fi
 # $HOME/.bash_aliases, instead of adding them here directly.
 # See /usr/share/doc/bash-doc/examples in the bash-doc package.
 
-if [ -f $HOME/bash/aliases ]; then
-    . $HOME/bash/aliases
+if [ -f $HOME/.dotfiles/bash/aliases ]; then
+    . $HOME/.dotfiles/bash/aliases
 fi
 
 # enable programmable completion features (you don't need to enable
@@ -141,8 +141,8 @@ complete -F _tsd tsd
 # compile just once (create a .pyc).
 tsd() { tsd.py $*; }
 
-if [ -f $HOME/bash/prompt ]; then
-	. $HOME/bash/prompt
+if [ -f $HOME/.dotfiles/bash/prompt ]; then
+	. $HOME/.dotfiles/bash/prompt
 fi
 
 shopt -s cdspell
@@ -151,7 +151,7 @@ shopt -s cdspell
 # For local customization, at end of bashrc
 # This file should not be included with this distribution, as
 # the whole point is to let the user customize as he sees fit.
-if [ -f $HOME/bash/site_end ]; then
-	. $HOME/bash/site_end
+if [ -f $HOME/.dotfiles/bash/site_end ]; then
+	. $HOME/.dotfiles/bash/site_end
 fi
 ## This file should end here

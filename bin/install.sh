@@ -2,10 +2,11 @@
 
 . ../script/lib.sh
 
-maybe_mkdir $HOME/bin/
+dest=$HOME/bin/
+maybe_mkdir $dest
 (
     cd bin
     for f in *; do
-	install_to $f $HOME/bin/;
+	copy_to $f $dest
     done
 )

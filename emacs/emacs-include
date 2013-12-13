@@ -1,1 +1,1 @@
-(load-file (concat (getenv "HOME") "/elisp/emacs.el"))
+(load-file (concat (getenv "HOME") "/.dotfiles/elisp/emacs.el"))

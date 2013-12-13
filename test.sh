@@ -3,3 +3,4 @@
 (cd bash && ./test.sh)
 (cd emacs && ./test.sh)
 (cd bin && ./test.sh)
+(cd ratpoison && ./test.sh)

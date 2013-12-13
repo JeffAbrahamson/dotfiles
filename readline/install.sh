@@ -2,13 +2,14 @@
 
 . ../script/lib.sh
 
-maybe_mkdir $HOME/readline/
+dest=$HOME/.dotfiles/readline/
+maybe_mkdir $dest
 (
     cd readline
     for f in *; do
-	install_to $f $HOME/bash/;
+	copy_to $f $dest
     done
 )
 
-maybe_append .inputrc readline/inputrc readline-include
+maybe_append .inputrc .dotfiles/readline/inputrc readline-include
 

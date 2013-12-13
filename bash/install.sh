@@ -2,14 +2,15 @@
 
 . ../script/lib.sh
 
-maybe_mkdir $HOME/bash/
+dest=$HOME/.dotfiles/bash/
+maybe_mkdir $dest
 (
     cd bash
     for f in *; do
-	install_to $f $HOME/bash/;
+	copy_to $f $dest
     done
 )
 
-maybe_append .bashrc bash/rc bashrc-include
-maybe_append .bash_profile bash/profile bash_profile-include
-maybe_append .bash_logout bash/logout bash_logout-include
+maybe_append .bashrc .dotfiles/bash/rc bashrc-include
+maybe_append .bash_profile .dotfiles/bash/profile bash_profile-include
+maybe_append .bash_logout .dotfiles/bash/logout bash_logout-include

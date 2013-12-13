@@ -1,3 +1,3 @@
-if [ -f $HOME/bash/profile ]; then
-    . $HOME/bash/profile
+if [ -f $HOME/.dotfiles/bash/profile ]; then
+    . $HOME/.dotfiles/bash/profile
 fi

@@ -5,8 +5,8 @@
 # For local customization, at beginning of bash_profile
 # This file should not be included with this distribution, as
 # the whole point is to let the user customize as he sees fit.
-if [ -f $HOME/bash/site_profile_begin ]; then
-	. $HOME/bash/site_profile_begin
+if [ -f $HOME/.dotfiles/bash/site_profile_begin ]; then
+	. $HOME/.dotfiles/bash/site_profile_begin
 fi
 ## This is the end of this beginning block.
 
@@ -79,7 +79,7 @@ fi
 # For local customization, at end of bash_profile
 # This file should not be included with this distribution, as
 # the whole point is to let the user customize as he sees fit.
-if [ -f $HOME/bash/site_profile_end ]; then
-	. $HOME/bash/site_profile_end
+if [ -f $HOME/.dotfiles/bash/site_profile_end ]; then
+	. $HOME/.dotfiles/bash/site_profile_end
 fi
 ## This file should end here

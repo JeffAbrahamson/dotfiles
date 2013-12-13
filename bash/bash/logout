@@ -5,8 +5,8 @@
 # For local customization, at beginning of bash_logout
 # This file should not be included with this distribution, as
 # the whole point is to let the user customize as he sees fit.
-if [ -f $HOME/bash/site_logout_begin ]; then
-	. $HOME/bash/site_logout_begin
+if [ -f $HOME/.dotfiles/bash/site_logout_begin ]; then
+	. $HOME/.dotfiles/bash/site_logout_begin
 fi
 ## This is the end of this beginning block.
 
@@ -20,7 +20,7 @@ fi
 # For local customization, at end of bash_logout
 # This file should not be included with this distribution, as
 # the whole point is to let the user customize as he sees fit.
-if [ -f $HOME/bash/site_logout_end ]; then
-	. $HOME/bash/site_logout_end
+if [ -f $HOME/.dotfiles/bash/site_logout_end ]; then
+	. $HOME/.dotfiles/bash/site_logout_end
 fi
 ## This file should end here

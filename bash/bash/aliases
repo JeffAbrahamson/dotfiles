@@ -43,12 +43,12 @@ ec() { emacsclient -n $*; }
 
 ssh-mult() { echo ssh; (cd $HOME/.ssh/; ssh-add id_rsa id_rsa.drexel id_rsa.github id_rsa.vu;) ; }
 
-if [ -f $HOME/bash/rsync ]; then
-   . $HOME/bash/rsync
+if [ -f $HOME/.dotfiles/bash/rsync ]; then
+   . $HOME/.dotfiles/bash/rsync
 fi
 
-if [ -f $HOME/bash/pictools ]; then
-   . $HOME/bash/pictools
+if [ -f $HOME/.dotfiles/bash/pictools ]; then
+   . $HOME/.dotfiles/bash/pictools
 fi
 
 #
