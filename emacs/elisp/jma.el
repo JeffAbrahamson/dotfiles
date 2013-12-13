@@ -1,22 +1,3 @@
-
-;; This is a hack, I should bind it to a key
-(defun mozilla ()
-  (interactive)
-  ;(browse-url-of-file "Z:/public_html/index.html"))
-  (browse-url-of-file "http://www.ficc.gs.com/~abrjef/"))
-(global-set-key [f8] 'mozilla)
-
-;; OLD VERSION, probably ok to delete, 5-nov-2007
-;; (defun jma-grep (pattern prefix)
-;;   "Search for pattern in the files u:/data/notes/*txt.
-;; Search is case insensitive unless  a prefix argument is provided,
-;; in which case the search becomes case-sensitive."
-;;   (interactive "sPattern: \np")
-;;   (let ((flag (if (not (= prefix 1)) "" "-i")))
-;;     (compilation-start
-;;      (concat "grep " flag " -n -e \"" pattern "\" " (getenv "HOME") "data/*.txt")
-;;      'grep-mode)))
-
 (defun jma-grep (pattern prefix)
   "Search for pattern in the files $HOME/data/notes/*txt.
 Search is case insensitive unless  a prefix argument is provided,
@@ -87,19 +68,6 @@ flag should be valid grep flags (typically '-i') or else the empty string."
 
 (global-set-key [M-f12] 'jma-daily-log)
 (global-set-key [M-S-f12] 'jma-weekly-log)
-
-;; Useful at GS
-;; (defun jma-location ()
-;;   "Where is this disk?"
-;;   (interactive)
-;;   (save-excursion
-;;     (find-file "u:.LOCATION")
-;;     (message (concat "u: is mapped to " (buffer-substring (point-min) (point-max))))
-;;     (kill-buffer (current-buffer))
-;;     ))
-
-;; (global-set-key [C-f8] 'jma-location)
-
 
 (defun gpl-for-me (prog-name)
   "Create a GPL string for a module of prog-name."
