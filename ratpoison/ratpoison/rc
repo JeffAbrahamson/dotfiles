@@ -11,3 +11,5 @@ definekey top XF86AudioMute exec amixer set Master toggle
 
 bind e exec emacs
 bind f exec chromium-browser
+
+bind a exec ratpoison -c "echo $(ratpoison-power-status)    $(date)"
