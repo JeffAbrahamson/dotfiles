@@ -1,0 +1,33 @@
+#!/bin/bash
+
+PATH=/usr/bin:/bin
+
+threshold=$1
+loop=$2
+
+check_status()
+{
+    batteries=$(upower -e | grep battery)
+    # Normally I have only one battery, but watch out for multiple
+    # entries some day.
+    for battery in $batteries; do
+	state=$(upower -i $battery | grep state | awk -F: '{print $2}' | tr -d ' \t')
+	if [ "X$state" = Xdischarging ]; then
+	    delay=$(upower -i $battery | grep "time to empty" | grep minutes | awk -F: '{print $2}' | \
+		sed -e 's/^\s\+//; s/ minutes//; s/\.[0-9]\+//;')
+	    percent=$(upower -i $battery | grep percent | awk -F: '{print $2}' | tr -d ' \t%')
+	    if [ $delay -lt $threshold ]; then
+		ratpoison -c "echo Battery low: $delay minutes remaining."
+	    fi
+	fi		    
+    done
+}
+
+if [ Xdaemon = "X$loop" ]; then
+    while true; do
+	check_status
+	sleep 60
+    done
+else
+    check_status
+fi

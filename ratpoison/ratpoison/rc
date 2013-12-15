@@ -13,3 +13,5 @@ bind e exec emacs
 bind f exec chromium-browser
 
 bind a exec ratpoison -c "echo $(ratpoison-power-status)    $(date)"
+# Warn me once a minute when power drops below 30 minutes.
+exec ratpoison-power-monitor 30 daemon
