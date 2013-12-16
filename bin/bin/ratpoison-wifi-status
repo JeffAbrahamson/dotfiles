@@ -1,0 +1,5 @@
+#!/bin/bash
+
+PATH=/usr/bin:/bin:/sbin
+
+iwconfig wlan0 | awk -F\" '/ESSID/ {print $2}'
