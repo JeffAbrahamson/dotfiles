@@ -1,0 +1,12 @@
+#!/bin/bash
+
+# Crudely run an nm-applet in a stalonetray.
+#
+# This lacks a way to kill the applet when we're done with it.
+# Killing the stalonetray doesn't kill the applet.  The applet
+# just removes itself from the tray.  So I need a mechanism to
+# kill the nm-applet once the stalonetray is dead.
+
+stalonetray &
+nm-applet &
+
