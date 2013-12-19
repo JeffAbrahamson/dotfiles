@@ -245,3 +245,5 @@ d2t() { date +%s; }
 t2d() { date -d @$1 -R; }
 
 undisp() { if [ $DISPLAY ]; then DISPLAY_WAS="$DISPLAY"; unset DISPLAY; fi; }
+# redisp should check if display is valid and provide feedback if it can't do its thing (and why).
+redisp() { if [ "X$DISPLAY" = X ]; then export DISPLAY="$DISPLAY_WAS"; fi; }
