@@ -1,5 +1,5 @@
 [Desktop Entry]
-Name=Ubuntu
+Name=Ratpoison
 Comment=This session logs you into ratpoison
 Exec=/usr/bin/ratpoison
 TryExec=/usr/bin/ratpoison
