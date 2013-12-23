@@ -4,6 +4,7 @@
 
 dest=$HOME/.ratpoisonrc
 copy_to ratpoison/rc $dest
+
 desktop_entry=/usr/share/xsessions/ratpoison.desktop
 my_desktop_entry=$(pwd)/ratpoison/ratpoison.desktop
 if [ ! -f $desktop_entry ]; then
@@ -15,4 +16,13 @@ elif ! cmp --quiet "$my_desktop_entry" "$desktop_entry"; then
     echo "sudo cp $my_desktop_entry $desktop_entry"
 fi
 
-
+dest=$HOME/bin/
+maybe_mkdir $dest
+(
+    (
+	cd ratpoison/bin
+	for f in *; do
+	    copy_to $f $dest
+	done
+    )
+)
