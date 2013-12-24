@@ -144,6 +144,9 @@ tsd() { tsd.py $*; }
 if [ -f $HOME/.dotfiles/bash/prompt ]; then
 	. $HOME/.dotfiles/bash/prompt
 fi
+if [ -f $HOME/.dotfiles/bash/pictools ]; then
+	. $HOME/.dotfiles/bash/pictools
+fi
 
 shopt -s cdspell
 
