@@ -15,3 +15,9 @@ bind f exec chromium-browser
 bind a exec ratpoison -c "echo $(ratpoison-wifi-status)    $(ratpoison-power-status)    $(date '+%Y-%m-%d  %T  %Z %z  %A')"
 # Warn me once a minute when power drops below 30 minutes.
 exec ratpoison-power-monitor 30 daemon
+
+#Banish the mouse with each screen change.
+addhook switchwin banish
+
+# I know it's ratpoison.
+startup_message off
