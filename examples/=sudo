@@ -1,0 +1,25 @@
+# This is matled's =sudo script, c. 12/2013.
+
+export SUDO_ASKPASS=/usr/bin/ssh-askpass
+#!/bin/sh
+timeout() {
+    if [ "$#" -lt 2 ]; then
+	return -1
+    fi
+    timeout="$1"; shift
+    "$@" &
+    pid=$!
+    (sleep "$timeout"; kill -9 $pid) 2> /dev/null &
+    watch=$!
+    wait $pid 2> /dev/null
+    ret=$?
+    kill -9 $watch 2> /dev/null
+    wait $watch 2> /dev/null
+    return $ret
+}
+
+if timeout 0.3 xwininfo -root >/dev/null 2>&1; then
+    exec /usr/bin/sudo -A "$@"
+else
+    exec /usr/bin/sudo "$@"
+fi

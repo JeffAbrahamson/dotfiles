@@ -1,0 +1,33 @@
+# This is matled's .xinit file, c. 12/2013.
+
+#!/bin/sh
+. "$HOME"/.zshenv
+#. agent
+
+xscreensaver &
+
+xset b off
+xsetroot -solid '#000' &
+xmodmap "$HOME/.xmodmaprc"
+
+xrandr \
+    --output DVI-I-1 --auto \
+    --output DP-1 --right-of DVI-I-1 --auto --rotate left
+
+pulseaudio &
+synergys -a localhost > /dev/null &
+usb-keyboard-xmodmap &
+
+{
+    gkrellm &
+    sleep 5
+    stalonetray &
+    blueman-applet &
+ #gnome-sound-applet &
+}
+
+socat tcp-listen:5821,fork,reuseaddr,bind=127.0.0.1 system:"xlock < /dev/null 1>&0" &
+
+exec notion -session "$(hostname)"
+exec ion3 -session "$(hostname)"
+exec urxvt
