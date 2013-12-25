@@ -18,8 +18,10 @@ exit_status_indicator() {
     if [ $exit_status_indicator_ = 0, ]; then
 	exit_status_indicator_=
 	space_=''
+	exit_color_=$fg_black
     else
 	space_=' '
+	exit_color_=$fg_red
     fi
 }
 
@@ -47,12 +49,36 @@ screen_indicator() {
     fi
 }
 
+# Redefine this function in $HOME/dotfiles/bash/site_end to display a
+# line before the bash prompt.
+line_zero() {
+    line_zero_=
+}
+
+line_zero_format() {
+    zero_prefix_=
+    zero_suffix=
+    one_prefix_=
+    zero_=
+    if [ X != "X$line_zero_" ]; then
+	# The echo -e makes the \u work correctly.  In other words,
+	# this is a trick for translating \u notation to proper UTF-8.
+	#zero_prefix_=$(echo -e "\u2554\u2550")
+	zero_prefix_=$(echo -e "\u256D\u2574")
+	#zero_suffix_=$(echo -e "\u2550\u2557");
+	zero_suffix_=$(echo -e "\u2576\u256E")
+	#one_prefix_=$(echo -e "\u255 ")
+	one_prefix_=$(echo -e "\u2570 ")
+	zero_="\[$exit_color_\]$zero_prefix_\[$fg_black\]$line_zero_$zero_suffix_\n"
+    fi
+}
+
 setup_prompt() {
     case $TERM in
 	xterm*|screen)
             TITLEBAR='\[\033]0;\u@\h:\w\007\]'
 	    PS1="${TITLEBAR}\
-\[$fg_red\]\${exit_status_indicator_}${screen_indicator_}\[$fg_green\]\${display_indicator_}\${script_indicator_}\$space_\[$fg_magenta\]\u@\h:\[$fg_red\]\W \[$fg_cyan\\]$ \[$fg_black\]"
+$zero_\[$exit_color_\]$one_prefix_\${exit_status_indicator_}${screen_indicator_}\[$fg_green\]\${display_indicator_}\${script_indicator_}\$space_\[$fg_magenta\]\u@\h:\[$fg_red\]\W \[$fg_cyan\\]$ \[$fg_black\]"
 	    PS2='\[$fg_magenta\]> \[$BLACK\]'
 	    PS4='\[$fg_magenta\]+ \[$BLACK\]'
             ;;
@@ -65,5 +91,5 @@ setup_prompt() {
 
 # Prompt command outputs nothing, only sets state.
 # The prompt itself computes nothing, only displays state.
-PROMPT_COMMAND="exit_status_indicator; script_indicator; display_indicator; screen_indicator; setup_prompt"
+PROMPT_COMMAND="exit_status_indicator; script_indicator; display_indicator; screen_indicator; line_zero; line_zero_format; setup_prompt"
 
