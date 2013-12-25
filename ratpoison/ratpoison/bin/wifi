@@ -8,5 +8,12 @@
 # kill the nm-applet once the stalonetray is dead.
 
 stalonetray &
+stalonetray_pid=$!
 nm-applet &
+nm_applet_pid=$!
+
+while [ -e /proc/$stalonetray_pid ]; do
+    sleep 1
+done
+kill "$nm_applet_pid"
 
