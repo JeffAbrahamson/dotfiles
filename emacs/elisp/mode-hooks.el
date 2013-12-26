@@ -26,34 +26,38 @@
 ;; 		(setq ksh-align-to-keyword t)	;; Turn on keyword alignment
 ;; 		))
 
-(defun linux-c-mode ()
-  "C mode with adjusted defaults for use with the Linux kernel."
-  (interactive)
-  (c-mode)
-  (local-set-key [(return)] 'newline-and-indent) 
-  (setq c-indent-level 8)
-  (setq c-brace-imaginary-offset 0)
-  (setq c-brace-offset -8)
-  (setq c-argdecl-indent 8)
-  (setq c-label-offset -8)
-  (setq c-continued-statement-offset 8)
-  (setq indent-tabs-mode nil)
-  (setq tab-width 8))
+;; (defun linux-c-mode ()
+;;   "C mode with adjusted defaults for use with the Linux kernel."
+;;   (interactive)
+;;   (c-mode)
+;;   (local-set-key [(return)] 'newline-and-indent) 
+;;   (setq c-indent-level 8)
+;;   (setq c-brace-imaginary-offset 0)
+;;   (setq c-brace-offset -8)
+;;   (setq c-argdecl-indent 8)
+;;   (setq c-label-offset -8)
+;;   (setq c-continued-statement-offset 8)
+;;   (setq indent-tabs-mode nil)
+;;   (setq tab-width 8))
 
-(setq auto-mode-alist (cons '("/usr/src/linux.*/.*\\.[ch]$" . linux-c-mode)
-                       auto-mode-alist))
-(setq auto-mode-alist (cons '("/home/jeff/.*\\.[ch]$" . linux-c-mode)
-                       auto-mode-alist))
+;; (setq auto-mode-alist (cons '("/usr/src/linux.*/.*\\.[ch]$" . linux-c-mode)
+;;                        auto-mode-alist))
+;; (setq auto-mode-alist (cons '("/home/jeff/.*\\.[ch]$" . linux-c-mode)
+;;                        auto-mode-alist))
 
 (add-hook 'c-mode-common-hook
 	  (function (lambda()
 		      (if (not buffer-read-only)
 			  (local-set-key [(return)] 'newline-and-indent))
-		      (setq c-basic-offset 8)
-		      (setq c-indent-level 8)
-		      (setq c-continued-statement-offset 8)
-		      (setq indent-tabs-mode nil)
-		      (setq c-label-offset -8))))
+		      ;; experiment
+		      (setq c-default-style "k&r")
+		      ;; from before, s/4/8/
+		      (setq c-basic-offset 4)
+		      ;; (setq c-indent-level 8)
+		      ;; (setq c-continued-statement-offset 8)
+		      ;; (setq indent-tabs-mode nil)
+		      ;; (setq c-label-offset -8)
+		      )))
 
 
 ;; I should turn on electric-c mode here
