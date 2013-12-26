@@ -245,8 +245,18 @@ d2t() { date +%s; }
 t2d() { date -d @$1 -R; }
 
 undisp() { if [ $DISPLAY ]; then DISPLAY_WAS="$DISPLAY"; unset DISPLAY; fi; }
-# redisp should check if display is valid and provide feedback if it can't do its thing (and why).
-redisp() { if [ "X$DISPLAY" = X ]; then export DISPLAY="$DISPLAY_WAS"; fi; }
+redisp() {
+    if [ "X$DISPLAY" = X ]; then
+	DISPLAY=$DISPLAY_WAS xwininfo -root >/dev/null 2>/dev/null
+	if [ 0 = $? ]; then
+	    export DISPLAY="$DISPLAY_WAS";
+	else
+	    echo Previous DISPLAY $DISPLAY_WAS is no longer valid.
+	fi
+    else
+	echo DISPLAY is already set.
+    fi;
+}
 
 fs-mount() {
     if [ $(ls $HOME/fs | wc -l) -gt 1 ]; then
