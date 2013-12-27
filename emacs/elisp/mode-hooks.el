@@ -5,45 +5,8 @@
 ;(resize-minibuffer-mode 1) 
 (setq default-major-mode 'text-mode)
 
-(setq auto-mode-alist
-      (append auto-mode-alist
-	      (list
-	       '("\\.make" . makefile-mode)
-	       '("\\.sh$" . ksh-mode)
-	       '("\\.ksh$" . ksh-mode)
-	       '("\\.bashrc" . ksh-mode)
-	       '("\\..*profile" . ksh-mode)
-	       '("\\..*cshrc" . ksh-mode))))
-
-;; (setq ksh-mode-hook
-;;       (function (lambda ()
-;; 		  (font-lock-mode 1)             ;; font-lock the buffer
-;; 		  (setq ksh-indent 8)
-;; 		  (setq ksh-group-offset -8))
-;; 		(setq ksh-brace-offset -8)   
-;; 		(setq ksh-tab-always-indent t)
-;; 		(setq ksh-match-and-tell t)
-;; 		(setq ksh-align-to-keyword t)	;; Turn on keyword alignment
-;; 		))
-
-;; (defun linux-c-mode ()
-;;   "C mode with adjusted defaults for use with the Linux kernel."
-;;   (interactive)
-;;   (c-mode)
-;;   (local-set-key [(return)] 'newline-and-indent) 
-;;   (setq c-indent-level 8)
-;;   (setq c-brace-imaginary-offset 0)
-;;   (setq c-brace-offset -8)
-;;   (setq c-argdecl-indent 8)
-;;   (setq c-label-offset -8)
-;;   (setq c-continued-statement-offset 8)
-;;   (setq indent-tabs-mode nil)
-;;   (setq tab-width 8))
-
-;; (setq auto-mode-alist (cons '("/usr/src/linux.*/.*\\.[ch]$" . linux-c-mode)
-;;                        auto-mode-alist))
-;; (setq auto-mode-alist (cons '("/home/jeff/.*\\.[ch]$" . linux-c-mode)
-;;                        auto-mode-alist))
+;; I usually want my .h files in C++ mode.
+(add-to-list 'auto-mode-alist '("\\.h\\'" . c++-mode))
 
 (add-hook 'c-mode-common-hook
 	  (function (lambda()
@@ -76,7 +39,8 @@
 	  (function
 	   (lambda()
 	     (setup-programmer-keys)
-	     (local-set-key (kbd "C-M-;") 'jma-insert-jma-comment)
+	     (local-set-key (kbd "C-M-;") 'jma-dnc) ; A comment not to be committed.
+	     (local-set-key (kbd "C-;") 'jma-todo)  ; A TODO comment.
 	     )))
 
 ;; (setq emacs-lisp-mode-hook
