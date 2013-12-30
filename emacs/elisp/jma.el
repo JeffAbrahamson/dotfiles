@@ -154,7 +154,7 @@ flag should be valid grep flags (typically '-i') or else the empty string."
   ;; comment-region. The intent is to handle the case when no region is active.
   (interactive)
   (comment-dwim nil)
-  (insert-string "JMA [DO NOT COMMIT] "))
+  (insert-string "JMA  [DO NOT COMMIT]  "))
 
 (defun jma-todo ()
   "Insert a TODO comment for me."
