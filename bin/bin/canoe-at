@@ -1,0 +1,6 @@
+#!/bin/bash
+
+PATH=/usr/bin:/bin
+TAG=$HOME/.canoe
+
+echo touch $TAG | at $*

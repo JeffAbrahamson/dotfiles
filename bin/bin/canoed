@@ -1,0 +1,12 @@
+#!/bin/bash
+
+PATH=/usr/bin:/bin
+TAG=$HOME/.canoe
+
+while true; do
+    if [ -e $TAG ]; then
+	rm $TAG
+	ogg123 $HOME/Music/pop/The_Innocence_Mission/Birds_of_my_Neighborhood/04.The_Lakes_of_Canada.ogg
+    fi
+    sleep 60
+done
