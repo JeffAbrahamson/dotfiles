@@ -1,0 +1,3 @@
+#!/bin/bash
+
+ratpoison -c "echo $(ratpoison-wifi-status)    $(ratpoison-power-status)    $(date '+%Y-%m-%d  %T  %Z %z  %A')"

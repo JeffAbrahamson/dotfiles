@@ -9,10 +9,11 @@ definekey top XF86AudioLowerVolume exec amixer set Master 5%-
 definekey top XF86AudioRaiseVolume exec amixer set Master 5%+
 definekey top XF86AudioMute exec amixer set Master toggle
 
+bind a exec ratpoison-status
 bind e exec emacs
 bind f exec chromium-browser
+bind C-w exec wifi
 
-bind a exec ratpoison -c "echo $(ratpoison-wifi-status)    $(ratpoison-power-status)    $(date '+%Y-%m-%d  %T  %Z %z  %A')"
 # Warn me once a minute when power drops below 30 minutes.
 exec ratpoison-power-monitor 30 daemon
 
