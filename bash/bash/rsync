@@ -2,57 +2,30 @@
 # rsync
 #
 
-EXCLUDE=--exclude-from=$HOME/.rsync-backup-exclude
-RSYNC="rsync -va --delete $EXCLUDE"
+# EXCLUDE=--exclude-from=$HOME/.rsync-backup-exclude
+# RSYNC="rsync -va --delete $EXCLUDE"
 
 sync-to-here() {
     vol=$1
-    $RSYNC $HOME/ $vol/jeff/
-    $RSYNC /images/ $vol/images/
-    rm -rf $vol/music/
+    if [ ! -d $vol ]; then
+	echo "$vol not mounted?"
+    else
+	rsync -va --delete jeff@fileserver:/d2/jeff/ $vol/
+    fi
 }
 
 sync-backup640() { sync-to-here /media/jeff/Backup640; }
 sync-red640() { sync-to-here /media/jeff/Red-640; }
 sync-portable-640() { sync-to-here /media/jeff/Portable640; }
 sync-Black750() { sync-to-here /media/jeff/Black750; }
-#sync-Black-1500() { sync-to-here /media/jeff/Black-1500; }
+sync-Black-1500() { sync-to-here /media/jeff/Black-1500; }
 
 sync-jeff-1TB-1() { sync-to-here /media/jeff/jeff-1TB-1/; }
 sync-jeff-1TB-2() { sync-to-here /media/jeff/jeff-1TB-2/; }
 
-sync-fileserver() { sync-to-here jeff@fileserver:/d2/jeff/$HOSTNAME/; }
+sync-fileserver() { sync-to-here jeff@fileserver:/d2/jeff/machines/$HOSTNAME/; }
 
-
-######################################################################
-# purple.com
-
-purple_base=$HOME/public_html/purple
-
-# port=8022
-fog() { echo 136148caeb8; ssh manx.misty.com; }
-fog-up() {
-    if [ X = X$purple_base ]; then
-	echo \$purple_base is empty
-    else
-	rsync -vaC --delete $purple_base/jeff/ manx.misty.com:jeff/; 
-	rsync -vaC --delete $purple_base/images/ manx.misty.com:images/;
-	rsync -vaC --delete $purple_base/www/ manx.misty.com:www/;
-	rsync -vaC --delete $purple_base/purple/ manx.misty.com:purple/;
-	echo "Now run jeff-up on fog.";
-    fi;
-}
-fog-get() {
-    if [ X = X$purple_base ]; then
-	echo \$purple_base is empty
-    else
-	rsync -vaCn manx.misty.com:jeff/ $purple_base/jeff/;
-	rsync -vaCn manx.misty.com:images/ $purple_base/images/;
-	rsync -vaCn manx.misty.com:www/ $purple_base/www/;
-	rsync -vaCn manx.misty.com:purple/ $purple_base/purple/;
-    fi;
-}
-
+fog() { ssh manx.misty.com; }
 
 ## blog.purple.com
 blog-down() { rsync -va --delete --exclude common purple@blog.purple.com:./ $HOME/public_html/purple/blog/; }
