@@ -23,11 +23,25 @@ check_status()
     done
 }
 
-if [ Xdaemon = "X$loop" ]; then
-    while true; do
+## Periodically watch power status.
+main()
+{
+    if [ Xdaemon = "X$loop" ]; then
+        ## When ratpoison exits, this script should quit as well.  But
+        ## ratpoison's exec seems to do a nice job of leaving us as a
+        ## daemon.  So watch for ratpoison exit and quit when no
+        ## longer needed.
+	rp_pid=$(pidof ratpoison)
+	while true; do
+	    check_status
+	    sleep 60
+	    if [ ! -e /proc/$rp_pid ]; then
+		return
+	    fi
+	done
+    else
 	check_status
-	sleep 60
-    done
-else
-    check_status
-fi
+    fi
+}
+
+main
