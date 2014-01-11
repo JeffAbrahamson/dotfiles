@@ -14,9 +14,6 @@ bind e exec emacs
 bind f exec chromium-browser
 bind C-w exec wifi
 
-# Warn me once a minute when power drops below 30 minutes.
-exec ratpoison-power-monitor 30 daemon
-
 #Banish the mouse with each screen change.
 addhook switchwin banish
 
@@ -25,3 +22,15 @@ startup_message off
 
 # Ubuntu 13.04 runs a gnome-screensaver even during ratpoison sessions.
 definekey top C-M-l exec gnome-screensaver-command --lock
+
+# Warn me once a minute when power drops below 30 minutes.
+exec ratpoison-power-monitor 30 daemon
+
+# In case my distro doesn't lock the screen well under ratpoison, do it myself.
+# There is a small race condition in doing this, especially if suspend happens
+# before screen lock.
+exec ratpoison-lid-monitor daemon lock
+
+# I always want these apps launched.
+exec gnome-terminal
+exec emacs

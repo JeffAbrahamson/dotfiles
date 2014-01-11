@@ -1,0 +1,54 @@
+#!/bin/bash
+
+PATH=/usr/bin:/bin
+
+# First argument "daemon" means to loop.
+# Any other value means run once.
+loop=$1
+
+# Values: lock | suspend
+action=$2
+
+# Log what we do lest it be mysterious.
+log=/tmp/$LOGNAME-lid-monitor.log
+
+check_lid()
+{
+    now=$(date "+%F %T")
+    # On one version of ubuntu, the file is LID, on another it's LID0.
+    # In both cases, only one file lives under /proc/acpi/button/lid/.
+    # Since this only needs to work for me, just glob and move on.
+    state=$(cat /proc/acpi/button/lid/LID*/state | grep state | awk '{print $2}')
+    if [ "X$state" = Xclosed ]; then
+	if [ "X$action" = Xlock ]; then
+	    echo "$now   $0 locking screen." >> $log
+	    gnome-screensaver-command --lock
+	fi
+	if [ "X$action" = Xsuspend ]; then
+	    echo "$now   $0 suspending." >> $log
+	    /usr/sbin/pm-suspend
+	fi
+    fi
+}
+
+main()
+{
+    if [ Xdaemon = "X$loop" ]; then
+        ## When ratpoison exits, this script should quit as well.  But
+        ## ratpoison's exec seems to do a nice job of leaving us as a
+        ## daemon.  So watch for ratpoison exit and quit when no
+        ## longer needed.
+	rp_pid=$(pidof ratpoison)
+	while true; do
+	    check_lid
+	    sleep 1
+	    if [ ! -e /proc/$rp_pid ]; then
+		return
+	    fi
+	done
+    else
+	check_lid
+    fi
+}
+
+main
