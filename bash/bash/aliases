@@ -210,7 +210,7 @@ workm-push() { workm force-put; }
 srdro() { srd --database-dir $HOME/srd-ro/ $*; }
 
 rpass() { head -c $((500 + $RANDOM)) < /dev/urandom | sha1sum; }
-voyages() { gnumeric $HOME/common/work/financial/France/impots/2013/voyages.gnumeric & }
+voyages() { gnumeric $HOME/common/work/financial/France/impots/$(date '%Y')/voyages.gnumeric & }
 cheque() { gnumeric $HOME/data/chequier.gnumeric & }
 house() { gnumeric $HOME/common/work/financial/real_estate/Nantes/Metzinger/costs.gnumeric & }
 snap() { gnome-screenshot --area --clipboard; }
