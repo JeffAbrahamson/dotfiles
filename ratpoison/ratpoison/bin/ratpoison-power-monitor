@@ -2,8 +2,20 @@
 
 PATH=/usr/bin:/bin
 
+# Below what time (to empty) when discharging should we display battery status?
 threshold=$1
-loop=$2
+
+# First argument "daemon" means to loop.
+# First argument "once" means to run once.
+# Any other value is an error.
+if [ "X$2" = Xdaemon ]; then
+    loop=1
+elif [ "X$2" = Xonce ]; then
+    loop=0
+else
+    echo "Usage: ratpoison-power-monitor threshold (daemon|once)"
+    exit 1
+fi
 
 check_status()
 {
@@ -26,7 +38,7 @@ check_status()
 ## Periodically watch power status.
 main()
 {
-    if [ Xdaemon = "X$loop" ]; then
+    if [ $loop = 1 ]; then
         ## When ratpoison exits, this script should quit as well.  But
         ## ratpoison's exec seems to do a nice job of leaving us as a
         ## daemon.  So watch for ratpoison exit and quit when no
