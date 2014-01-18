@@ -23,7 +23,13 @@ sync-Black-1500() { sync-to-here /media/jeff/Black-1500; }
 sync-jeff-1TB-1() { sync-to-here /media/jeff/jeff-1TB-1/; }
 sync-jeff-1TB-2() { sync-to-here /media/jeff/jeff-1TB-2/; }
 
-sync-fileserver() { sync-to-here jeff@fileserver:/d2/jeff/machines/$HOSTNAME/; }
+declare -a machine_exclusions_
+machine_exclusions_=(fs common work/src/jma .cache .macromedia)
+machine_exclusions_pattern_=
+for me in ${machine_exclusions_[*]}; do
+    machine_exclusions_pattern_="$machine_exclusions_pattern_ --exclude $me/"
+done
+sync-machine() { rsync -van --delete $machine_exclusions_pattern_ $HOME/ jeff@fileserver:/d2/jeff/machines/$HOSTNAME/; }
 
 fog() { ssh manx.misty.com; }
 
