@@ -29,7 +29,7 @@ machine_exclusions_pattern_=
 for me in ${machine_exclusions_[*]}; do
     machine_exclusions_pattern_="$machine_exclusions_pattern_ --exclude $me/"
 done
-sync-machine() { rsync -van --delete $machine_exclusions_pattern_ $HOME/ jeff@fileserver:/d2/jeff/machines/$HOSTNAME/; }
+sync-machine() { rsync -va --delete $machine_exclusions_pattern_ $HOME/ jeff@fileserver:/d2/jeff/machines/$HOSTNAME/; }
 
 fog() { ssh manx.misty.com; }
 
