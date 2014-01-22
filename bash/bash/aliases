@@ -208,6 +208,7 @@ cppdoc() { ff $HOME/work/c++-docs/cpp.html & }
 workm-periodic() { while true; do date; workm force-put; sleep 900; separator; done; }
 workm-push() { workm force-put; }
 srdro() { srd --database-dir $HOME/srd-ro/ $*; }
+tsd-last() { tsd $1 $(tsd $1 | tail -1 | awk '{print $2}'); }
 
 rpass() { head -c $((500 + $RANDOM)) < /dev/urandom | sha1sum; }
 voyages() { gnumeric $HOME/common/work/financial/France/impots/$(date '+%Y')/voyages.gnumeric & }
