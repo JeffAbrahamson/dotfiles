@@ -75,7 +75,7 @@ line_zero_format() {
 
 setup_prompt() {
     case $TERM in
-	xterm*|screen)
+	xterm*|screen|rxvt*)
             TITLEBAR='\[\033]0;\u@\h:\w\007\]'
 	    PS1="${TITLEBAR}\
 $zero_\[$exit_color_\]$one_prefix_\${exit_status_indicator_}${screen_indicator_}\[$fg_green\]\${display_indicator_}\${script_indicator_}\$space_\[$fg_magenta\]\u@\h:\[$fg_red\]\W \[$fg_cyan\\]$ \[$fg_black\]"
