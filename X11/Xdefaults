@@ -1,0 +1,18 @@
+urxvt.saveLines: 400000
+urxvt.scrollBar: false
+urxvt.cursorColor: blue
+urxvt.foreground: black
+urxvt.background: white
+urxvt.reverseVideo: false
+urxvt.font: 9x15
+urxvt.iso14755: false
+urxvt.iso14755_52: false
+urxvt.perl-ext: default,-searchable-scrollback
+
+urxvt.perl-ext: default,matcher,confirm-paste,-searchable-scrollback
+urxvt.urlLauncher: x-www-browser
+
+! with x-www-browser = exec chrome --new-window "$@"
+! makes URLs clickable by the middle mouse button and asks for confirmation to paste multiple lines
+
+emacs23.font: 9x15
