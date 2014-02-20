@@ -2,4 +2,4 @@
 
 . ../script/lib.sh
 
-copy_to Xdefaults $HOME/.Xdefaults
+copy_to Xresources $HOME/.Xresources
