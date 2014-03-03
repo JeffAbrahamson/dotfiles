@@ -20,76 +20,78 @@
 -- modifier to some of the F-key bindings.
 
 defbindings("WScreen", {
-    bdoc("Switch to n:th object (workspace, full screen client window) "..
-         "within current screen."),
-    kpress(META.."1", "WScreen.switch_nth(_, 0)"),
-    kpress(META.."2", "WScreen.switch_nth(_, 1)"),
-    kpress(META.."3", "WScreen.switch_nth(_, 2)"),
-    kpress(META.."4", "WScreen.switch_nth(_, 3)"),
-    kpress(META.."5", "WScreen.switch_nth(_, 4)"),
-    kpress(META.."6", "WScreen.switch_nth(_, 5)"),
-    kpress(META.."7", "WScreen.switch_nth(_, 6)"),
-    kpress(META.."8", "WScreen.switch_nth(_, 7)"),
-    kpress(META.."9", "WScreen.switch_nth(_, 8)"),
-    kpress(META.."0", "WScreen.switch_nth(_, 9)"),
-    
-    bdoc("Switch to next/previous object within current screen."),
-    kpress(META.."comma", "WScreen.switch_prev(_)"),
-    kpress(META.."period", "WScreen.switch_next(_)"),
+    submap(META.."Tab", {
+	bdoc("Switch to n:th object (workspace, full screen client window) "..
+	     "within current screen."),
+	kpress(META.."1", "WScreen.switch_nth(_, 0)"),
+	kpress(META.."2", "WScreen.switch_nth(_, 1)"),
+	kpress(META.."3", "WScreen.switch_nth(_, 2)"),
+	kpress(META.."4", "WScreen.switch_nth(_, 3)"),
+	kpress(META.."5", "WScreen.switch_nth(_, 4)"),
+	kpress(META.."6", "WScreen.switch_nth(_, 5)"),
+	kpress(META.."7", "WScreen.switch_nth(_, 6)"),
+	kpress(META.."8", "WScreen.switch_nth(_, 7)"),
+	kpress(META.."9", "WScreen.switch_nth(_, 8)"),
+	kpress(META.."0", "WScreen.switch_nth(_, 9)"),
 
-    submap(META.."K", {
-        bdoc("Go to first region demanding attention or previously active one."),
-        kpress("K", "mod_menu.grabmenu(_, _sub, 'focuslist')"),
-        -- Alternative without (cyclable) menu
-        --kpress("K", "ioncore.goto_activity() or ioncore.goto_previous()"),
+	bdoc("Switch to next/previous object within current screen."),
+	kpress(META.."comma", "WScreen.switch_prev(_)"),
+	kpress(META.."period", "WScreen.switch_next(_)"),
 
-        --bdoc("Go to previous active object."),
-        --kpress("K", "ioncore.goto_previous()"),
-        
-        --bdoc("Go to first object on activity/urgency list."),
-        --kpress("I", "ioncore.goto_activity()"),
-        
-        bdoc("Clear all tags."),
-        kpress("T", "ioncore.tagged_clear()"),
-    }),
+	submap(META.."K", {
+	    bdoc("Go to first region demanding attention or previously active one."),
+	    kpress("K", "mod_menu.grabmenu(_, _sub, 'focuslist')"),
+	    -- Alternative without (cyclable) menu
+	    --kpress("K", "ioncore.goto_activity() or ioncore.goto_previous()"),
 
-    bdoc("Go to n:th screen on multihead setup."),
-    kpress(META.."Shift+1", "ioncore.goto_nth_screen(0)"),
-    kpress(META.."Shift+2", "ioncore.goto_nth_screen(1)"),
-    
-    bdoc("Go to next/previous screen on multihead setup."),
-    kpress(META.."Shift+comma", "ioncore.goto_prev_screen()"),
-    kpress(META.."Shift+period", "ioncore.goto_next_screen()"),
-    
-    bdoc("Create a new workspace of chosen default type."),
-    kpress(META.."F9", "ioncore.create_ws(_)"),
-    
-    bdoc("Display the main menu."),
-    kpress(ALTMETA.."F12", "mod_query.query_menu(_, _sub, 'mainmenu', 'Main menu:')"),
-    --kpress(ALTMETA.."F12", "mod_menu.menu(_, _sub, 'mainmenu', {big=true})"),
-    mpress("Button3", "mod_menu.pmenu(_, _sub, 'mainmenu')"),
-    
-    bdoc("Display the window list menu."),
-    mpress("Button2", "mod_menu.pmenu(_, _sub, 'windowlist')"),
+	    --bdoc("Go to previous active object."),
+	    --kpress("K", "ioncore.goto_previous()"),
 
-    bdoc("Forward-circulate focus."),
-    -- '_chld' used here stands to for an actual child window that may not
-    -- be managed by the screen itself, unlike '_sub', that is likely to be
-    -- the managing group of that window. The right/left directions are
-    -- used instead of next/prev, because they work better in conjunction
-    -- with tilings.
-    kpress(META.."Tab", "ioncore.goto_next(_chld, 'right')", 
-           "_chld:non-nil"),
-    submap(META.."K", { 
-        bdoc("Backward-circulate focus."),
-        kpress("AnyModifier+Tab", "ioncore.goto_next(_chld, 'left')", 
-               "_chld:non-nil"),
-        
-        bdoc("Raise focused object, if possible."),
-        kpress("AnyModifier+R", "WRegion.rqorder(_chld, 'front')",
-               "_chld:non-nil"),
-    }),
+	    --bdoc("Go to first object on activity/urgency list."),
+	    --kpress("I", "ioncore.goto_activity()"),
 
+	    bdoc("Clear all tags."),
+	    kpress("T", "ioncore.tagged_clear()"),
+	}),
+
+	bdoc("Go to n:th screen on multihead setup."),
+	kpress(META.."Shift+1", "ioncore.goto_nth_screen(0)"),
+	kpress(META.."Shift+2", "ioncore.goto_nth_screen(1)"),
+
+	bdoc("Go to next/previous screen on multihead setup."),
+	kpress(META.."Shift+comma", "ioncore.goto_prev_screen()"),
+	kpress(META.."Shift+period", "ioncore.goto_next_screen()"),
+
+	bdoc("Create a new workspace of chosen default type."),
+	kpress(META.."F9", "ioncore.create_ws(_)"),
+
+	bdoc("Display the main menu."),
+	kpress(ALTMETA.."F12", "mod_query.query_menu(_, _sub, 'mainmenu', 'Main menu:')"),
+	--kpress(ALTMETA.."F12", "mod_menu.menu(_, _sub, 'mainmenu', {big=true})"),
+	mpress("Button3", "mod_menu.pmenu(_, _sub, 'mainmenu')"),
+
+	bdoc("Display the window list menu."),
+	mpress("Button2", "mod_menu.pmenu(_, _sub, 'windowlist')"),
+
+	bdoc("Forward-circulate focus."),
+	-- '_chld' used here stands to for an actual child window that may not
+	-- be managed by the screen itself, unlike '_sub', that is likely to be
+	-- the managing group of that window. The right/left directions are
+	-- used instead of next/prev, because they work better in conjunction
+	-- with tilings.
+	kpress(META.."Tab", "ioncore.goto_next(_chld, 'right')", 
+	       "_chld:non-nil"),
+	submap(META.."K", { 
+	    bdoc("Backward-circulate focus."),
+	    kpress("AnyModifier+Tab", "ioncore.goto_next(_chld, 'left')", 
+		   "_chld:non-nil"),
+
+	    bdoc("Raise focused object, if possible."),
+	    kpress("AnyModifier+R", "WRegion.rqorder(_chld, 'front')",
+		   "_chld:non-nil"),
+	}),
+
+    })
 })
 
 
@@ -133,53 +135,55 @@ defbindings("WMPlex", {
 
 -- Frames for transient windows ignore this bindmap
 defbindings("WMPlex.toplevel", {
-    bdoc("Toggle tag of current object."),
-    kpress(META.."T", "WRegion.set_tagged(_sub, 'toggle')", "_sub:non-nil"),
+    submap(META.."Tab", {
+	bdoc("Toggle tag of current object."),
+	kpress(META.."T", "WRegion.set_tagged(_sub, 'toggle')", "_sub:non-nil"),
 
-    bdoc("Query for manual page to be displayed."),
-    kpress(ALTMETA.."F1", "mod_query.query_man(_, ':man')"),
+	bdoc("Query for manual page to be displayed."),
+	kpress(ALTMETA.."F1", "mod_query.query_man(_, ':man')"),
 
-    bdoc("Show the Notion manual page."),
-    kpress(META.."F1", "ioncore.exec_on(_, ':man notion')"),
+	bdoc("Show the Notion manual page."),
+	kpress(META.."F1", "ioncore.exec_on(_, ':man notion')"),
 
-    bdoc("Run a terminal emulator."),
-    kpress(ALTMETA.."F2", "notioncore.exec_on(_, XTERM or 'x-terminal-emulator')"),
-    
-    bdoc("Query for command line to execute."),
-    kpress(ALTMETA.."F3", "mod_query.query_exec(_)"),
+	bdoc("Run a terminal emulator."),
+	kpress(ALTMETA.."F2", "notioncore.exec_on(_, XTERM or 'x-terminal-emulator')"),
 
-    bdoc("Query for Lua code to execute."),
-    kpress(META.."F3", "mod_query.query_lua(_)"),
+	bdoc("Query for command line to execute."),
+	kpress(ALTMETA.."F3", "mod_query.query_exec(_)"),
 
-    bdoc("Query for host to connect to with SSH."),
-    kpress(ALTMETA.."F4", "mod_query.query_ssh(_, ':ssh')"),
+	bdoc("Query for Lua code to execute."),
+	kpress(META.."F3", "mod_query.query_lua(_)"),
 
-    bdoc("Query for file to edit."),
-    kpress(ALTMETA.."F5", 
-           "mod_query.query_editfile(_, 'run-mailcap --action=edit')"),
+	bdoc("Query for host to connect to with SSH."),
+	kpress(ALTMETA.."F4", "mod_query.query_ssh(_, ':ssh')"),
 
-    bdoc("Query for file to view."),
-    kpress(ALTMETA.."F6", 
-           "mod_query.query_runfile(_, 'run-mailcap --action=view')"),
+	bdoc("Query for file to edit."),
+	kpress(ALTMETA.."F5", 
+	       "mod_query.query_editfile(_, 'run-mailcap --action=edit')"),
 
-    bdoc("Query for workspace to go to or create a new one."),
-    kpress(ALTMETA.."F9", "mod_query.query_workspace(_)"),
-    
-    bdoc("Query for a client window to go to."),
-    kpress(META.."G", "mod_query.query_gotoclient(_)"),
-    
-    bdoc("Display context menu."),
-    --kpress(META.."M", "mod_menu.menu(_, _sub, 'ctxmenu')"),
-    kpress(META.."M", "mod_query.query_menu(_, _sub, 'ctxmenu', 'Context menu:')"),
-    
-    submap(META.."K", {
-        bdoc("Detach (float) or reattach an object to its previous location."),
-        -- By using _chld instead of _sub, we can detach/reattach queries
-        -- attached to a group. The detach code checks if the parameter 
-        -- (_chld) is a group 'bottom' and detaches the whole group in that
-        -- case.
-        kpress("D", "ioncore.detach(_chld, 'toggle')", "_chld:non-nil"),
-    }),
+	bdoc("Query for file to view."),
+	kpress(ALTMETA.."F6", 
+	       "mod_query.query_runfile(_, 'run-mailcap --action=view')"),
+
+	bdoc("Query for workspace to go to or create a new one."),
+	kpress(ALTMETA.."F9", "mod_query.query_workspace(_)"),
+
+	bdoc("Query for a client window to go to."),
+	kpress(META.."G", "mod_query.query_gotoclient(_)"),
+
+	bdoc("Display context menu."),
+	--kpress(META.."M", "mod_menu.menu(_, _sub, 'ctxmenu')"),
+	kpress(META.."M", "mod_query.query_menu(_, _sub, 'ctxmenu', 'Context menu:')"),
+
+	submap(META.."K", {
+	    bdoc("Detach (float) or reattach an object to its previous location."),
+	    -- By using _chld instead of _sub, we can detach/reattach queries
+	    -- attached to a group. The detach code checks if the parameter 
+	    -- (_chld) is a group 'bottom' and detaches the whole group in that
+	    -- case.
+	    kpress("D", "ioncore.detach(_chld, 'toggle')", "_chld:non-nil"),
+	}),
+    })
 })
 
 
