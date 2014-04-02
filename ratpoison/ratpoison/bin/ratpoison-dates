@@ -1,0 +1,3 @@
+#!/bin/bash
+
+ratpoison -c "echo $(dates)"
