@@ -1,3 +1,6 @@
 #!/bin/bash
 
 ratpoison -c "echo $(dates)"
+
+# For future reference:
+# ratpoison -c "echo $(echo -e 'foo\nbar')"
