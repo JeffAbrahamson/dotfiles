@@ -7,8 +7,6 @@ urxvt.reverseVideo: false
 urxvt.font: 9x15
 urxvt.iso14755: false
 urxvt.iso14755_52: false
-urxvt.perl-ext: default,-searchable-scrollback
-
 urxvt.perl-ext: default,matcher,confirm-paste,-searchable-scrollback
 urxvt.urlLauncher: x-www-browser
 
@@ -16,3 +14,23 @@ urxvt.urlLauncher: x-www-browser
 ! makes URLs clickable by the middle mouse button and asks for confirmation to paste multiple lines
 
 emacs23.font: 9x15
+
+Xft.dpi:        96
+Xft.autohint: false
+Xft.lcdfilter:  lcddefault
+Xft.hintstyle:  hintfull
+Xft.hinting: true
+Xft.antialias: true
+Xft.rgba: rgb
+
+xscreensaver.timeout: 0:05:00
+xscreensaver.lock: True
+xscreensaver.lockTimeout: 0:00:05
+xscreensaver.fade: True
+xscreensaver.fadeSeconds: 0:00:05
+xscreensaver.mode: blank
+xscreensaver.splash: False
+xscreensaver.dpmsEnabled: True
+xscreensaver.dpmsStandby: 0:15:00
+xscreensaver.dpmsSuspend: 0:15:00
+xscreensaver.dpmsOff: 0:15:0
