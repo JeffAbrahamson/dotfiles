@@ -10,3 +10,4 @@ maybe_mkdir $dest
 	copy_to $f $dest
     done
 )
+copy_to config/timezones $HOME/.timezones

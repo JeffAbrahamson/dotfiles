@@ -1,0 +1,16 @@
+#!/bin/bash
+
+# Display the time in places I think are interesting.
+#
+# Each line of the timezones file has a time zone name followed by
+# white space followed by a label to print with the time in that
+# location.
+
+zone_file=$HOME/.timezones
+
+cat $zone_file | while read line; do
+    TZ=$(echo $line | perl -pwe 's/\s.*$//;')
+    time_there=$(TZ=$TZ date '+%R  %F  %A  %Z %z')
+    label=$(echo $line | perl -pwe 's/^[^\s]+\s+//;')
+    printf "%-15s %s\n" "$label" "$time_there"
+done
