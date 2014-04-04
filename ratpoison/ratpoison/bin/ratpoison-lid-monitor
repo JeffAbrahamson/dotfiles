@@ -47,7 +47,7 @@ check_lid()
     if [ "X$state" = Xclosed ]; then
 	if [ "X$action" = Xlock ]; then
 	    log "$0 locking screen."
-	    gnome-screensaver-command --lock
+	    xscreensaver-command -lock
 	fi
 	if [ "X$action" = Xsuspend ]; then
 	    log "$0 suspending."

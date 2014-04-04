@@ -23,21 +23,21 @@ addhook switchwin banish
 # I know it's ratpoison.
 startup_message off
 
-# Ubuntu 13.04 runs a gnome-screensaver even during ratpoison sessions.
-definekey top C-M-l exec gnome-screensaver-command --lock
+## Ubuntu 13.04 runs a gnome-screensaver even during ratpoison sessions.
+#definekey top C-M-l exec gnome-screensaver-command --lock
+## I've uninstalled gnome-screensaver, which also removes gnome-session-flashback.
+## Use xscreensaver instead.
+definekey top C-M-l exec xscreensaver-command -lock
+exec xscreensaver
 
 # Warn me once a minute when power drops below 30 minutes.
 exec ratpoison-power-monitor 30 daemon
-
-## It appears that gnome-settings-daemon takes care of sleep/suspend
-## and screen lock.  But it spams kern.log, which is annoying.
-# exec gnome-settings-daemon
 
 # In the absence of gnome-settings-daemon, make sure my screen locks on lid close.
 # There is a small race condition in doing this, especially if suspend happens
 # before screen lock.
 exec ratpoison-lid-monitor daemon lock
 
-# I always want these apps launched.
-exec gnome-terminal
+# I always want these apps launched.  In this order.
+exec urxvt
 exec emacs

@@ -27,7 +27,7 @@ xscreensaver.timeout: 0:05:00
 xscreensaver.lock: True
 xscreensaver.lockTimeout: 0:00:05
 xscreensaver.fade: True
-xscreensaver.fadeSeconds: 0:00:05
+xscreensaver.fadeSeconds: 0:00:01
 xscreensaver.mode: blank
 xscreensaver.splash: False
 xscreensaver.dpmsEnabled: True
