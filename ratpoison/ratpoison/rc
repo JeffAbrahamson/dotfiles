@@ -13,6 +13,7 @@ definekey top XF86AudioMute exec amixer set Master toggle
 
 bind a exec ratpoison-status
 bind A exec ratpoison-dates
+bind C exec ratpoison-cal
 bind e exec emacs
 bind f exec chromium-browser
 bind C-w exec wifi
