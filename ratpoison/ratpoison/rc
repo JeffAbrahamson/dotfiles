@@ -23,6 +23,9 @@ addhook switchwin banish
 # I know it's ratpoison.
 startup_message off
 
+# Hopefully disable keypad touch while typing.
+exec syndaemon -t -k -i 2
+
 ## Ubuntu 13.04 runs a gnome-screensaver even during ratpoison sessions.
 #definekey top C-M-l exec gnome-screensaver-command --lock
 ## I've uninstalled gnome-screensaver, which also removes gnome-session-flashback.
