@@ -20,6 +20,7 @@
 		      ;; (setq c-continued-statement-offset 8)
 		      ;; (setq indent-tabs-mode nil)
 		      ;; (setq c-label-offset -8)
+		      (local-set-key  (kbd "C-c f") 'ff-find-other-file)
 		      )))
 
 
