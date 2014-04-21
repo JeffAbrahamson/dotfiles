@@ -1,0 +1,15 @@
+#!/bin/bash
+
+has_sloppy=0
+if type -P sloppy >/dev/null; then
+    has_sloppy=1
+fi
+if [ 1 -eq $has_sloppy ]; then
+    ratpoison -c "remhook switchwin banish"
+else
+    ratpoison -c "addhook switchwin banish"
+fi
+
+# In case run from the terminal, tell us what current status is.
+ratpoison -c "listhook switchwin"
+true	  # Succeed nonetheless
