@@ -1,11 +1,8 @@
 #!/bin/bash
 
-has_sloppy=0
 if type -P sloppy >/dev/null; then
-    has_sloppy=1
-fi
-if [ 1 -eq $has_sloppy ]; then
     ratpoison -c "remhook switchwin banish"
+    sloppy &
 else
     ratpoison -c "addhook switchwin banish"
 fi
