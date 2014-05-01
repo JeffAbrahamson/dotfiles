@@ -24,6 +24,11 @@ ratpoison-mouse-policy
 # I know it's ratpoison.
 startup_message off
 
+# My life is in black on white.  Let ratpoison stand out.
+set bgcolor lightblue
+set fwcolor darkviolet
+set bwcolor white
+
 # Hopefully disable keypad touch while typing.
 exec syndaemon -t -k -i 2
 
