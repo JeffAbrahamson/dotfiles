@@ -1,0 +1,21 @@
+settings = {
+  core = {
+    real_name = "Jeff Abrahamson";
+    user_name = "jeffab";
+    nick = "jeffab";
+  };
+  "fe-text" = { actlist_sort = "refnum"; };
+};
+keyboard = (
+  { key = "^F"; id = "forward_character"; data = ""; },
+  { key = "^B"; id = "backward_character"; data = ""; },
+  { key = "^N"; id = "forward_history"; data = ""; },
+  { key = "^P"; id = "backward_history"; data = ""; },
+  { key = "^G"; id = "previous_window"; data = ""; },
+  { key = "^Y"; id = "next_window"; data = ""; }
+);
+hilights = (
+  { text = "londoners"; nick = "yes"; word = "yes"; },
+  { text = "jeffab"; nick = "yes"; word = "yes"; }
+);
+ignores = ( { level = "JOINS PARTS QUITS"; channels = ( "#panic" ); } );
