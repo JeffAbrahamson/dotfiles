@@ -19,7 +19,7 @@ bind f exec chromium-browser
 bind C-w exec wifi
 
 #Banish the mouse with each screen change unless using FFM.
-ratpoison-mouse-policy
+exec ratpoison-mouse-policy
 
 # I know it's ratpoison.
 startup_message off
