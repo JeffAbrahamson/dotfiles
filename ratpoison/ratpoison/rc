@@ -48,5 +48,5 @@ exec ratpoison-power-monitor 30 daemon
 exec ratpoison-lid-monitor daemon lock
 
 # I always want these apps launched.  In this order.
-exec urxvt
+exec urxvt -e screen
 exec emacs
