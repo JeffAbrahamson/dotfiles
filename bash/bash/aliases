@@ -31,6 +31,7 @@ alias mk="make"
 mcm() { make clean; make; }
 
 
+###########################################################################
 # X stuff
 
 #xtd() { sleep 3; xt; }
@@ -51,9 +52,9 @@ if [ -f $HOME/.dotfiles/bash/pictools ]; then
    . $HOME/.dotfiles/bash/pictools
 fi
 
-#
+###########################################################################
 # ssh login
-#
+
 tux() { xrlogin $tux; }
 php() { ssh -X purple@blog.purple.com; }
 
@@ -267,3 +268,11 @@ fs-mount() {
     fi
 }
 fs-umount() { (cd; fusermount -u fs) }
+
+###########################################################################
+# ratpoison
+
+sndq() { amixer scontrols; }
+snd-() { amixer set Master 5%-; }
+snd+() { amixer set Master 5%+; }
+
