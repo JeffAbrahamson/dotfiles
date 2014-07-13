@@ -273,6 +273,6 @@ fs-umount() { (cd; fusermount -u fs) }
 # ratpoison
 
 sndq() { amixer scontrols; }
-snd-() { amixer set Master 5%-; }
-snd+() { amixer set Master 5%+; }
+snddn() { amixer set Master 5%-; }
+sndup() { amixer set Master 5%+; }
 
