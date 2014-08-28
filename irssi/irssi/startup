@@ -1,8 +1,0 @@
-connect irc.corp.google.com
-join #ads-sre-build
-join #ads-sre-build-lon
-join #ads-sre-build-bots
-join #london
-join #panic
-join #prodsec
-script exec $ENV{'TZ'}='Europe/London'

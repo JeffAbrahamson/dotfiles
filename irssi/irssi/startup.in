@@ -1,0 +1,4 @@
+connect irc.freenode.net jma:{{password}}
+msg NickServ identify {{password}}
+join #ratpoison
+script exec $ENV{'TZ'}='Europe/Paris

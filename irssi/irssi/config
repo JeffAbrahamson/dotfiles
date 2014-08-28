@@ -1,8 +1,8 @@
 settings = {
   core = {
     real_name = "Jeff Abrahamson";
-    user_name = "jeffab";
-    nick = "jeffab";
+    user_name = "jma";
+    nick = "jma";
   };
   "fe-text" = { actlist_sort = "refnum"; };
 };
@@ -15,7 +15,7 @@ keyboard = (
   { key = "^Y"; id = "next_window"; data = ""; }
 );
 hilights = (
-  { text = "londoners"; nick = "yes"; word = "yes"; },
-  { text = "jeffab"; nick = "yes"; word = "yes"; }
+  { text = "jeff"; nick = "yes"; word = "yes"; },
+  { text = "jma"; nick = "yes"; word = "yes"; }
 );
-ignores = ( { level = "JOINS PARTS QUITS"; channels = ( "#panic" ); } );
+ignores = ( { level = "JOINS PARTS QUITS"; channels = ( "#freenode" ); } );
