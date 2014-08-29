@@ -1,7 +1,7 @@
-csl-A - csl-B
+Files in csl-A but not in csl-B (or changed)
   Missing:  file/two
   Changed:  file/one
 
-csl-B - csl-A
+Files in csl-B but not in csl-A (or changed)
   Changed:  file/one
   Missing:  file/four

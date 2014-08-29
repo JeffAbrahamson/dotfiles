@@ -54,9 +54,9 @@ def main():
    first_map = read_file(filename1)
    second_map = read_file(filename2)
    
-   print "{0} - {1}".format(filename1, filename2)
+   print "Files in {0} but not in {1} (or changed)".format(filename1, filename2)
    difference(first_map, second_map)
-   print "\n{0} - {1}".format(filename2, filename1)
+   print "\nFiles in {0} but not in {1} (or changed)".format(filename2, filename1)
    difference(second_map, first_map)
    return 0
 
