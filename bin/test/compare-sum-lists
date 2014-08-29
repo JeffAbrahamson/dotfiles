@@ -1,0 +1,11 @@
+#!/bin/sh
+
+PATH=/usr/bin:/bin
+
+me="/tmp/compare-sum-lists_test_$$"
+../bin/compare-sum-lists csl-A csl-B > $me
+if ! cmp --quiet $me compare-sum-lists_golden; then
+   echo compare-sum-lists: test failed.
+else
+   echo compare-sum-lists: good.
+fi

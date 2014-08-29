@@ -1,0 +1,7 @@
+csl-A - csl-B
+  Missing:  file/two
+  Changed:  file/one
+
+csl-B - csl-A
+  Changed:  file/one
+  Missing:  file/four
