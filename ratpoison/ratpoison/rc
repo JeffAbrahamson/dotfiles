@@ -50,3 +50,6 @@ exec ratpoison-lid-monitor daemon lock
 # I always want these apps launched.  In this order.
 exec urxvt -e screen
 exec emacs
+
+# Shield my eyes from the harsh blue sun.
+exec redshift
