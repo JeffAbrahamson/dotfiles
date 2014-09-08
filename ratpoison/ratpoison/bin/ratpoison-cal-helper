@@ -1,0 +1,5 @@
+#!/bin/bash
+
+today=$(date '+%_d')
+cal -h | sed -e "s/^/ /; s/ $today /[$today]/;"
+

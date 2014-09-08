@@ -1,3 +1,3 @@
 #!/bin/bash
 
-ratpoison -c "echo $(cal -h)$(date '+%d')"
+ratpoison -c "echo $(ratpoison-cal-helper)"
