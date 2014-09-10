@@ -45,13 +45,11 @@ export cflash='/media/jeff/EOS_DIGITAL/DCIM/[0-9]*CANON'
 
 
 # My native language
-#export LANG=en_US
+export LANG=en_GB.UTF-8
 
 # For SLang (for mutt)
 export COLORFGBG="black;lightgray"
 
-export vu="ftp.ece.vill.edu"
-export mst=mst.cs.drexel.edu
 export tux=jeffa@tux.cs.drexel.edu
 
 export BASH_PROFILE="LOADED"
