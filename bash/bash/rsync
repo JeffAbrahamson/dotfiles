@@ -24,7 +24,7 @@ sync-jeff-1TB-1() { sync-to-here /media/jeff/jeff-1TB-1/; }
 sync-jeff-1TB-2() { sync-to-here /media/jeff/jeff-1TB-2/; }
 
 declare -a machine_exclusions_
-machine_exclusions_=(fs common work/src/jma .cache .macromedia)
+machine_exclusions_=(Videos Music fs common work/src/jma .cache .macromedia)
 machine_exclusions_pattern_=
 for me in ${machine_exclusions_[*]}; do
     machine_exclusions_pattern_="$machine_exclusions_pattern_ --exclude $me/"
