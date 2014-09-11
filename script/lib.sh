@@ -14,10 +14,6 @@ copy_to()
     fi
     if ! cmp --quiet "$_src_name" "$_dst_name"; then
 	# If the files are the same, we don't need to do anything.
-	if [ -e "$_dst_name" ]; then
-	    # Backup $_dst_file if it already exists.
-	    /bin/mv "$_dst_name" "$_dst_name".$(date '+%Y%m%d-%H:%M:%S')
-	fi
 	/bin/cp "$_src_name" "$_dst_name"
     fi
     unset _src_name _dst_name
