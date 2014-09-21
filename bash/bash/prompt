@@ -49,10 +49,23 @@ screen_indicator() {
     fi
 }
 
+# These variables affect the status of the zero line git prompt.
+# This is all defined in ./git-prompt, which I store here for ease
+# of reference.  The original is generally installed and sourced on
+# modern linux boxes.
+GIT_PS1_SHOWDIRTYSTATE=1	# Show a '*' if dirty.
+GIT_PS1_SHOWSTASHSTATE=1	# Show a '$' if stashed files.
+GIT_PS1_SHOWUNTRACKEDFILES=1	# Show a '%' if untracked files.
+GIT_PS1_SHOWUPSTREAM=auto	# Show my status relative to origin/master.
+
 # Redefine this function in $HOME/dotfiles/bash/site_end to display a
-# line before the bash prompt.
+# line before the bash prompt. The default behavior here is to show
+# git repository information.
 line_zero() {
+    # This line is necessary if nothing else is provided:
     line_zero_=
+    # This causes git information to be shown:
+    line_zero_=$(__git_ps1)
 }
 
 line_zero_format() {
