@@ -86,6 +86,13 @@ cf-cp() { if [ "X$1" != "X" ]; then tmp=cflash_$$-$1 && mkdir $tmp && cd $tmp; f
     /bin/cp -i --preserve=timestamps $cflash/* . && \
     chmod -x *; }
 
+## Typical usage:
+##   {,u}mnt-android /usb
+## It may be that mtpfs would work as well as jmtpfs.
+## The day I tested, jmtpfs was substantially faster.
+mnt-android() { sudo jmtpfs -o allow_other "$1"; }
+umnt-android() { sudo fusermount -u "$1"; }
+
 rmthisdir() { p_=`pwd`; b_=`basename $p_`; cd ..; /bin/rmdir $b_; unset p_ b_; }
 
 undup() { if [ $# != 2 ]; then echo Usage: undup dir1 dir2; return; fi
