@@ -8,7 +8,8 @@ exec emacs
 ## gnome-terminal is a decent terminal emulator, but the menu bar is unnecessary.
 # bind c exec gnome-terminal --hide-menubar
 ## urxvt is a lighter terminal emulator.
-bind c exec urxvt
+alias urxvt exec urxvt
+bind c urxvt
 
 # On my acer 1410 laptop, the following three keys control volume.
 # Bug:  The audio mute does not properly unmute!
@@ -16,12 +17,21 @@ definekey top XF86AudioLowerVolume exec amixer set Master 5%-
 definekey top XF86AudioRaiseVolume exec amixer set Master 5%+
 definekey top XF86AudioMute exec amixer set Master toggle
 
-bind a exec ratpoison-status
-bind A exec ratpoison-dates
-bind C exec ratpoison-cal
-bind e exec emacs
-bind f exec chromium-browser
-bind C-w exec wifi
+alias status exec ratpoison-status
+bind a status
+alias dates exec ratpoison-dates
+bind A dates
+alias cal exec ratpoison-cal
+bind C cal
+alias emacs exec emacs
+bind e emacs
+alias chromium exec chromium-browser
+alias firefox exec firefox --new-instance
+alias ff exec firefox --new-instance -P default-jeff
+alias ffjb exec firefox --new-instance -P Jellybooks
+bind f firefox
+alias wifi exec wifi
+bind C-w wifi
 
 #Banish the mouse with each screen change unless using FFM.
 exec ratpoison-mouse-policy
