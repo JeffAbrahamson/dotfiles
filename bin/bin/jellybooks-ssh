@@ -1,6 +1,0 @@
-#!/bin/bash
-
-unset SSH_AGENT_PID
-unset SSH_AUTH_SOCK
-echo ssh-add ~/.ssh/id_rsa.jellybooks
-exec ssh-agent bash

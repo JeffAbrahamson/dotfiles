@@ -189,6 +189,11 @@ separator() { echo =============================================================
 # ssh-keygen -l -f /etc/ssh/ssh_host_rsa_key
 # ssh-keygen -l -f /etc/ssh/ssh_host_dsa_key
 
+ssh-new() { unset SSH_AGENT_PID; unset SSH_AUTH_SOCK; exec ssh-agent bash; }
+ssh-jma() { ssh-add; }
+ssh-github() { ssh-add ~/.ssh/id_rsa.github; }
+ssh-jelly() { ssh-add ~/.ssh/id_rsa.jellybooks; }
+
 #move-window-to-upper-left() { sawfish-client -c '(move-window-to (select-window) 0 0)'; }
 
 data-notes() {
