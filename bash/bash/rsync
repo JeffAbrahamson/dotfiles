@@ -31,8 +31,14 @@ for me in ${machine_exclusions_[*]}; do
 done
 sync-machine() { 
     rsync -va --delete $machine_exclusions_pattern_ $HOME/ jeff@fileserver:/d2/jeff/machines/$HOSTNAME/;
-    rsync -va jeff@fileserver:/d2/jeff/files/Music/ $HOME/Music/
+    echo; echo Syncing music from fileserver to local cache...
+    for d in classical folk kids google pop-french pop-german; do \
+	echo $d
+	rsync -va jeff@fileserver:/d2/jeff/files/Music/$d/ $HOME/Music/$d/
+    done
+    echo sync-music for all music.
 }
+sync-music() { rsync -va jeff@fileserver:/d2/jeff/files/Music/ $HOME/Music/; }
 
 fog() { ssh manx.misty.com; }
 
