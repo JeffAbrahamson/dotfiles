@@ -27,7 +27,7 @@ alias emacs exec emacs
 bind e emacs
 alias chromium exec chromium-browser
 alias firefox-local exec firefox --new-instance
-alias firefox exec ssh -X -n brunhilde firefox --new-instance
+alias firefox exec ratpoison-firefox
 bind f firefox
 alias wifi exec wifi
 bind C-w wifi

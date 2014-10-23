@@ -1,0 +1,8 @@
+#!/bin/bash
+
+if [ "X$HOSTNAME" = siegfried ]; then
+   # Underpowered desktop, use shuttle for firefox
+   ssh -X -n brunhilde firefox --new-instance
+else
+   firefox --new-instance
+fi
