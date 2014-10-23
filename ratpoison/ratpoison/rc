@@ -26,9 +26,8 @@ bind C cal
 alias emacs exec emacs
 bind e emacs
 alias chromium exec chromium-browser
-alias firefox exec firefox --new-instance
-alias ff exec firefox --new-instance -P default-jeff
-alias ffjb exec firefox --new-instance -P Jellybooks
+alias firefox-local exec firefox --new-instance
+alias firefox exec ssh -X -n brunhilde firefox --new-instance
 bind f firefox
 alias wifi exec wifi
 bind C-w wifi
