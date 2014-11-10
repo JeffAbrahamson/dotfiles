@@ -23,22 +23,18 @@ sync-Black-1500() { sync-to-here /media/jeff/Black-1500; }
 sync-jeff-1TB-1() { sync-to-here /media/jeff/jeff-1TB-1/; }
 sync-jeff-1TB-2() { sync-to-here /media/jeff/jeff-1TB-2/; }
 
+# These exclusions are junk/cache, things that I already synchronize
+# with unison (cf. $HOME/.unison/{common,*prf}) or otherwise cache
+# from the fileserver, or remote filesystems.
 declare -a machine_exclusions_
-machine_exclusions_=(Videos Music fs common work/src/jma .cache .macromedia)
+machine_exclusions_=( .cache .macromedia Videos brunhilde fs common data Documents Downloads templates Music work)
 machine_exclusions_pattern_=
 for me in ${machine_exclusions_[*]}; do
     machine_exclusions_pattern_="$machine_exclusions_pattern_ --exclude $me/"
 done
 sync-machine() { 
     rsync -va --delete $machine_exclusions_pattern_ $HOME/ jeff@fileserver:/d2/jeff/machines/$HOSTNAME/;
-    echo; echo Syncing music from fileserver to local cache...
-    for d in classical folk kids google pop-french pop-german; do \
-	echo $d
-	rsync -va jeff@fileserver:/d2/jeff/files/Music/$d/ $HOME/Music/$d/
-    done
-    echo sync-music for all music.
 }
-sync-music() { rsync -va jeff@fileserver:/d2/jeff/files/Music/ $HOME/Music/; }
 
 fog() { ssh manx.misty.com; }
 
