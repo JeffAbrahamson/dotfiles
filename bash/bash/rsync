@@ -36,6 +36,9 @@ sync-machine() {
     rsync -va --delete $machine_exclusions_pattern_ $HOME/ jeff@fileserver:/d2/jeff/machines/$HOSTNAME/;
 }
 
+sync-fast() { unison -auto fast; }
+sync-full() { unison -auto full; }
+
 fog() { ssh manx.misty.com; }
 
 ## blog.purple.com
