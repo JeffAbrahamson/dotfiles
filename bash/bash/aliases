@@ -281,6 +281,9 @@ fs-mount() {
 }
 fs-umount() { (cd; fusermount -u fs) }
 
+# Serve the current directory on port 8000.
+http() { python -m SimpleHTTPServer; }
+
 ###########################################################################
 # ratpoison
 
