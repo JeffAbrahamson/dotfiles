@@ -1,0 +1,7 @@
+#!/bin/bash
+
+task_file=$HOME/data/gtd/$(hostname)__$(date +%F_%H%M%S)
+while true; do
+      task=$(ratpoison -c windows | egrep '[0-9]+\*' | perl -pwe 's/^[0-9]+\*//; s/ /_/g;')
+      echo $(date +%s) $task >> $task_file
+done

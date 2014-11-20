@@ -58,6 +58,9 @@ exec xscreensaver
 # Warn me once a minute when power drops below 30 minutes.
 exec ratpoison-power-monitor 30 daemon
 
+# Track what I do.
+exec ratpoison-gtd
+
 # In the absence of gnome-settings-daemon, make sure my screen locks on lid close.
 # There is a small race condition in doing this, especially if suspend happens
 # before screen lock.
