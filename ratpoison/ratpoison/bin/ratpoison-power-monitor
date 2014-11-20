@@ -1,6 +1,7 @@
 #!/bin/bash
 
 PATH=/usr/bin:/bin
+renice -n 19 $$
 
 # Below what time (to empty) when discharging should we display battery status?
 threshold=$1

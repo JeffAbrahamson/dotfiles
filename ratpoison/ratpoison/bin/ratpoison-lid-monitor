@@ -1,6 +1,7 @@
 #!/bin/bash
 
 PATH=/usr/bin:/bin
+renice -n 19 $$
 
 # Log what we do lest it be mysterious.
 LOG="/tmp/${LOGNAME:-root}-lid-monitor.log"
