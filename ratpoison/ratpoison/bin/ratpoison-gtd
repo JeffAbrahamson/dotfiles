@@ -1,5 +1,6 @@
 #!/bin/bash
 
+PATH=/usr/bin:/bin
 renice -n 19 $$
 
 task_file=
