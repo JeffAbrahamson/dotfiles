@@ -2,9 +2,17 @@
 
 renice -n 19 $$
 
-task_file=$HOME/data/gtd/$(hostname)__$(date +%F_%H%M%S)
+task_file=
 while true; do
-      task=$(ratpoison -c windows | egrep '[0-9]+\*' | perl -pwe 's/^[0-9]+\*//; s/ /_/g;')
-      echo $(date +%s) $task >> $task_file
-      sleep 60
+    if xscreensaver-command -time | grep -q locked; then
+	# If I go away, then start a new task file.
+	task_file=
+    else
+	if [ "X$task_file" = X ]; then
+	    task_file=$HOME/data/gtd/$(hostname)__$(date +%F_%H%M%S)
+	fi
+	task=$(ratpoison -c windows | egrep '[0-9]+\*' | perl -pwe 's/^[0-9]+\*//; s/ /_/g;')
+	echo $(date +%s) $task >> $task_file
+    fi
+    sleep 60
 done
