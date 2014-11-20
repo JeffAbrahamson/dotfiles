@@ -224,7 +224,7 @@ srdro() { srd --database-dir $HOME/srd-ro/ $*; }
 tsd-last() { tsd $1 $(tsd $1 | tail -1 | awk '{print $2}'); }
 
 rpass() { head -c $((500 + $RANDOM)) < /dev/urandom | sha1sum; }
-voyages() { gnumeric $HOME/common/work/financial/France/impots/$(date '+%Y')/voyages.gnumeric & }
+voyages() { gnumeric $HOME/work/finance/France/impots/$(date '+%Y')/voyages.gnumeric & }
 cheque() { gnumeric $HOME/data/chequier.gnumeric & }
 house() { gnumeric $HOME/common/work/financial/real_estate/Nantes/Metzinger/costs.gnumeric & }
 snap() { gnome-screenshot --area --clipboard; }
@@ -280,6 +280,9 @@ fs-mount() {
     fi
 }
 fs-umount() { (cd; fusermount -u fs) }
+
+# Serve the current directory on port 8000.
+http() { python -m SimpleHTTPServer; }
 
 ###########################################################################
 # ratpoison
