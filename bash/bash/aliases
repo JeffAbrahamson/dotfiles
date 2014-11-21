@@ -245,6 +245,7 @@ git-log() { git log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset
 # git lg -p
 punch() { e $HOME/common/work/financial/real_estate/Nantes/Metzinger/punch-list.txt; }
 script() { SCRIPT_NAME="$1" /usr/bin/script "$@"; }
+gtd() { echo $(date +%s) "$1" >> $HOME/data/gtd/gtd_$(hostname); }
 
 pycd () {
     pushd "$(python -c "import os.path as _, ${1}; \
