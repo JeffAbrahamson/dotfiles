@@ -10,7 +10,7 @@ sync-to-here() {
     if [ ! -d $vol ]; then
 	echo "$vol not mounted?"
     else
-	rsync -va --delete jeff@fileserver:/d2/jeff/ $vol/backup/
+	time rsync -va --delete jeff@fileserver:/d2/jeff/ $vol/backup/
     fi
 }
 
@@ -33,7 +33,7 @@ for me in ${machine_exclusions_[*]}; do
     machine_exclusions_pattern_="$machine_exclusions_pattern_ --exclude $me/"
 done
 sync-machine() { 
-    rsync -va --delete $machine_exclusions_pattern_ $HOME/ jeff@fileserver:/d2/jeff/machines/$HOSTNAME/;
+    time rsync -va --delete $machine_exclusions_pattern_ $HOME/ jeff@fileserver:/d2/jeff/machines/$HOSTNAME/;
 }
 
 sync-fast() { time unison -auto fast; }
@@ -42,5 +42,5 @@ sync-full() { time unison -auto full; }
 fog() { ssh manx.misty.com; }
 
 ## blog.purple.com
-blog-down() { rsync -va --delete --exclude common purple@blog.purple.com:./ $HOME/public_html/purple/blog/; }
+blog-down() { time rsync -va --delete --exclude common purple@blog.purple.com:./ $HOME/public_html/purple/blog/; }
 
