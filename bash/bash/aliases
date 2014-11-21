@@ -248,7 +248,7 @@ script() { SCRIPT_NAME="$1" /usr/bin/script "$@"; }
 gtd() { if [ "X$1" = X ]; then
     echo "What?"; else
     echo $(date +%s) "$1" >> $HOME/data/gtd/gtd_$(hostname); fi; }
-gtdq() { awk '{print $2}' < $HOME/data/gtd/gtd_* | sort -u; }
+gtdq() { cat $HOME/data/gtd/gtd_* | awk '{print $2}' | sort -u; }
 gtdnow() { tail -1 $HOME/data/gtd/gtd_$(hostname); }
 
 pycd () {
