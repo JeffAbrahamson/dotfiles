@@ -293,6 +293,6 @@ http() { python -m SimpleHTTPServer; }
 # ratpoison
 
 sndq() { amixer scontrols; }
-snddn() { amixer set Master 5%-; }
-sndup() { amixer set Master 5%+; }
-
+snddn() { amixer -D pulse set Master 5%-; }
+sndup() { amixer -D pulse set Master 5%+; }
+sndmute() { amixer -D pulse set Master toggle; }
