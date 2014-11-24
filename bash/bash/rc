@@ -141,6 +141,36 @@ complete -F _tsd tsd
 # compile just once (create a .pyc).
 tsd() { tsd.py $*; }
 
+# Completions for gtd
+_gtd()
+{
+    local cur prev pprev opts base
+    COMPREPLY=()
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+    if [ ${#COMP_WORDS[@]} -gt 2 ]; then
+	pprev="${COMP_WORDS[COMP_CWORD-2]}"
+    else
+	pprev=
+    fi
+
+    if [ Xgtd = X${prev} ]; then
+	completions=$(gtdq)
+	COMPREPLY=( $(compgen -W "$completions" -- ${cur}) )
+	return 0
+    fi
+
+    if [ Xtsd = X${pprev} ]; then
+	completions=$(tsd.py -C)
+	COMPREPLY=( $(compgen -W "$completions" -- ${cur}) )
+	return 0
+    fi
+
+    #COMPREPLY=( $(compgen -W "" -- ${cur}) )
+    return 0
+}
+complete -F _gtd gtd
+
 if [ -f $HOME/.dotfiles/bash/prompt ]; then
 	. $HOME/.dotfiles/bash/prompt
 fi
