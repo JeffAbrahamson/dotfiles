@@ -12,7 +12,7 @@ while true; do
 	if [ "X$task_file" = X ]; then
 	    task_file=$HOME/data/gtd/$(hostname)__$(date +%F_%H%M%S)
 	fi
-	task=$(ratpoison -c windows | egrep '[0-9]+\*' | perl -pwe 's/^[0-9]+\*//; s/ /_/g;')
+	task=$(ratpoison -c 'windows %s%t' | egrep '^\*' | perl -pwe 's/^\*//; s/ /_/g;')
 	echo $(date +%s) $task >> $task_file
     fi
     sleep 60
