@@ -1,0 +1,10 @@
+#!/bin/bash
+
+PATH=/usr/bin:/bin
+renice -n 19 $$
+
+my_dpkg_file=$HOME/data/dpkg.selections.$(hostname)
+dpkg --get-selections > $my_dpkg_file
+
+## TODO(jeff@purple.com): I should also write a time series with the number of dpkg entries.
+

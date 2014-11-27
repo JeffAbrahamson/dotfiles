@@ -68,3 +68,6 @@ exec ratpoison-lid-monitor daemon lock
 
 # Shield my eyes from the harsh blue sun.
 exec redshift
+
+# Track my environment for consulting on other hosts.
+exec ratpoison-cache-data
