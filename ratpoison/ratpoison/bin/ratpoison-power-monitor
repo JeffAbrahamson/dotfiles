@@ -26,10 +26,15 @@ check_status()
     for battery in $batteries; do
 	state=$(upower -i $battery | grep state | awk -F: '{print $2}' | tr -d ' \t')
 	if [ "X$state" = Xdischarging ]; then
-	    delay=$(upower -i $battery | grep "time to empty" | grep minutes | awk -F: '{print $2}' | \
+	    delay_minutes=$(upower -i $battery | grep "time to empty" | grep minutes | awk -F: '{print $2}' | \
 		sed -e 's/^\s\+//; s/ minutes//; s/\.[0-9]\+//;')
+	    if [ "X$delay_minutes" = X ]; then
+		delay_hours=$(upower -i $battery | grep "time to empty" | grep hours | awk -F: '{print $2}' | \
+		    sed -e 's/^\s\+//; s/ hours//; s/\.[0-9]\+//;')
+		delay_minutes=$(($delay_hours * 60))
+	    fi
 	    percent=$(upower -i $battery | grep percent | awk -F: '{print $2}' | tr -d ' \t%')
-	    if [ $delay -lt $threshold ]; then
+	    if [ $delay_minutes -lt $threshold ]; then
 		ratpoison -c "echo Battery low: $delay minutes remaining."
 	    fi
 	fi		    
