@@ -30,7 +30,11 @@
   (add-to-list 'load-path jma-elisp-base)
   (require 'dockerfile-mode)
   (add-to-list 'auto-mode-alist '("Dockerfile\\'" . dockerfile-mode))
-  
+
+  ;; Set frame title so that ratpoison-gtd can record something about
+  ;; what I'm doing.
+  (setq frame-title-format '("" invocation-name "@" system-name " - %b : %f"))
+
   ;; This should be the last block of this file.
   ;; The file site-end.el should not be included with
   ;; this distribution.  It is for user customization.
