@@ -26,6 +26,11 @@
   (load-file (concat jma-elisp-base "jma.el"))
   (load-file (concat jma-elisp-base "misc.el"))
 
+  ;; cf. https://github.com/spotify/dockerfile-mode
+  (add-to-list 'load-path jma-elisp-base)
+  (require 'dockerfile-mode)
+  (add-to-list 'auto-mode-alist '("Dockerfile\\'" . dockerfile-mode))
+  
   ;; This should be the last block of this file.
   ;; The file site-end.el should not be included with
   ;; this distribution.  It is for user customization.
