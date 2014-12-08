@@ -290,6 +290,14 @@ fs-umount() { (cd; fusermount -u fs) }
 http() { python -m SimpleHTTPServer; }
 
 ###########################################################################
+# docker
+nse() {
+    pid=$(sudo docker inspect --format {{.State.Pid}} $1);
+    echo $pid;
+    sudo nsenter --target $pid --mount --uts --ipc --net --pid;
+}
+
+###########################################################################
 # ratpoison
 
 sndq() { amixer scontrols; }
