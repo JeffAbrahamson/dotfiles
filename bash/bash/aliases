@@ -215,6 +215,8 @@ fr() {
 	more $HOME/work/notes/french-learning.txt;
     fi
 }
+note() { ec $HOME/data/notes/$1; }
+notegr() { grep $1 $HOME/data/notes/$1; }
 
 ###########################################################################
 # git
