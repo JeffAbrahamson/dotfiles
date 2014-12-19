@@ -231,8 +231,8 @@ snap() { gnome-screenshot --area --clipboard; }
 snapf() { gnome-screenshot --area; }
 term() { terminator -b -m & }
 recipes() { case "X$HOSTNAME" in
-    Xlondon|Xsiegfried) file=$HOME/work/src/jma/recipes/pdf/recipes-gs3.pdf;;
-    Xlorax|Xnantes) file=$HOME/work/src/jma/recipes/pdf/recipes-laptop.pdf;;
+    Xlondon|Xsiegfried) file=$HOME/src/jma/recipes/pdf/recipes-gs3.pdf;;
+    Xlorax|Xnantes) file=$HOME/src/jma/recipes/pdf/recipes-laptop.pdf;;
     esac
     evince $file &
 }
