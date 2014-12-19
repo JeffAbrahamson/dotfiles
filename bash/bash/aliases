@@ -30,16 +30,6 @@ j() { jobs; }
 alias mk="make"
 mcm() { make clean; make; }
 
-
-###########################################################################
-# X stuff
-
-#xtd() { sleep 3; xt; }
-# emacs -fn 9x15 causes a display bug.  GNU Emacs 23.3.1.  2012-02-06.
-# Cf.  https://bugs.launchpad.net/ubuntu/+source/emacs23/+bug/913771
-#e() { emacs -fn 9x15 $* & }
-e() { emacs $* & }
-efr() { LANG=fr_FR.UTF-8 e $* & }
 ec() { emacsclient -n $*; }
 
 ssh-mult() { echo ssh; (cd $HOME/.ssh/; ssh-add id_rsa id_rsa.drexel id_rsa.github id_rsa.vu;) ; }
@@ -63,21 +53,6 @@ mirror() { wget --wait=10 --random-wait --no-host-directories --convert-links --
 mirror-fast() { echo fast mirror; wget --no-host-directories --convert-links --mirror --no-parent $1; }
 get-music() { wget -nH -nd -r -N -l 1 --accept=.ogg,.mp3 $1; }
 
-
-# To burn CD's:
-# mkisofs -r -o /tmp/cd_image $1
-#
-#   as root:
-# mount -t iso9660 -o ro,loop /tmp/cd_image /cdrom
-# cdrecord -v speed=2 dev=0,0,0 -data /tmp/cd_image
-# Use -blank to rewrite
-# Stream: mkisofs -r $1 | cdrecord -v speed=2 dev=0,0,0 -data -
-#
-# For kernel 2.6 this seems to work:
-mkisofs_options="-r -T -J"
-burn() { if [ "X$1" = "X" ]; then burn_path=. ; else burn_path="$*"; fi; mkisofs $mkisofs_options $burn_path | cdrecord -v -eject speed=2 dev=/dev/cdrom -data -; unset burn_path; }
-# And a version that follows symlinks
-burn-sl() { if [ "X$1" = "X" ]; then burn_path=. ; else burn_path="$*"; fi; mkisofs -f $mkisofs_options $burn_path | cdrecord -v -eject speed=2 dev=/dev/cdrom -data -; unset burn_path; }
 
 cf-mv() { if [ "X$1" != "X" ]; then tmp=cflash_$$-$1 && mkdir $tmp && cd $tmp; fi; \
     /bin/mv -i $cflash/* . && \
@@ -111,23 +86,14 @@ citeseer() { w3m http://citeseer.nj.nec.com/cs; }
 jeff() { w3m http://localhost/~jeff/purple/jeff/private/jeff.html; }
 xjeff() { gnome-terminal --hide-menubar --disable-factory --geometry=90x60 --window-with-profile=w3m; }
 
+###########################################################################
+# gpg
+
 gpg-update-keys() { gpg --recv-keys `gpg --list-keys|grep pub|awk '{print $2}'|awk -F/ '{print $2}'`; }
 gpg-update-sigs() { gpg --recv-keys `gpg --list-sigs $1|grep sig|cut -c 12-20|sort -u`; }
 signed-me-verbose() { gpg --list-sigs |egrep '(^pub|jeff@purple.com)'| perl -wne 'my $last_line = ""; while(my $line = <>) { if($line !~ /^pub/) { print $last_line; print $line; } $last_line = $line; }'; }
 signed-me() { gpg --list-sigs |egrep '(^pub|jeff@purple.com)'| perl -wne 'my $last_line = ""; while(my $line = <>) { if($line !~ /^pub/ and $last_line =~ /^pub/) { print $last_line; } $last_line = $line; }'; }
 
-#mutt-term() { gnome-terminal --window-with-profile=mutt --hide-menubar & }
-
-# # PLUG admin
-# plug-announce() { mutt -f pop://plug-announce@lists.netisland.net; }
-# plug() { mutt -f pop://plug@lists.netisland.net; }
-
-alias ff=firefox
-alias ffn="firefox --new-window"
-alias cb=chromium-browser
-alias cbn="chromium-browser --new-window"
-#www_browser="firefox"
-www_browser=chromium-browser
 view-urls-by-file() {
     first_window=true;
     for p in $(egrep -v '^#' $1); do 
@@ -154,6 +120,9 @@ afternoon() {
     cat $HOME/common/data/to-do.txt | egrep -v '^#';
     ) | more
 }
+
+###########################################################################
+# Pictures
 
 gq-slideshow() {
     if [ $# -gt 0 ]; then
@@ -185,6 +154,9 @@ separator() { echo =============================================================
 #     ffmpeg -i $f ~/to-nantes/$d/$b.mp3;
 # done
 
+###########################################################################
+# ssh
+
 ## To compute ssh host key fingerprints:
 # ssh-keygen -l -f /etc/ssh/ssh_host_rsa_key
 # ssh-keygen -l -f /etc/ssh/ssh_host_dsa_key
@@ -194,8 +166,6 @@ ssh-jma() { ssh-add; }
 ssh-github() { ssh-add ~/.ssh/id_rsa.github; }
 ssh-jelly() { ssh-add ~/.ssh/id_rsa.jellybooks; }
 
-#move-window-to-upper-left() { sawfish-client -c '(move-window-to (select-window) 0 0)'; }
-
 data-notes() {
     cd $HOME/common/work/employment/Goldman-Sachs/data-notes/;
     tr 'n-za-mN-ZA-M5-90-4' 'a-zA-Z0-9' < /tmp/gs.tgz | uudecode;
@@ -203,8 +173,6 @@ data-notes() {
     rm gs.tgz;
 };
 
-# cd to wherever I'm currently playing most
-prog() { cd $HOME/work/src/jma/cryptar/src/; }
 internet() {
     in_out=$(ifconfig wlan0 | grep bytes | perl -pwe 's/^.*:([0-9]+).*:([0-9]+).*$/$1 $2/;');
     RX_old=$(echo $in_out | awk '{print $1}');
@@ -218,8 +186,8 @@ internet() {
 }
 cppdoc() { ff $HOME/work/c++-docs/cpp.html & }
 
-workm-periodic() { while true; do date; workm force-put; sleep 900; separator; done; }
-workm-push() { workm force-put; }
+#workm-periodic() { while true; do date; workm force-put; sleep 900; separator; done; }
+#workm-push() { workm force-put; }
 srd-here() { srd "$*" -g "$(hostname)"; }
 tsd-last() { tsd $1 $(tsd $1 | tail -1 | awk '{print $2}'); }
 
@@ -227,8 +195,7 @@ rpass() { head -c $((500 + $RANDOM)) < /dev/urandom | sha1sum; }
 voyages() { gnumeric $HOME/work/finance/France/impots/$(date '+%Y')/voyages.gnumeric & }
 cheque() { gnumeric $HOME/data/chequier.gnumeric & }
 house() { gnumeric $HOME/common/work/financial/real_estate/Nantes/Metzinger/costs.gnumeric & }
-snap() { gnome-screenshot --area --clipboard; }
-snapf() { gnome-screenshot --area; }
+snap() { scrot -s; }
 term() { terminator -b -m & }
 recipes() { case "X$HOSTNAME" in
     Xlondon|Xsiegfried) file=$HOME/src/jma/recipes/pdf/recipes-gs3.pdf;;
@@ -236,20 +203,38 @@ recipes() { case "X$HOSTNAME" in
     esac
     evince $file &
 }
-#recipes() { evince $HOME/work/src/jma/recipes/pdf/recipes-gs3.pdf & }
+
 pm() { ogg=$(/bin/ls *ogg */*ogg 2>/dev/null); mp3=$(/bin/ls *mp3 */*mp3 2>/dev/null); if [ "x$ogg" != x ]; then ogg123 $ogg; fi; if [ "x$mp3" != x ]; then mpg123 $mp3; fi; unset mp3; unset ogg; }
 secu() { gnumeric $HOME/data/secu.gnumeric & }
+punch() { e $HOME/common/work/financial/real_estate/Nantes/Metzinger/punch-list.txt; }
+script() { SCRIPT_NAME="$1" /usr/bin/script "$@"; }
+fr() {
+    if [ $# -gt 0 ]; then
+     	echo "$*" >> $HOME/work/notes/french-learning.txt;
+    else
+	more $HOME/work/notes/french-learning.txt;
+    fi
+}
+
+###########################################################################
+# git
+
 git-log() { git log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit; }
 # git config --global alias.lg "log --color --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit"
 # git lg
 # git lg -p
-punch() { e $HOME/common/work/financial/real_estate/Nantes/Metzinger/punch-list.txt; }
-script() { SCRIPT_NAME="$1" /usr/bin/script "$@"; }
+
+###########################################################################
+# gtd
+
 gtd() { if [ "X$1" = X ]; then
     echo "What?"; else
     echo $(date +%s) "$1" >> $HOME/data/gtd/gtd_$(hostname); fi; }
 gtdq() { cat $HOME/data/gtd/gtd_* | awk '{print $2}' | sort -u; }
 gtdnow() { tail -1 $HOME/data/gtd/gtd_$(hostname); }
+
+###########################################################################
+# Utilities
 
 pycd () {
     pushd "$(python -c "import os.path as _, ${1}; \
@@ -262,20 +247,6 @@ pycd () {
 d2t() { date +%s; }
 # Translate epoch to human time
 t2d() { date -d @$1 -R; }
-
-undisp() { if [ $DISPLAY ]; then DISPLAY_WAS="$DISPLAY"; unset DISPLAY; fi; }
-redisp() {
-    if [ "X$DISPLAY" = X ]; then
-	DISPLAY=$DISPLAY_WAS xwininfo -root >/dev/null 2>/dev/null
-	if [ 0 = $? ]; then
-	    export DISPLAY="$DISPLAY_WAS";
-	else
-	    echo Previous DISPLAY $DISPLAY_WAS is no longer valid.
-	fi
-    else
-	echo DISPLAY is already set.
-    fi;
-}
 
 fs-mount() {
     if [ $(ls $HOME/fs | wc -l) -gt 1 ]; then
@@ -298,9 +269,23 @@ nse() {
 }
 
 ###########################################################################
-# ratpoison
+# X / ratpoison
 
 sndq() { amixer scontrols; }
 snddn() { amixer -D pulse set Master 5%-; }
 sndup() { amixer -D pulse set Master 5%+; }
 sndmute() { amixer -D pulse set Master toggle; }
+
+undisp() { if [ $DISPLAY ]; then DISPLAY_WAS="$DISPLAY"; unset DISPLAY; fi; }
+redisp() {
+    if [ "X$DISPLAY" = X ]; then
+	DISPLAY=$DISPLAY_WAS xwininfo -root >/dev/null 2>/dev/null
+	if [ 0 = $? ]; then
+	    export DISPLAY="$DISPLAY_WAS";
+	else
+	    echo Previous DISPLAY $DISPLAY_WAS is no longer valid.
+	fi
+    else
+	echo DISPLAY is already set.
+    fi;
+}
