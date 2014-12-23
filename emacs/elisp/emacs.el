@@ -27,8 +27,7 @@
   (load-file (concat jma-elisp-base "misc.el"))
 
   ;; cf. https://github.com/spotify/dockerfile-mode
-  (add-to-list 'load-path jma-elisp-base)
-  (require 'dockerfile-mode)
+  (load-file (concat jma-elisp-base "dockerfile-mode.el"))
   (add-to-list 'auto-mode-alist '("Dockerfile\\'" . dockerfile-mode))
 
   ;; Set frame title so that ratpoison-gtd can record something about
