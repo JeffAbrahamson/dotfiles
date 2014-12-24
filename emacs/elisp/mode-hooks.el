@@ -114,3 +114,7 @@
   (let (parens-require-spaces)
     (insert-pair)))
 
+(add-hook 'org-mode-hook
+	  (function
+	   (lambda ()
+	     (org-indent-mode))))
