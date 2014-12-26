@@ -171,3 +171,4 @@ flag should be valid grep flags (typically '-i') or else the empty string."
 
 ;; The function org-todo-list looks at this list.
 (setq org-agenda-files (jma-org-files))
+(setq browse-url-generic-program "firefox")
