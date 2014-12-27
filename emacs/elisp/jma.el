@@ -164,11 +164,13 @@ flag should be valid grep flags (typically '-i') or else the empty string."
   (comment-dwim nil)
   (insert-string "TODO(jeff@purple.com): "))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Org mode and GTD
 (defun jma-org-files ()
   "Return a list of my GTD org files."
-  (file-expand-wildcards (concat (getenv "HOME") "/data/org/*") t))
+  (file-expand-wildcards (concat (getenv "HOME") "/data/org/*org") t))
 
 ;; The function org-todo-list looks at this list.
 (setq org-agenda-files (jma-org-files))
 (setq browse-url-generic-program "firefox")
+(global-set-key (kbd "C-c g") 'org-todo-list)
