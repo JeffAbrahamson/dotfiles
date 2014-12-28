@@ -12,9 +12,8 @@ alias urxvt exec urxvt
 bind c urxvt
 
 # On my acer 1410 laptop, the following three keys control volume.
-# Bug:  The audio mute does not properly unmute!
-definekey top XF86AudioLowerVolume exec amixer -D pulse amixer set Master 5%-
-definekey top XF86AudioRaiseVolume exec amixer -D pulse amixer set Master 5%+
+definekey top XF86AudioLowerVolume exec amixer -D pulse set Master 5%-
+definekey top XF86AudioRaiseVolume exec amixer -D pulse set Master 5%+
 definekey top XF86AudioMute exec amixer -D pulse set Master toggle
 
 alias status exec ratpoison-status
