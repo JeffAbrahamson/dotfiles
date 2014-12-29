@@ -11,7 +11,7 @@ while true; do
     ## daemon.  So watch for ratpoison exit and quit when no longer
     ## needed.
     if [ ! -e /proc/$rp_pid ]; then
-	return
+	exit 0
     fi
     if xscreensaver-command -time | grep -q locked; then
 	# If I go away, then start a new task file.
