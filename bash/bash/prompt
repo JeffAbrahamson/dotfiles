@@ -49,6 +49,13 @@ screen_indicator() {
     fi
 }
 
+virtualenv_indicator() {
+    virtualenv_indicator_=
+    if [ "X$VIRTUAL_ENV" != X ]; then
+	virtualenv_indicator_='(virt)'
+    fi
+}
+
 # These variables affect the status of the zero line git prompt.
 # This is all defined in ./git-prompt, which I store here for ease
 # of reference.  The original is generally installed and sourced on
@@ -60,12 +67,18 @@ GIT_PS1_SHOWUPSTREAM=auto	# Show my status relative to origin/master.
 
 # Redefine this function in $HOME/dotfiles/bash/site_end to display a
 # line before the bash prompt. The default behavior here is to show
-# git repository information.
+# git repository information and python virtualenv status.
 line_zero() {
     # This line is necessary if nothing else is provided:
     line_zero_=
     # This causes git information to be shown:
-    line_zero_=$(__git_ps1)
+    git_=$(__git_ps1)
+    virt_=$virtualenv_indicator_
+    zerospace=
+    if [ "X$git_" != X -a "X$virt_" != X ]; then
+	zerospace=' '
+    fi
+    line_zero_="$git_$zerospace$virt_"
 }
 
 line_zero_format() {
@@ -104,5 +117,5 @@ $zero_\[$exit_color_\]$one_prefix_\${exit_status_indicator_}${screen_indicator_}
 
 # Prompt command outputs nothing, only sets state.
 # The prompt itself computes nothing, only displays state.
-PROMPT_COMMAND="exit_status_indicator; script_indicator; display_indicator; screen_indicator; line_zero; line_zero_format; setup_prompt"
+PROMPT_COMMAND="exit_status_indicator; script_indicator; display_indicator; screen_indicator; virtualenv_indicator; line_zero; line_zero_format; setup_prompt"
 
