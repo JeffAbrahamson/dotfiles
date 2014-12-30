@@ -52,7 +52,7 @@ screen_indicator() {
 virtualenv_indicator() {
     virtualenv_indicator_=
     if [ "X$VIRTUAL_ENV" != X ]; then
-	virtualenv_indicator_='(virt)'
+	virtualenv_indicator_="$fg_green[virt]$fg_black"
     fi
 }
 
