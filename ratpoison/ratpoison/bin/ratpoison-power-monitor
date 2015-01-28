@@ -21,6 +21,10 @@ fi
 check_status()
 {
     batteries=$(upower -e | grep battery)
+    if [ "X$batteries" = X ]; then
+	# If no batteries now, don't expect any batteries later.
+	exit 0
+    fi
     # Normally I have only one battery, but watch out for multiple
     # entries some day.
     for battery in $batteries; do
@@ -35,7 +39,11 @@ check_status()
 	    fi
 	    percent=$(upower -i $battery | grep percent | awk -F: '{print $2}' | tr -d ' \t%')
 	    if [ $delay_minutes -lt $threshold ]; then
-		ratpoison -c "echo Battery low: $delay minutes remaining."
+		ratpoison -c "echo Battery low: $delay_minutes minutes remaining."
+		if [  $delay_minutes -lt $(($threshold / 2)) ]; then
+		    # If it's getting more critical, be more verbose.
+		    ratpoison -c "echo $(echo; echo; echo "Battery low: $delay_minutes minutes remaining.")"
+		fi
 	    fi
 	fi		    
     done
