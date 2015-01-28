@@ -25,6 +25,8 @@
   (load-file (concat jma-elisp-base "evan.el"))
   (load-file (concat jma-elisp-base "jma.el"))
   (load-file (concat jma-elisp-base "misc.el"))
+  ; copied from https://github.com/fxbois/web-mode.git
+  (load-file (concat jma-elisp-base "web-mode.el"))
 
   ;; cf. https://github.com/spotify/dockerfile-mode
   (load-file (concat jma-elisp-base "dockerfile-mode.el"))

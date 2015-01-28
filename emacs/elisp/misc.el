@@ -1,22 +1,10 @@
 
-;; (autoload 'html-helper-mode "html-helper-mode" "Yay HTML" t)
-(load-file (concat (getenv "HOME") "/.dotfiles/elisp/html-helper-mode.el"))
-(setq auto-mode-alist
-      (cons
-       '("\\.html$" . html-helper-mode)
-	auto-mode-alist))
-(setq auto-mode-alist
-      (cons
-       '("mutt-[a-z0-9]+-[0-9]+-[0-9]+-[0-9]+" . post-mode)
-	auto-mode-alist))
-
 ;(if (equal default-directory
 ;	   "~/Mutt/")
 ;    (server-start))
 ;(if (equal default-directory
 ;	   "/home2/jeff/Mutt/")
 ;    (server-start))
-
 
 (set-mouse-color "blue")
 (set-cursor-color "purple")
@@ -43,4 +31,4 @@
 ;(setq frame-title-format "%f")
 (setq transient-mark-mode nil)
 (setq browse-url-browser-function 'browse-url-generic
-          browse-url-generic-program "chromium-browser")
+          browse-url-generic-program "firefox")
