@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [ "X$HOSTNAME" = Xsiegfried ]; then
+if [ "X$HOSTNAME" = Xsiegfried -a -e "$HOME/.ratpoison-use-brunhilde" ]; then
    # Underpowered desktop, use shuttle for firefox
    ssh -X -n brunhilde firefox --new-instance
 else
