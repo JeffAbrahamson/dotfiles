@@ -1,0 +1,29 @@
+#!/bin/bash
+
+PATH=/usr/bin:/bin
+renice -n 19 $$
+
+i3_pid=$(pidof i3)
+task_file=
+while true; do
+    ## When I3 exits, this script should quit as well.  I'm not sure
+    ## if I need this or not.  So watch for ratpoison exit and quit when
+    ## no longer needed.
+    if [ ! -e /proc/$i3_pid ]; then
+	exit 0
+    fi
+    if pidof i3lock >/dev/null; then
+	# If I go away, then start a new task file.
+	# This test only works if I'm manually locking my screen, but
+	# will fail when I run i3lock as a daemon.
+	task_file=
+    else
+	if [ "X$task_file" = X ]; then
+	    task_file=$HOME/data/gtd/$(hostname)__$(date +%F_%H%M%S)
+	fi
+	id=$(xprop -root |  awk '/_NET_ACTIVE_WINDOW\(WINDOW\)/{print $NF}')
+	task=$(xprop -id $id | awk '/_NET_WM_NAME/{$1=$2="";print}' | cut -d'"' -f2)
+	echo $(date +%s) $task >> $task_file
+    fi
+    sleep 60
+done
