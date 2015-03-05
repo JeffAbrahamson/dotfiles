@@ -21,58 +21,57 @@ floating_modifier $mod
 
 bindsym $mod+Control+L exec i3lock
 
-bindsym $mod+Tab mode "I3"
+bindsym $mod+Tab mode "i3"
 
-mode "I3" {
-    # start a terminal
-    # bindsym $mod+Return exec i3-sensible-terminal
-    bindsym c  exec urxvt
+mode "i3" {
+    # Start a terminal
+    bindsym c  exec urxvt;mode "default"
 
-    # change focus
+    # Change focus.  Intentionally leave in i3 mode.
     bindsym Left   focus left
     bindsym Down   focus down
     bindsym Up     focus up
     bindsym Right  focus right
 
-    # move focused window
+    # Move focused window.  Intentionally leave in i3 mode.
     bindsym Control+Left   move left
     bindsym Control+Down   move down
     bindsym Control+Up     move up
     bindsym Control+Right  move right
 
-    # split in horizontal orientation
+    # Split in horizontal orientation.
     bindsym h  split h; mode "default"
 
-    # split in vertical orientation
+    # Split in vertical orientation.
     bindsym v  split v; mode "default"
 
-    # enter fullscreen mode for the focused container
+    # Enter fullscreen mode for the focused container.
     bindsym f  fullscreen; mode "default"
 
-    # change container layout (stacked, tabbed, toggle split)
+    # Change container layout (stacked, tabbed, toggle split).
     bindsym s  layout stacking; mode "default"
     bindsym w  layout tabbed; mode "default"
     bindsym e  layout toggle split; mode "default"
 
-    # toggle tiling / floating
+    # Toggle tiling / floating.
     bindsym Shift+space  floating toggle; mode "default"
 
-    # change focus between tiling / floating windows
+    # Change focus between tiling / floating windows.
     bindsym space focus  mode_toggle; mode "default"
 
-    # focus the parent container
+    # Focus the parent container.
     bindsym a  focus parent; mode "default"
 
-    # focus the child container
+    # Focus the child container.
     bindsym d  focus child
 
-    # resize a window
+    # Resize a window.
     bindsym r  mode "resize"
 
-    # Workspace mode
+    # Workspace mode.
     bindsym Shift+w  mode "workspace"
 
-    # switch to workspace
+    # Switch to workspace.
     bindsym 1  workspace 1; mode "default"
     bindsym 2  workspace 2; mode "default"
     bindsym 3  workspace 3; mode "default"
@@ -84,7 +83,7 @@ mode "I3" {
     bindsym 9  workspace 9; mode "default"
     bindsym 0  workspace 10; mode "default"
 
-    # move focused container to workspace
+    # Move focused container to workspace.
     bindsym Control+1  move container to workspace 1; mode "default"
     bindsym Control+2  move container to workspace 2; mode "default"
     bindsym Control+3  move container to workspace 3; mode "default"
@@ -96,8 +95,8 @@ mode "I3" {
     bindsym Control+9  move container to workspace 9; mode "default"
     bindsym Control+0  move container to workspace 10; mode "default"
 
-    # start dmenu (a program launcher)
-    bindsym !  exec dmenu_run
+    # Start dmenu (a program launcher)
+    bindsym Shift+1  exec dmenu_run
     # There also is the (new) i3-dmenu-desktop which only displays applications
     # Shipping a .desktop file. It is a wrapper around dmenu, so you need that
     # installed.
@@ -129,6 +128,10 @@ mode "workspace" {
     bindsym c  workspace 5; workspace 6;  mode "default"
     bindsym d  workspace 7; workspace 8;  mode "default"
     bindsym e  workspace 9; workspace 10; mode "default"
+
+    bindsym Escape     mode "default"
+    bindsym Enter      mode "default"
+    bindsym Control+g  mode "default"
 }
 
 # resize window (you can also use the mouse for that)
