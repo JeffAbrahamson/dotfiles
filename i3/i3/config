@@ -26,117 +26,125 @@ bindsym $mod+Tab mode "I3"
 mode "I3" {
     # start a terminal
     # bindsym $mod+Return exec i3-sensible-terminal
-    bindsym c exec urxvt
+    bindsym c  exec urxvt
 
     # change focus
-    bindsym Left focus left
-    bindsym Down focus down
-    bindsym Up focus up
-    bindsym Right focus right
+    bindsym Left   focus left
+    bindsym Down   focus down
+    bindsym Up     focus up
+    bindsym Right  focus right
 
     # move focused window
-    bindsym Shift+Left move left
-    bindsym Shift+Down move down
-    bindsym Shift+Up move up
-    bindsym Shift+Right move right
+    bindsym Control+Left   move left
+    bindsym Control+Down   move down
+    bindsym Control+Up     move up
+    bindsym Control+Right  move right
 
     # split in horizontal orientation
-    bindsym h split h; mode "default"
+    bindsym h  split h; mode "default"
 
     # split in vertical orientation
-    bindsym v split v; mode "default"
+    bindsym v  split v; mode "default"
 
     # enter fullscreen mode for the focused container
-    bindsym f fullscreen; mode "default"
+    bindsym f  fullscreen; mode "default"
 
     # change container layout (stacked, tabbed, toggle split)
-    bindsym s layout stacking; mode "default"
-    bindsym w layout tabbed; mode "default"
-    bindsym e layout toggle split; mode "default"
+    bindsym s  layout stacking; mode "default"
+    bindsym w  layout tabbed; mode "default"
+    bindsym e  layout toggle split; mode "default"
 
     # toggle tiling / floating
-    bindsym Shift+space floating toggle; mode "default"
+    bindsym Shift+space  floating toggle; mode "default"
 
     # change focus between tiling / floating windows
-    bindsym space focus mode_toggle; mode "default"
+    bindsym space focus  mode_toggle; mode "default"
 
     # focus the parent container
-    bindsym a focus parent; mode "default"
+    bindsym a  focus parent; mode "default"
 
     # focus the child container
-    #bindsym d focus child
+    bindsym d  focus child
 
     # resize a window
-    bindsym r mode "resize"
+    bindsym r  mode "resize"
+
+    # Workspace mode
+    bindsym Shift+w  mode "workspace"
 
     # switch to workspace
-    bindsym 1 workspace 1; mode "default"
-    bindsym 2 workspace 2; mode "default"
-    bindsym 3 workspace 3; mode "default"
-    bindsym 4 workspace 4; mode "default"
-    bindsym 5 workspace 5; mode "default"
-    bindsym 6 workspace 6; mode "default"
-    bindsym 7 workspace 7; mode "default"
-    bindsym 8 workspace 8; mode "default"
-    bindsym 9 workspace 9; mode "default"
-    bindsym 0 workspace 10; mode "default"
+    bindsym 1  workspace 1; mode "default"
+    bindsym 2  workspace 2; mode "default"
+    bindsym 3  workspace 3; mode "default"
+    bindsym 4  workspace 4; mode "default"
+    bindsym 5  workspace 5; mode "default"
+    bindsym 6  workspace 6; mode "default"
+    bindsym 7  workspace 7; mode "default"
+    bindsym 8  workspace 8; mode "default"
+    bindsym 9  workspace 9; mode "default"
+    bindsym 0  workspace 10; mode "default"
 
     # move focused container to workspace
-    bindsym Shift+1 move container to workspace 1; mode "default"
-    bindsym Shift+2 move container to workspace 2; mode "default"
-    bindsym Shift+3 move container to workspace 3; mode "default"
-    bindsym Shift+4 move container to workspace 4; mode "default"
-    bindsym Shift+5 move container to workspace 5; mode "default"
-    bindsym Shift+6 move container to workspace 6; mode "default"
-    bindsym Shift+7 move container to workspace 7; mode "default"
-    bindsym Shift+8 move container to workspace 8; mode "default"
-    bindsym Shift+9 move container to workspace 9; mode "default"
-    bindsym Shift+0 move container to workspace 10; mode "default"
-
-    ## Dangerous things, so use more modifiers.
-    # kill focused window
-    bindsym $mod+Shift+k kill
+    bindsym Control+1  move container to workspace 1; mode "default"
+    bindsym Control+2  move container to workspace 2; mode "default"
+    bindsym Control+3  move container to workspace 3; mode "default"
+    bindsym Control+4  move container to workspace 4; mode "default"
+    bindsym Control+5  move container to workspace 5; mode "default"
+    bindsym Control+6  move container to workspace 6; mode "default"
+    bindsym Control+7  move container to workspace 7; mode "default"
+    bindsym Control+8  move container to workspace 8; mode "default"
+    bindsym Control+9  move container to workspace 9; mode "default"
+    bindsym Control+0  move container to workspace 10; mode "default"
 
     # start dmenu (a program launcher)
-    bindsym $mod+d exec dmenu_run
+    bindsym !  exec dmenu_run
     # There also is the (new) i3-dmenu-desktop which only displays applications
-    # shipping a .desktop file. It is a wrapper around dmenu, so you need that
+    # Shipping a .desktop file. It is a wrapper around dmenu, so you need that
     # installed.
-    # bindsym $mod+d exec --no-startup-id i3-dmenu-desktop
+    # bindsym !  exec --no-startup-id i3-dmenu-desktop
+
+
+    # kill focused window
+    bindsym K  kill
 
     # reload the configuration file
-    bindsym $mod+Shift+c reload
+    bindsym  $mod+Shift+c reload
     # restart i3 inplace (preserves your layout/session, can be used to upgrade i3)
-    bindsym $mod+Shift+r restart
+    bindsym  $mod+Shift+r restart
     # exit i3 (logs you out of your X session)
-    bindsym $mod+Shift+q exec "i3-nagbar -t warning -m 'You pressed the exit shortcut. Do you really want to exit i3? This will end your X session.' -b 'Yes, exit i3' 'i3-msg exit'"
+    bindsym  $mod+Shift+q exec "i3-nagbar -t warning -m 'You pressed the exit shortcut. Do you really want to exit i3? This will end your X session.' -b 'Yes, exit i3' 'i3-msg exit'"
 
-    bindsym Escape mode "default"
-    bindsym Enter mode "default"
+    bindsym Escape     mode "default"
+    bindsym Enter      mode "default"
+    bindsym Control+g  mode "default"
+}
+
+mode "workspace" {
+    # Switch to workspace.
+    # This depends on my having set up odd workspaces on the left monitor
+    # and even workspaces on the right monitor.  Kludges around an otherwise
+    # good feature in i3.
+    bindsym a  workspace 1; workspace 2;  mode "default"
+    bindsym b  workspace 3; workspace 4;  mode "default"
+    bindsym c  workspace 5; workspace 6;  mode "default"
+    bindsym d  workspace 7; workspace 8;  mode "default"
+    bindsym e  workspace 9; workspace 10; mode "default"
 }
 
 # resize window (you can also use the mouse for that)
 mode "resize" {
     # These bindings trigger as soon as you enter the resize mode
 
-    # Pressing left will shrink the window’s width.
-    # Pressing right will grow the window’s width.
-    # Pressing up will shrink the window’s height.
-    # Pressing down will grow the window’s height.
-    bindsym j resize shrink width 10 px or 10 ppt
-    bindsym k resize grow height 10 px or 10 ppt
-    bindsym l resize shrink height 10 px or 10 ppt
-    bindsym semicolon resize grow width 10 px or 10 ppt
-
     # same bindings, but for the arrow keys
-    bindsym Left resize shrink width 10 px or 10 ppt
-    bindsym Down resize grow height 10 px or 10 ppt
-    bindsym Up resize shrink height 10 px or 10 ppt
-    bindsym Right resize grow width 10 px or 10 ppt
+    bindsym Left   resize shrink width 10 px or 10 ppt
+    bindsym Down   resize grow height 10 px or 10 ppt
+    bindsym Up     resize shrink height 10 px or 10 ppt
+    bindsym Right  resize grow width 10 px or 10 ppt
 
     # back to normal: Enter or Escape
-    bindsym Return mode "default"
-    bindsym Escape mode "default"
+    bindsym Return     mode "default"
+    bindsym Escape     mode "default"
+    bindsym Control+g  mode "default"
 }
 
 # Start i3bar to display a workspace bar (plus the system information i3status
