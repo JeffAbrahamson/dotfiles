@@ -2,7 +2,7 @@
 
 . ../script/lib.sh
 
-dest=$HOME/.i3/
+dest=$HOME/.i3/config
 copy_to i3/config $dest
 
 dest=$HOME/bin/
