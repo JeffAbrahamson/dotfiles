@@ -68,6 +68,8 @@ mode "i3" {
     # Resize a window.
     bindsym r  mode "resize"
 
+    bindsym o  "workspace back_and_forth"
+
     # Presentation mode.  Hopefully useful when presenting work in public.
     bindsym Shift+p mode "presentation"
 
