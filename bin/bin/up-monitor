@@ -11,8 +11,8 @@ logdate=$(date +%Y-%m-%d)
 for host in $*; do
     #log=$HOME/data/UPTIME/ping.$host.$logdate
     log_dir="$HOME/data"
-    up_log="$log_dir/$host__up"
-    ping_log="$log_dir/$host__ping"
+    up_log="$log_dir/${host}-up"
+    ping_log="$log_dir/${host}-ping"
 
 #    if ping -c 1 -nq $host > /dev/null 2>&1; then
     ping_ret=$(ping -c 1 -nq $host)
