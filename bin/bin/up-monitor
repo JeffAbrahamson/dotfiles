@@ -1,22 +1,29 @@
 #!/bin/bash
 
+# Record ping time to host.
+host="$1"
+
 export PATH=/usr/bin:/bin
 
 #now=$(date +%s)
 now=$(date +%H%M%S)
 logdate=$(date +%Y-%m-%d)
 for host in $*; do
-    log=$HOME/data/UPTIME/ping.$host.$logdate
+    #log=$HOME/data/UPTIME/ping.$host.$logdate
+    log_dir="$HOME/data"
+    up_log="$log_dir/$host__up"
+    ping_log="$log_dir/$host__ping"
+
 #    if ping -c 1 -nq $host > /dev/null 2>&1; then
     ping_ret=$(ping -c 1 -nq $host)
     if [ 0 == $? ]; then
 	# up
 	up=1
 	ping_time=$(echo $ping_ret | perl -pwe 's/^.*mdev = //; s|/.*$||;')
+	echo "$now $ping_time" >> $ping_log
     else
 	# not up / not reachable
 	up=0
-	ping_time=
     fi
-    echo "$now $up $ping_time" >> $log
+    echo "$now $up" >> $up_log
 done
