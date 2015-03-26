@@ -1,0 +1,30 @@
+#!/bin/bash
+
+fs_dir="$HOME/data/hosts/fileserver"
+
+cat <<HERE | gnuplot
+set xdata time
+set timefmt "%s"
+set format x "%d-%m-%Y"
+set multiplot
+set origin 0,.6
+set size 1,.4
+set yrange [0:]
+plot "$fs_dir/speedtest-fileserver-download" using 1:2 \
+    title "Download speed (Mbps)" with lines
+set origin 0,.2
+set size 1,.4
+set yrange [0:]
+plot "$fs_dir/speedtest-fileserver-upload" using 1:2 \
+    title "Upload speed (Mbps)" with lines
+set origin 0,0
+set size 1,.2
+set yrange [0:]
+plot "$fs_dir/speedtest-fileserver-ping" using 1:2 \
+    title "Ping time (ms)" with lines
+unset multiplot
+set size 1,1
+
+pause 100 ""
+HERE
+
