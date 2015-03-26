@@ -1,7 +1,7 @@
 if [ "X$DESKTOP_SESSION" = Xi3 ]; then
     i3-gtd &
     xautolock -detectsleep \
-	-time 3 -locker "i3lock --dpms -c- 220022 --inactivity-timeout 10" \
+	-time 3 -locker "i3lock --dpms --color=220022 --inactivity-timeout 10" \
 	-notify 30 \
 	-notifier "notify-send -u critical -t 10000 -- 'LOCKING screen in 30 seconds'" \
 	-notify 10 \
