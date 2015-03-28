@@ -1,0 +1,14 @@
+#!/bin/bash
+
+fs_dir="$HOME/data/hosts/fileserver"
+
+cat <<HERE | gnuplot
+set xdata time
+set timefmt "%s"
+set format x "%Y-%m-%d"
+plot "$fs_dir/d1" using 1:2 title "Disk usage (GB) SB" with lines lt 1 lw 2, \\
+"$fs_dir/d2" using 1:2 title "Disk usage (GB) JMA" with lines lt 4 lw 2
+
+pause 100 ""
+HERE
+
