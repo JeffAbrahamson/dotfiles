@@ -5,16 +5,13 @@ host="$1"
 
 export PATH=/usr/bin:/bin
 
-#now=$(date +%s)
-now=$(date +%H%M%S)
+now=$(date +%s)
 logdate=$(date +%Y-%m-%d)
 for host in $*; do
-    #log=$HOME/data/UPTIME/ping.$host.$logdate
     log_dir="$HOME/data"
     up_log="$log_dir/${host}-up"
     ping_log="$log_dir/${host}-ping"
 
-#    if ping -c 1 -nq $host > /dev/null 2>&1; then
     ping_ret=$(ping -c 1 -nq $host)
     if [ 0 == $? ]; then
 	# up
