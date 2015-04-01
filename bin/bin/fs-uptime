@@ -1,0 +1,40 @@
+#!/bin/bash
+
+fs_dir="$HOME/data/hosts/fileserver"
+
+cat <<HERE | gnuplot
+set xdata time
+set timefmt "%s"
+set format x "%d-%m-%Y"
+set multiplot
+
+set origin 0,.75
+set size 1,.25
+set yrange [0:]
+plot "$fs_dir/8.8.4.4-ping" using 1:2 \
+    title "ping 8.8.4.4" with lines lt 1 lw 2
+
+set origin 0,.5
+set size 1,.25
+set yrange [0:]
+plot "$fs_dir/8.8.8.8-ping" using 1:2 \
+    title "ping 8.8.8.8" with lines lt 4 lw 2
+
+set origin 0,.25
+set size 1,.25
+set yrange [-.1:1.1]
+plot "$fs_dir/8.8.4.4-up" using 1:2 \
+    title "uptime 8.8.4.4" with lines lt 1 lw 2
+
+set origin 0,0
+set size 1,.25
+set yrange [-.1:1.1]
+plot "$fs_dir/8.8.8.8-up" using 1:2 \
+    title "uptime 8.8.8.8" with lines lt 4 lw 2
+
+unset multiplot
+set size 1,1
+
+pause 100 ""
+HERE
+
