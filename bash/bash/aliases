@@ -261,6 +261,14 @@ fs-umount() { (cd; fusermount -u fs) }
 
 # Serve the current directory on port 8000.
 http() { python -m SimpleHTTPServer; }
+serve-this() {
+    dir=$(mktemp -d /tmp/serve-this-XXXXX)
+    mkdir $dir/
+    cp -r $* $dir/
+    ( (sleep 600; /bin/rm -rf $dir/)& )&
+    cd $dir
+    http
+}
 
 ###########################################################################
 # docker
