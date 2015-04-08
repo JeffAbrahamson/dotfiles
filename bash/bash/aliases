@@ -263,11 +263,9 @@ fs-umount() { (cd; fusermount -u fs) }
 http() { python -m SimpleHTTPServer; }
 serve-this() {
     dir=$(mktemp -d /tmp/serve-this-XXXXX)
-    mkdir $dir/
     cp -r $* $dir/
     ( (sleep 600; /bin/rm -rf $dir/)& )&
-    cd $dir
-    http
+    (cd $dir; http)
 }
 
 ###########################################################################
