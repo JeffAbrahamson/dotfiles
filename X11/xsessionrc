@@ -1,5 +1,6 @@
 if [ "X$DESKTOP_SESSION" = Xi3 ]; then
     i3-gtd &
+    nm-applet &
     xautolock -detectsleep \
 	-time 3 -locker "i3lock --dpms --color=220022 --inactivity-timeout 10 --nofork" \
 	-notify 30 \
