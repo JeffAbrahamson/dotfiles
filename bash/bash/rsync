@@ -36,7 +36,7 @@ sync-machine() {
     time rsync -va --delete $machine_exclusions_pattern_ $HOME/ jeff@fileserver:/d2/jeff/machines/$HOSTNAME/;
 }
 
-sync-fileserver() { time rsync -a fileserver:data/ $HOME/data/hosts/fileserver/; sync-data; }
+sync-fileserver() { sync-data; time rsync -a fileserver:data/ $HOME/data/hosts/fileserver/; sync-data; }
 sync-data() { time unison -auto data; }
 sync-fast() { time unison -auto fast; }
 sync-full() { time unison -auto full; }
