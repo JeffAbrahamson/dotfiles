@@ -1,0 +1,9 @@
+Everything in this repository is licensed under the GPL v3 unless
+stated otherwise.  If you want a different license, feel free to ask.
+See the file COPYING for more details.
+
+Everything in this repository is Copyright by Jeff Abrahamson unless
+stated otherwise.  The date of copyright is the commit date(s) in git
+unless specified differently in the file itself, in which case the
+date of copyright is the union of the date specified in the file and
+the commit date(s).

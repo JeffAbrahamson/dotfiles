@@ -3,6 +3,8 @@
 # Running the biicode client requires setting an absolute path.
 # It also requires activating a virtualenv.
 # Do that for me so that I needn't remember any of this.
+#
+# Copyright 2015, Jeff Abrahamson.
 
 if [ "X$BIICODE_HOME" = X ]; then
     echo BIICODE_HOME is not defined.  Where is biicode installed?

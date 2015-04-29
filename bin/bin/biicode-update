@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# Update all biicode source.
+#
+# Copyright 2015, Jeff Abrahamson.
+
 cd "$BICODE_HOME"
 for d in *; do
     if [ -d "$d" ]; then
