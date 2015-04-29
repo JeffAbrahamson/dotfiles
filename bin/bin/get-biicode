@@ -18,7 +18,6 @@ if [ ! -d "$BIICODE_HOME" ]; then
 	exit 0
     fi
     mkdir "$BIICODE_HOME"
-    exit 0
 fi
 
 cd "$BIICODE_HOME"
