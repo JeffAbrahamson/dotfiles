@@ -24,14 +24,11 @@ export EDITOR=emacs
 
 export LESS="rEMX"
 
-# CVS stuff
-export CVSROOT=jeff@mst.cs.drexel.edu:/home/cvsroot
-export CVS_RSH=ssh
-
 export PYTHONPATH=$HOME/local/python
 
 export CS_PAPER_DIR=$HOME/mst/work/Research/papers/
 export TSD_DIR=$HOME/common/data/tsd/
+export BIICODE_HOME=/home/jeff/src/biicode
 
 #export cflash=/cflash/dcim/100nikon
 #export cflash=/cflash/dcim/100canon

@@ -1,0 +1,9 @@
+#!/bin/bash
+
+cd "$BICODE_HOME"
+for d in *; do
+    if [ -d "$d" ]; then
+	echo ================ $d ================
+	(cd "$d"; git pull)
+    fi
+done

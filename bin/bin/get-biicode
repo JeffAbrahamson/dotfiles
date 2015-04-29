@@ -1,0 +1,25 @@
+#!/bin/bash
+
+# For the moment, installing biicode requires reading some
+# instructions.  I've done that, but I'm not very good at remembering
+# them.  So automate it all.
+
+if [ "X$BIICODE_HOME" = X ]; then
+    echo BIICODE_HOME is not defined.  Where shall we install biicode?
+    exit 1
+fi
+
+cd "$BIICODE_HOME"
+mkdir biicode
+cd biicode
+echo Cloning biicode in $(pwd)
+git clone https://github.com/biicode/client.git
+git clone https://github.com/biicode/common.git
+touch __init__.py
+
+cd ../
+virtualenv venv
+. venv/bin/activate
+for f in biicode/*/requirements.txt; do
+    pip install -r $f
+done
