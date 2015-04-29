@@ -14,8 +14,9 @@ fi
 # This is my virtualenv.  Maybe this could conveniently be more
 # general.  Is there a convention?
 if [ -r "$BIICODE_HOME/venv/bin/activate" ]; then
-    echo Activating virtual environment.
     . "$BIICODE_HOME/venv/bin/activate"
+elif [ "X$BIICODE_NO_VIRTUAL_ENV" = X ]; then
+    echo "No virtual environment for biicode.  Really?"
 fi
 export PYTHONPATH="$BIICODE_HOME:$PYTHON_PATH"
 python "$BIICODE_HOME/biicode/client/shell/bii.py" $*
