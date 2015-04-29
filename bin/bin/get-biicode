@@ -10,6 +10,16 @@ if [ "X$BIICODE_HOME" = X ]; then
     echo BIICODE_HOME is not defined.  Where shall we install biicode?
     exit 1
 fi
+if [ ! -d "$BIICODE_HOME" ]; then
+    echo -n "Directory $BIICODE_HOME doesn't exist.  Create it? "
+    read yes_no
+    if [ "X$yes_no" != Xy -a "X$yes_no" != Xyes ]; then
+	echo "OK, exiting without doing anything."
+	exit 0
+    fi
+    mkdir "$BIICODE_HOME"
+    exit 0
+fi
 
 cd "$BIICODE_HOME"
 mkdir biicode
