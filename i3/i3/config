@@ -19,7 +19,8 @@ font pango:DejaVu Sans Mono 8
 # Use Mouse+$mod to drag floating windows to their wanted position
 floating_modifier $mod
 
-bindsym $mod+Control+L exec i3lock --dpms --inactivity-timeout 10 --color=220022
+#bindsym $mod+Control+L exec i3lock --dpms --inactivity-timeout 10 --color=220022
+bindsym $mod+Control+L exec xautolock -locknow
 
 bindsym XF86AudioLowerVolume exec amixer -D pulse set Master 5%-
 bindsym XF86AudioRaiseVolume exec amixer -D pulse set Master 5%+
