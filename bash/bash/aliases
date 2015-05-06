@@ -206,7 +206,6 @@ recipes() { case "X$HOSTNAME" in
 
 pm() { ogg=$(/bin/ls *ogg */*ogg 2>/dev/null); mp3=$(/bin/ls *mp3 */*mp3 2>/dev/null); if [ "x$ogg" != x ]; then ogg123 $ogg; fi; if [ "x$mp3" != x ]; then mpg123 $mp3; fi; unset mp3; unset ogg; }
 secu() { gnumeric $HOME/data/secu.gnumeric & }
-punch() { e $HOME/common/work/financial/real_estate/Nantes/Metzinger/punch-list.txt; }
 script() { SCRIPT_NAME="$1" /usr/bin/script "$@"; }
 fr() {
     if [ $# -gt 0 ]; then
@@ -238,12 +237,6 @@ gtdnow() { tail -1 $HOME/data/gtd/gtd_$(hostname); }
 ###########################################################################
 # Utilities
 
-pycd () {
-    pushd "$(python -c "import os.path as _, ${1}; \
-        print _.dirname(_.realpath(${1}.__file__[:-1]))"
-        )"
-}
-
 ## Time-date conversion, because I forget the flags
 # Print current date as seconds since the epoch
 d2t() { date +%s; }
@@ -269,6 +262,12 @@ serve-this() {
 }
 
 ###########################################################################
+# python
+
+# Shortcut for activating my virtual environments.
+alias activate=". venv/bin/activate"
+
+###########################################################################
 # docker
 nse() {
     pid=$(sudo docker inspect --format {{.State.Pid}} $1);
@@ -277,7 +276,7 @@ nse() {
 }
 
 ###########################################################################
-# X / ratpoison
+# X / ratpoison / i3
 
 sndq() { amixer scontrols; }
 snddn() { amixer -D pulse set Master 5%-; }
