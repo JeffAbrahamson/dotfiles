@@ -29,15 +29,12 @@
   (load-file (concat jma-elisp-base "web-mode.el"))
   (load-file (concat jma-elisp-base "pdftools.el"))
   (load-file (concat jma-elisp-base "protobuf-mode.el"))
+  (load-file (concat jma-elisp-base "google-c-style.el"))
+  (load-file (concat jma-elisp-base "clang-format.el"))
   
   ;; cf. https://github.com/spotify/dockerfile-mode
   (load-file (concat jma-elisp-base "dockerfile-mode.el"))
   (add-to-list 'auto-mode-alist '("Dockerfile\\'" . dockerfile-mode))
-
-  ;; A bit rubbish, I'll need to change this path on clang upgrade.
-  ;; Works for now, figure out something better another day.
-  (if (file-readable-p "/usr/share/emacs/site-lisp/clang-format-3.5/clang-format.el")
-      (load-file "/usr/share/emacs/site-lisp/clang-format-3.5/clang-format.el"))
 
   ;; Set frame title so that ratpoison-gtd can record something about
   ;; what I'm doing.

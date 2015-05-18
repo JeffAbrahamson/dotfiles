@@ -10,6 +10,7 @@
 (add-to-list 'auto-mode-alist '("\\.html\\'" . web-mode))
 (add-to-list 'auto-mode-alist '("mutt-[a-z0-9]+-[0-9]+-[0-9]+-[0-9]+" . post-mode))
 
+(add-hook 'c-mode-common-hook 'google-set-c-style)
 (add-hook 'c-mode-common-hook
 	  (function (lambda()
 		      (if (not buffer-read-only)
@@ -24,6 +25,8 @@
 		      ;; (setq c-label-offset -8)
 		      (local-set-key (kbd "C-c f") 'ff-find-other-file)
 		      (local-set-key (kbd "C-M-q") 'clang-format-region)
+		      (google-set-c-style)
+		      (google-make-newline-indent)
 		      )))
 
 
