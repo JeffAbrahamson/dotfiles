@@ -32,17 +32,17 @@ mode "i3" {
     # Start a terminal
     bindsym c  exec urxvt;mode "default"
 
-    # Change focus.  Intentionally leave in i3 mode.
-    bindsym Left   focus left
-    bindsym Down   focus down
-    bindsym Up     focus up
-    bindsym Right  focus right
+    # Change focus.
+    bindsym Left   focus left;  mode "focus"
+    bindsym Down   focus down;  mode "focus"
+    bindsym Up     focus up;    mode "focus"
+    bindsym Right  focus right; mode "focus"
 
-    # Move focused window.  Intentionally leave in i3 mode.
-    bindsym Control+Left   move left
-    bindsym Control+Down   move down
-    bindsym Control+Up     move up
-    bindsym Control+Right  move right
+    # Move focused window.
+    bindsym Control+Left   move left;  mode "focus"
+    bindsym Control+Down   move down;  mode "focus"
+    bindsym Control+Up     move up;    mode "focus"
+    bindsym Control+Right  move right; mode "focus"
 
     # Split in horizontal orientation.
     bindsym h  split h; mode "default"
@@ -129,17 +129,46 @@ mode "i3" {
     bindsym Control+g  mode "default"
 }
 
+mode "focus" {
+    # A somewhat harmless mode for moving focus, so that I don't
+    # accidentally do something too damaging when I forget to cancel
+    # it.
+
+    # Change focus.
+    bindsym Left           focus left
+    bindsym Down           focus down
+    bindsym Up             focus up
+    bindsym Right          focus right
+
+    # Move focused window.
+    bindsym Control+Left   move left
+    bindsym Control+Down   move down
+    bindsym Control+Up     move up
+    bindsym Control+Right  move right
+
+    # Enter fullscreen mode for the focused container.
+    bindsym f  fullscreen; mode "default"
+
+    # back to normal: Enter or Escape
+    bindsym Escape         mode "default"
+    bindsym Enter          mode "default"
+    bindsym Control+g      mode "default"
+}
+
 mode "workspace" {
     # Switch to workspace.
-    # This depends on my having set up odd workspaces on the left monitor
-    # and even workspaces on the right monitor.  Kludges around an otherwise
-    # good feature in i3.
+
+    # This depends on my having set up odd workspaces on the left
+    # monitor and even workspaces on the right monitor.  Kludges
+    # around an otherwise good feature in i3.
+
     bindsym a  workspace 1; workspace 2;  mode "default"
     bindsym b  workspace 3; workspace 4;  mode "default"
     bindsym c  workspace 5; workspace 6;  mode "default"
     bindsym d  workspace 7; workspace 8;  mode "default"
     bindsym e  workspace 9; workspace 10; mode "default"
 
+    # back to normal: Enter or Escape
     bindsym Escape     mode "default"
     bindsym Enter      mode "default"
     bindsym Control+g  mode "default"
