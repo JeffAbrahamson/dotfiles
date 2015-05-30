@@ -9,4 +9,5 @@ if [ "X$DESKTOP_SESSION" = Xi3 ]; then
 	-notifier "notify-send -u critical -t 3000 -- 'LOCKING screen in 10 seconds'" \
 	-notify 5 \
 	-notifier "notify-send -u critical -t 3000 -- 'LOCKING screen in 10 seconds'" &
+    redshift &
 fi
