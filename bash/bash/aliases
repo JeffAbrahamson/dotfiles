@@ -42,6 +42,13 @@ if [ -f $HOME/.dotfiles/bash/pictools ]; then
    . $HOME/.dotfiles/bash/pictools
 fi
 
+apt-refresh() {
+    sudo apt-get update && \
+	sudo apt-get upgrade -y && \
+	sudo apt-get dist-upgrade -y && \
+	sudo apt-get autoremove -y;
+}
+
 ###########################################################################
 # ssh login
 
