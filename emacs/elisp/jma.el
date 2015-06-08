@@ -69,6 +69,33 @@ flag should be valid grep flags (typically '-i') or else the empty string."
 (global-set-key [M-f12] 'jma-daily-log)
 (global-set-key [M-S-f12] 'jma-weekly-log)
 
+(defun c-jellybooks-cc-init ()
+  "Insert header for use with Jellybooks C++ code."
+  (interactive)
+  ;; I think I should be able to do this with a lexical-let on
+  ;; gpl-for-me and then calling c-header-init, but I'm not getting it
+  ;; to work.  So instead I copy and paste.
+  (if (= (point-min) (point-max))
+      (progn
+	(insert (concat
+		 "/*\n"
+		 "  Copyright " (format-time-string "%Y") "  Jellybooks"
+		"\n*/\n\n"))
+	(if (string-match "\\.h$" (buffer-name))
+	    (let ((guard-name (upcase
+			       (concat "__"
+				       (replace-regexp-in-string "\\." "_" (buffer-name))
+				       "__"))
+			      ))
+	      (insert (concat
+		       "#ifndef " guard-name "\n"
+		       "#define " guard-name " 1\n"
+		       "\n\n\n"
+		       "#endif  /* " guard-name "*/\n")))))
+    (message "Buffer is not empty.")))
+  
+
+
 (defun gpl-for-me (prog-name)
   "Create a GPL string for a module of prog-name."
   (let ((copyright-string (replace-regexp-in-string "%d" (format-time-string "%Y")
