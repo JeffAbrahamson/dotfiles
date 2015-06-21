@@ -303,3 +303,9 @@ redisp() {
 	echo DISPLAY is already set.
     fi;
 }
+
+###########################################################################
+# Silence glibc asserts.
+
+alias evince="evince 2>/dev/null"
+
