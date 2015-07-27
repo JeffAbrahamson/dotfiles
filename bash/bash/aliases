@@ -148,6 +148,23 @@ gq-make-laptop() {
     for f in *jpg; do if [ ! -e laptop/$f ]; then echo $f; convert -geometry 1366x768 $f laptop/$f; fi; done
 }
 
+###########################################################################
+# MOOC
+
+mooc() {
+    for f in *mp4; do
+	mplayer "$f"
+	echo -n "Delete '$f'? "
+	read x
+	if [ "X$x" = X -o "X$x" = Xy -o "X$x" = yes ]; then
+	    rm "$f"
+	else
+	    echo Not removing.
+	fi
+    done
+}
+
+###########################################################################
 
 checksum() { find . -type f -exec sha1sum \{\} \; ; }
 
