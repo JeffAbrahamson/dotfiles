@@ -186,7 +186,6 @@ separator() { echo =============================================================
 # ssh-keygen -l -f /etc/ssh/ssh_host_dsa_key
 
 ssh-new() { unset SSH_AGENT_PID; unset SSH_AUTH_SOCK; exec ssh-agent bash; }
-ssh-jma() { ssh-add; }
 ssh-github() { ssh-add ~/.ssh/id_rsa.github; }
 ssh-jelly() { ssh-add ~/.ssh/id_rsa.jellybooks; }
 
@@ -196,6 +195,13 @@ data-notes() {
     tar xzf gs.tgz;
     rm gs.tgz;
 };
+
+todo() {
+    # This assumes $1 is a number or doesn't exist.
+    _tag==$(printf "=%.0s" $(seq 1 ${1:-1}))
+    grep $_tag $HOME/data/org/TODO | perl -pwe "s/$_tag$//;";
+    unset _tag
+}
 
 internet() {
     in_out=$(ifconfig wlan0 | grep bytes | perl -pwe 's/^.*:([0-9]+).*:([0-9]+).*$/$1 $2/;');
