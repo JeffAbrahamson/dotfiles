@@ -293,7 +293,7 @@ serve-this() {
     (cd $dir; http)
 }
 
-gf() { grep "$1" $HOME/data/hosts/*/files.txt; }
+gf() { (cd "$HOME/data/hosts"; grep --no-filename "$1" */files.txt) }
 
 ###########################################################################
 # python
