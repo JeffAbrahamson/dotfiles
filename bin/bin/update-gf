@@ -1,0 +1,6 @@
+#!/bin/bash
+
+db_file="$HOME/data/hosts/$(hostname)/files.txt"
+tmp_db_file="$db_file.new"
+find "$HOME" -xdev -type f -print > "$tmp_db_file" 2> /dev/null
+mv "$tmp_db_file" "$db_file"
