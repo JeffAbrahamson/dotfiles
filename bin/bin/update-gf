@@ -1,7 +1,7 @@
 #!/bin/bash
 
 base_dir="${1:-$HOME}"
-db_file="${2:-$HOME/data/hosts/$(hostname)/files.txt}"
+db_file="${2:-$HOME/data/hosts/$(hostname)}/files.txt"
 tmp_db_file="$db_file.new"
 
 find "$base_dir" -xdev -type f -print > "$tmp_db_file" 2> /dev/null
