@@ -10,4 +10,8 @@ if [ "X$DESKTOP_SESSION" = Xi3 ]; then
 	-notify 5 \
 	-notifier "notify-send -u critical -t 3000 -- 'LOCKING screen in 10 seconds'" &
     redshift &
+    if [ "X$HOSTNAME" = Xlorax -o "X$HOSTNAME" = Xnantes ]; then
+       # If I'm running on a laptop, run the power monitor.
+        i3-power-monitor 30 daemon &
+    fi
 fi
