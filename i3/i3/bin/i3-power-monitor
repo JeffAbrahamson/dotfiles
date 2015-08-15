@@ -41,7 +41,7 @@ check_status()
 	    if [ $delay_minutes -lt $threshold ]; then
 		if [  $delay_minutes -lt $(($threshold / 2)) ]; then
 		    # If it's getting more critical, be more verbose.
-		    notify-send -u critical -t 3000 -- "$(echo; echo; echo "Battery low: $delay_minutes minutes remaining.")"
+		    notify-send -u critical -t 3000 -- "$(echo; echo; echo "Battery low: $delay_minutes minutes remaining."; echo ' '; echo ' ')"
 		else
 		    notify-send -u critical -t 3000 -- "Battery low: $delay_minutes minutes remaining."
 		fi
