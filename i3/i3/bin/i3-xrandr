@@ -1,0 +1,14 @@
+#!/bin/bash
+for output in $(xrandr | grep '\Wconnected' | awk '{ print $1 }'); do
+    if [[ ! $output =~ ^LVDS.*$ ]]; then
+	other=$output
+    fi
+done
+
+# Turn off laptop monitor if external monitor is attached.
+# Otherwise turn on laptop monitor.
+if [ "$other" != "" ] ; then
+    xrandr --output $other --auto --primary --output LVDS1 --off
+else
+    xrandr --output LVDS1 --auto --primary
+fi
