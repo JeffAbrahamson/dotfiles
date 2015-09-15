@@ -31,6 +31,7 @@
   (load-file (concat jma-elisp-base "protobuf-mode.el"))
   (load-file (concat jma-elisp-base "google-c-style.el"))
   (load-file (concat jma-elisp-base "clang-format.el"))
+  (load-file (concat jma-elisp-base "puppet-mode.el"))
   
   ;; cf. https://github.com/spotify/dockerfile-mode
   (load-file (concat jma-elisp-base "dockerfile-mode.el"))
