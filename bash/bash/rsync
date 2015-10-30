@@ -40,6 +40,7 @@ sync-fileserver() { sync-data; time rsync -a fileserver:data/ $HOME/data/hosts/f
 sync-data() { time unison -auto data; }
 sync-fast() { time unison -auto fast; }
 sync-full() { time unison -auto full; }
+sync-images() { time unison -auto images; }
 
 fog() { ssh manx.misty.com; }
 
