@@ -273,18 +273,18 @@ gtdnow() { tail -1 $HOME/data/gtd/gtd_$(hostname); }
 
 ## History
 gtdlast() {
-    _last_session=$(cd ~/data/gtd; ls -t $(hostname)__* | \
+    _this_session=$(cd ~/data/gtd; ls -t $(hostname)__* | \
 			head -1 | \
 			sed -e "s/^$(hostname)__//");
-    echo Last session began at $_last_session.
+    echo This session began at $_this_session.
     _prev_session=$(cd ~/data/gtd; ls -t $(hostname)__* | \
 			head -2 | tail -1)
-    echo Last event from previous session:
+    echo "  Last event from previous session:"
     _prev_last_event=$(tail -1 $HOME/data/gtd/$_prev_session)
     echo $_prev_last_event
     _prev_last_time=$(echo $_prev_last_event | awk '{print $1}')
-    echo "    $_prev_last_time = $(date -d @$_prev_last_time -R)"
-    unset _last_session
+    echo "  $(date -d @$_prev_last_time -R)"
+    unset _this_session
     unset _prev_session
     unset _prev_last_event
     unset _prev_last_time
