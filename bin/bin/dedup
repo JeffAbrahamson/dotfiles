@@ -18,6 +18,7 @@ cat $files | while read line; do
 	if cmp --quiet "$dir_1/$line" "$dir_2/$line"; then
 	    echo $line
 	    rm "$dir_2/$line"
+	fi
     fi
 done
 rm $files
