@@ -1,0 +1,23 @@
+#!/bin/bash
+
+# Add "/." so that basename returns "." and files are comparable.
+dir_1="$1/."
+dir_2="$2/."
+echo "Deduplicating (removals from the second of these):"
+echo "  $dir_1"
+echo "  $dir_2"
+
+echo Enumerating files...
+files=/tmp/files_$$
+(cd "$(dirname $dir_1)" && find "$(basename $dir_1)" -type f -print > $files)
+wc -l $files
+
+echo Comparing files...
+cat $files | while read line; do
+    if [ -e "$dir_2/$line" ]; then
+	if cmp --quiet "$dir_1/$line" "$dir_2/$line"; then
+	    echo $line
+	    rm "$dir_2/$line"
+    fi
+done
+rm $files
