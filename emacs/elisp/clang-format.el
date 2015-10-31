@@ -106,7 +106,7 @@ of the buffer."
 If called interactively uses the region or the current statement if there
 is no active region.  If no style is given uses `clang-format-style'."
   (interactive
-   (if (use-region-p)
+   (if mark-active
        (list (region-beginning) (region-end))
      (list (point) (point))))
 
