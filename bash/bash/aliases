@@ -220,6 +220,7 @@ cppdoc() { ff $HOME/work/c++-docs/cpp.html & }
 #workm-push() { workm force-put; }
 srd-here() { srd "$*" -g "$(hostname)"; }
 tsd-last() { tsd $1 $(tsd $1 | tail -1 | awk '{print $2}'); }
+tea() { tsd tea $(date +%H%M); tsd tea; }
 
 # rpass() { head -c $((500 + $RANDOM)) < /dev/urandom | sha1sum; }
 rpass() { head -c $((40 + $RANDOM / 2000)) < /dev/urandom | base64; }
