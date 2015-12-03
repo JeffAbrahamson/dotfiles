@@ -230,7 +230,7 @@ house() { gnumeric $HOME/common/work/financial/real_estate/Nantes/Metzinger/cost
 snap() { scrot -s; }
 term() { terminator -b -m & }
 recipes() { case "X$HOSTNAME" in
-    Xsiegfried|Xbirdsong) file=$HOME/src/jma/recipes/pdf/recipes-gs3.pdf;;
+    Xsiegfried|Xbirdsong) file=$HOME/src/jma/recipes/pdf/recipes-nexus9.pdf;;
     Xnantes|Xstarshine) file=$HOME/src/jma/recipes/pdf/recipes-laptop.pdf;;
     esac
     evince $file &
