@@ -4,5 +4,5 @@
 
 dest=$HOME/.config/touchegg/
 maybe_mkdir $(dirname $dest)
-copy_to touchegg/touchegg.conf $dest
+copy_to touchegg/touchegg.conf $dest/touchegg.conf
 

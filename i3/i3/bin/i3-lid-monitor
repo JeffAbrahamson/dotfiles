@@ -1,0 +1,54 @@
+#!/bin/bash
+
+PATH=/usr/bin:/bin
+renice -n 19 $$
+
+# Log what we do lest it be mysterious.
+LOG="/tmp/${LOGNAME:-root}-lid-monitor.log"
+
+log()
+{
+    now=$(date "+%F %T")
+    echo "$now    $*" >> $LOG
+}
+
+check_lid()
+{
+    # On one version of ubuntu, the file is LID, on another it's LID0.
+    # In both cases, only one file lives under /proc/acpi/button/lid/.
+    # Since this only needs to work for me, just glob and move on.
+    state=$(cat /proc/acpi/button/lid/LID*/state | grep state | awk '{print $2}')
+    if [ "X$state" = Xclosed ]; then
+	# This should be the same as what I do in $HOME/.xsessionrc
+	# if I want the visual effect to be the same as timeout.
+	# Let i3lock fork so that we also suspend.
+	log "$0 locking."
+	i3lock --dpms --color=220022 --inactivity-timeout 10
+	log "$0 suspending."
+	# In order for this to work, I'll need a line in a file in /etc/sudoers.d/
+	# something like this:
+	#
+	#   jeff starshine = (root) NOPASSWD: /usr/sbin/pm-suspend
+	/usr/sbin/pm-suspend
+    else
+	log state: $state
+    fi
+}
+
+main()
+{
+    ## When i3 exits, this script should quit as well.  But i3's
+    ## exec seems to do a nice job of leaving us as a daemon.  So
+    ## watch for i3 exit and quit when no longer needed.
+    i3_pid=$(pidof i3)
+    while true; do
+	check_lid
+	sleep 1
+	if [ ! -e /proc/$i3_pid ]; then
+	    log "i3 has exited, and so shall I."
+	    return
+	fi
+    done
+}
+
+main

@@ -6,7 +6,8 @@ urxvt.background: white
 urxvt.reverseVideo: false
 urxvt.fadeColor: 000000
 urxvt.fading: 10
-urxvt.font: 9x15
+! urxvt.font: 9x15
+urxvt.font: xft:DejaVuSansMono:size=10
 urxvt.iso14755: false
 urxvt.iso14755_52: false
 urxvt.perl-ext: default,matcher,confirm-paste,-searchable-scrollback
@@ -18,12 +19,12 @@ urxvt.urlLauncher: x-www-browser
 emacs23.font: 9x15
 
 Xft.dpi:        96
-Xft.autohint: false
+Xft.autohint:   false
 Xft.lcdfilter:  lcddefault
 Xft.hintstyle:  hintfull
-Xft.hinting: true
-Xft.antialias: true
-Xft.rgba: rgb
+Xft.hinting:    true
+Xft.antialias:  true
+Xft.rgba:       rgb
 
 xscreensaver.timeout: 0:05:00
 xscreensaver.lock: True

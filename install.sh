@@ -12,4 +12,6 @@ cd $(pwd)/$(dirname $0)
 (echo screen; cd screen && ./install.sh)
 (echo templates; cd templates && ./install.sh)
 (echo X11; cd X11 && ./install.sh)
-(echo touchegg; cd touchegg && ./install.sh)
+if [ "X$HOSTNAME" = Xstarshine ]; then
+    (echo touchegg; cd touchegg && ./install.sh)
+fi
