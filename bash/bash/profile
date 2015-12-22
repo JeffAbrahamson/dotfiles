@@ -70,6 +70,12 @@ fi
 #
 # 8 Jan 2012
 
+if [ "X$HOSTNAME" = Xstarshine ]; then
+    # HiDPI display.
+    export QT_DEVICE_PIXEL_RATIO=2
+    export GDK_SCALE=2
+fi
+
 ## This should be the last block of this file
 # For local customization, at end of bash_profile
 # This file should not be included with this distribution, as
