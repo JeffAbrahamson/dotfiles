@@ -106,7 +106,7 @@ mode "i3" {
     bindsym Control+0  move container to workspace 10; mode "default"
 
     # Start dmenu (a program launcher)
-    bindsym Shift+1  exec dmenu_run; mode "default"
+    bindsym Shift+1  exec dmenu_run -fn "pango:DejaVu Sans Mono 8"; mode "default"
     # There also is the (new) i3-dmenu-desktop which only displays applications
     # Shipping a .desktop file. It is a wrapper around dmenu, so you need that
     # installed.
