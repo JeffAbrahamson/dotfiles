@@ -20,7 +20,7 @@ font pango:DejaVu Sans Mono 8
 floating_modifier $mod
 
 #bindsym $mod+Control+L exec i3lock --dpms --inactivity-timeout 10 --color=220022
-bindsym $mod+Control+L exec xautolock -locknow
+bindsym $mod+Control+L exec i3-lock-suspend
 
 bindsym XF86AudioLowerVolume exec amixer -D pulse set Master 5%-
 bindsym XF86AudioRaiseVolume exec amixer -D pulse set Master 5%+
