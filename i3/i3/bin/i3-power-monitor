@@ -28,22 +28,28 @@ check_status()
     # Normally I have only one battery, but watch out for multiple
     # entries some day.
     for battery in $batteries; do
+	delay_message=""
 	state=$(upower -i $battery | grep state | awk -F: '{print $2}' | tr -d ' \t')
 	if [ "X$state" = Xdischarging ]; then
 	    delay_minutes=$(upower -i $battery | grep "time to empty" | grep minutes | awk -F: '{print $2}' | \
 		sed -e 's/^\s\+//; s/ minutes//; s/\.[0-9]\+//;')
 	    if [ "X$delay_minutes" = X ]; then
 		delay_hours=$(upower -i $battery | grep "time to empty" | grep hours | awk -F: '{print $2}' | \
-		    sed -e 's/^\s\+//; s/ hours//; s/\.[0-9]\+//;')
-		delay_minutes=$(($delay_hours * 60))
+				     sed -e 's/^\s\+//; s/ hours//; s/\.[0-9]\+//;')
+		if [ "X$delay_hours" = X ]; then
+		    delay_minutes=0
+		    delay_message="(State uncertain.)"
+		else
+		    delay_minutes=$(($delay_hours * 60))
+		fi
 	    fi
 	    percent=$(upower -i $battery | grep percent | awk -F: '{print $2}' | tr -d ' \t%')
 	    if [ $delay_minutes -lt $threshold ]; then
 		if [  $delay_minutes -lt $(($threshold / 2)) ]; then
 		    # If it's getting more critical, be more verbose.
-		    notify-send -u critical -t 3000 -- "$(echo; echo; echo "Battery low: $delay_minutes minutes remaining."; echo ' '; echo ' ')"
+		    notify-send -u critical -t 3000 -- "$(echo; echo; echo "Battery low: $delay_minutes minutes remaining.  $delay_message"; echo ' '; echo ' ')"
 		else
-		    notify-send -u critical -t 3000 -- "Battery low: $delay_minutes minutes remaining."
+		    notify-send -u critical -t 3000 -- "Battery low: $delay_minutes minutes remaining.  $delay_message"
 		fi
 	    fi
 	fi		    
