@@ -22,7 +22,12 @@ if [ "X$HOSTNAME" = Xstarshine -a $power_source = battery ]; then
     # On starshine, wifi is sometimes disabled on wake.  It seems to
     # be a no-op to turn it on if it is already on, so always make
     # sure it's on on wake.
-    xautolock -locknow & sleep 1; sudo /usr/sbin/pm-suspend; nmcli radio wifi on
+    xautolock -locknow &
+    sleep 1			# Make sure I'm locked before suspending.
+    sudo /usr/sbin/pm-suspend
+    # Things to do on wake-up.
+    nmcli radio wifi on
+    notify-send $(i3-power-status)
 else
     echo "i3-lock-suspend locking." >> $logfile
     xautolock -locknow
