@@ -1,4 +1,5 @@
 if [ "X$DESKTOP_SESSION" = Xi3 ]; then
+    dunst -config $HOME/.i3/dunstrc
     i3-gtd &
     nm-applet &
     xautolock -detectsleep \

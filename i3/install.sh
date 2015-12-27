@@ -2,9 +2,10 @@
 
 . ../script/lib.sh
 
-dest=$HOME/.i3/config
+dest=$HOME/.i3/
 maybe_mkdir $(dirname $dest)
-copy_to i3/config $dest
+(cd i3/ && copy_to config $dest)
+(cd i3/ && copy_to dunstrc $dest)
 
 dest=$HOME/bin/
 maybe_mkdir $dest

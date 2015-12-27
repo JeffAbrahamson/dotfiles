@@ -3,7 +3,8 @@
 ## Some functions useful in the various install/update scripts that
 ## manage dotfiles.
 
-## Copy, with dated backup if necessary.
+## Copy file to destination name or destination directory, but only if
+## modified.
 copy_to()
 {
     _src_name="$1"
