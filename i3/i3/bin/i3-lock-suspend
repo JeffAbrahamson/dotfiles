@@ -27,7 +27,10 @@ if [ "X$HOSTNAME" = Xstarshine -a $power_source = battery ]; then
     sudo /usr/sbin/pm-suspend
     # Things to do on wake-up.
     nmcli radio wifi on
-    notify-send $(i3-power-status)
+    # Either the battery can't immediately report its status, or else
+    # the query needs to happen after I've unlocked the screen.  Let's
+    # try a short pause.
+    (sleep 5; notify-send "$(i3-power-status)")
 else
     echo "i3-lock-suspend locking." >> $logfile
     xautolock -locknow
