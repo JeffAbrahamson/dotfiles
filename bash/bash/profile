@@ -73,7 +73,8 @@ fi
 if [ "X$HOSTNAME" = Xstarshine ]; then
     # HiDPI display.
     export QT_DEVICE_PIXEL_RATIO=2
-    export GDK_SCALE=2
+    # GDK_SCALE seems unnecessary now.
+    #export GDK_SCALE=2
 fi
 
 ## This should be the last block of this file
