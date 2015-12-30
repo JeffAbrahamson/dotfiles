@@ -1,5 +1,7 @@
 if [ "X$DESKTOP_SESSION" = Xi3 ]; then
-    dunst -config $HOME/.i3/dunstrc
+    # It seems dunst is started automatically.  This is good, since
+    # calling notify-send when dunst is not running will also start
+    # dunst.
     i3-gtd &
     nm-applet &
     xautolock -detectsleep \
