@@ -24,9 +24,11 @@ while true; do
     else
 	if [ "X$task_file" = X ]; then
 	    task_file=$HOME/data/gtd/$(hostname)__$(date +%F_%H%M%S)
-	    now_minutes=$(( $(date +%s) / 60))
-	    lock_duration_minutes=$$(($now_minutes - $lock_minutes))
-	    notify-send "Welcome back.\nIt's been $lock_duration_minutes minutes."
+	    if [ "X$lock_minutes" != X ]; then
+		now_minutes=$(( $(date +%s) / 60))
+		lock_duration_minutes=$$(($now_minutes - $lock_minutes))
+		notify-send "Welcome back.\nIt's been $lock_duration_minutes minutes."
+	    fi
 	fi
 	id=$(xprop -root |  awk '/_NET_ACTIVE_WINDOW\(WINDOW\)/{print $NF}')
 	task=$(xprop -id $id | awk '/_NET_WM_NAME/{$1=$2="";print}' | cut -d'"' -f2)
