@@ -20,14 +20,19 @@ while true; do
 	# locked by xautolock, but would fail if I ran i3lock as a
 	# daemon.
 	task_file=
-	lock_minutes=$(( $(date +%s) / 60))
+	if [ "X$lock_minutes" = X ]; then
+	    # Only set once per absence.
+	    lock_minutes=$(( $(date +%s) / 60))
+	fi
     else
 	if [ "X$task_file" = X ]; then
 	    task_file=$HOME/data/gtd/$(hostname)__$(date +%F_%H%M%S)
 	    if [ "X$lock_minutes" != X ]; then
+		# Only report on return.
 		now_minutes=$(( $(date +%s) / 60))
 		lock_duration_minutes=$(($now_minutes - $lock_minutes))
 		notify-send "Welcome back.\nIt's been $lock_duration_minutes minutes."
+		lock_minutes=
 	    fi
 	fi
 	id=$(xprop -root |  awk '/_NET_ACTIVE_WINDOW\(WINDOW\)/{print $NF}')
