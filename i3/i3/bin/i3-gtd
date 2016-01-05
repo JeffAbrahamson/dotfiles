@@ -26,7 +26,7 @@ while true; do
 	    task_file=$HOME/data/gtd/$(hostname)__$(date +%F_%H%M%S)
 	    if [ "X$lock_minutes" != X ]; then
 		now_minutes=$(( $(date +%s) / 60))
-		lock_duration_minutes=$$(($now_minutes - $lock_minutes))
+		lock_duration_minutes=$(($now_minutes - $lock_minutes))
 		notify-send "Welcome back.\nIt's been $lock_duration_minutes minutes."
 	    fi
 	fi
