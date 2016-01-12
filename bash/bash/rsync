@@ -50,3 +50,28 @@ fog() { ssh manx.misty.com; }
 ## blog.purple.com
 blog-down() { time rsync -va --delete --exclude common purple@blog.purple.com:./ $HOME/public_html/purple/blog/; }
 
+## Tools for mounting/unmounting luks volumes.
+lmnt() {
+    device=/dev/sd$1
+    mapping=$2
+    sudo cryptsetup open --type luks $device $mapping
+    sudo mount /dev/mapper/$mapping /$mapping
+}
+
+lumnt() {
+    sudo umount /$mapping
+    sudo cryptsetup luksClose $mapping
+}
+
+# To mount, provide the drive letter (e.g., "a").
+# To unmount, no arguments.
+# srd: backup.
+mluks-jma-1.5-1() { lmnt $1 jma-1.5TB-1; }
+uluks-jma-1.5-1() { lumnt jma-1.5TB-1; }
+
+mluks-jma-1.5-2() { lmnt $1 jma-1.5TB-2; }
+uluks-jma-1.5-2() { lumnt jma-1.5TB-2; }
+
+# srd: hostname.
+mluks-images() { lmnt $1 home2; }
+uluks-images() { lumnt home2; }
