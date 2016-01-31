@@ -25,7 +25,6 @@ if [ "X$HOSTNAME" = Xstarshine -a $power_source = battery ]; then
     sleep 1			# Make sure I'm locked before suspending.
     if [ -e $no_suspend_file ]; then
 	echo "i3-lock-suspend sleeping." >> $logfile
-	sudo /usr/bin/pm-powersave
     else
 	echo "i3-lock-suspend suspending." >> $logfile
 	sudo /usr/sbin/pm-suspend
