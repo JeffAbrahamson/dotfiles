@@ -5,6 +5,9 @@ PATH=/usr/bin:/bin
 # On laptops where it makes sense to be able to suspend, suspend if on
 # battery power.  On other hosts, or if on mains power, just lock.
 
+# If I should sleep instead of suspend, say due to a BIOS bug in my
+# Dell Precision m3800, the existence of this file will alert me.
+no_suspend_file=$HOME/.unable_to_suspend
 logfile=/tmp/i3-lock-suspend
 power_source=mains
 batteries=$(upower -e | grep battery)
@@ -18,14 +21,20 @@ for battery in $batteries; do
 done
 
 if [ "X$HOSTNAME" = Xstarshine -a $power_source = battery ]; then
-    echo "i3-lock-suspend suspending." >> $logfile
+    xautolock -locknow &
+    sleep 1			# Make sure I'm locked before suspending.
+    if [ -e $no_suspend_file ]; then
+	echo "i3-lock-suspend sleeping." >> $logfile
+	sudo /usr/bin/pm-powersave
+    else
+	echo "i3-lock-suspend suspending." >> $logfile
+	sudo /usr/sbin/pm-suspend
+    fi
+    # Things to do on wake-up.
+    #
     # On starshine, wifi is sometimes disabled on wake.  It seems to
     # be a no-op to turn it on if it is already on, so always make
     # sure it's on on wake.
-    xautolock -locknow &
-    sleep 1			# Make sure I'm locked before suspending.
-    sudo /usr/sbin/pm-suspend
-    # Things to do on wake-up.
     nmcli radio wifi on
     # Either the battery can't immediately report its status, or else
     # the query needs to happen after I've unlocked the screen.  Let's
