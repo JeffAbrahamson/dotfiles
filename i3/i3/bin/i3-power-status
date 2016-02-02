@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Show battery status.  If first argument is "ns", then use
+# notify-send instead of echo.
+
 PATH=/usr/bin:/bin
 
 batteries=$(upower -e | grep battery)
@@ -20,5 +23,9 @@ for battery in $batteries; do
 	    ;;
     esac
     percent=$(upower -i $battery | grep percent | awk -F: '{print $2}' | tr -d ' \t')
-    echo "$state ($delay, $percent)"
+    if [ "X$1" = Xns ]; then
+	notify-send "$state ($delay, $percent)"
+    else
+	echo "$state ($delay, $percent)"
+    fi
 done
