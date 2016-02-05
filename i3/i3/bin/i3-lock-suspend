@@ -25,6 +25,10 @@ if [ "X$HOSTNAME" = Xstarshine -a $power_source = battery ]; then
     sleep 1			# Make sure I'm locked before suspending.
     if [ -e $no_suspend_file ]; then
 	echo "i3-lock-suspend sleeping." >> $logfile
+	# If I close the lid, it will be in the next few seconds.  So
+	# wait a few seconds, then restart wifi, which is harmless if
+	# wifi is already running.
+	(sleep 5; nmcli radio wifi on) &
     else
 	echo "i3-lock-suspend suspending." >> $logfile
 	sudo /usr/sbin/pm-suspend
