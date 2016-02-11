@@ -24,7 +24,12 @@ if [ "X$DESKTOP_SESSION" = Xi3 ]; then
        xrandr --dpi 192
        # Lock the screen and suspend when I close the lid.
        i3-lid-monitor &
+       synclient TapButton2=1
        synclient TapButton3=2
+       # Disable light tap on the touchpad, as it moves the mouse as
+       # my fingers accidentally touch the touchpad while typing.  Tap
+       # on the touchscreen and mouse down still work as intended.
+       synclient TapButton1=0
        touchegg &
     fi
 fi

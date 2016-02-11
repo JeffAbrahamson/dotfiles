@@ -37,8 +37,14 @@ check_status()
 		delay_hours=$(upower -i $battery | grep "time to empty" | grep hours | awk -F: '{print $2}' | \
 				     sed -e 's/^\s\+//; s/ hours//; s/\.[0-9]\+//;')
 		if [ "X$delay_hours" = X ]; then
-		    delay_minutes=0
-		    delay_message="(State uncertain.)"
+		    delay_days=$(upower -i $battery | grep "time to empty" | grep days | awk -F: '{print $2}' | \
+					sed -e 's/^\s\+//; s/ days//; s/\.[0-9]\+//;')
+		    if [ "X$delay_days" = X ]; then
+			delay_minutes=0
+			delay_message="(State uncertain.)"
+		    else
+			delay_minutes=$(($delay_days * 60 * 24))
+		    fi
 		else
 		    delay_minutes=$(($delay_hours * 60))
 		fi
