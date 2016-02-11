@@ -1,0 +1,9 @@
+[user]
+	email = jeff@purple.com
+	name = Jeff Abrahamson
+[color]
+	ui = auto
+[push]
+	default = simple
+[branch]
+	autosetuprebase = always
