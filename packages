@@ -77,7 +77,7 @@ protobuf-compiler
 python-protobuf
 libprotobuf-dev
 libbz2-dev
-libzmq-dev
+libzmq3-dev
 libcrypto++-dev
 ipython
 ipython-notebook
