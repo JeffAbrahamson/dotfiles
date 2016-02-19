@@ -56,11 +56,15 @@ lmnt() {
     mapping=$2
     sudo cryptsetup open --type luks $device $mapping
     sudo mount /dev/mapper/$mapping /$mapping
+    unset device
+    unset mapping
 }
 
 lumnt() {
+    mapping=$1
     sudo umount /$mapping
     sudo cryptsetup luksClose $mapping
+    unset mapping
 }
 
 # To mount, provide the drive letter (e.g., "a").
