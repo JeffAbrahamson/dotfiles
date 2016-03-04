@@ -164,3 +164,10 @@ fabric
 vagrant
 virtualbox
 libmatroska6v5
+puppet
+libgoogle-glog-dev
+libgoogle-glog0v5
+libgoogle-glog-doc
+libgflags-dev
+libgflags-doc
+libgflags2v5
