@@ -114,6 +114,7 @@ mkaefile-name-alt. If neither exists, return nil. Else return t."
   "Run latex or else invoke M-x compile"
   (interactive)
   (if (equal (file-name-extension (buffer-file-name)) "tex")
+      ;; Compile TeX or LaTeX source, either via a makefile or not.
       (if (makefile-exists-p)
 	  (let ((base-name (file-name-sans-extension
 			    (file-name-nondirectory
@@ -125,6 +126,7 @@ mkaefile-name-alt. If neither exists, return nil. Else return t."
 	  (compile-command-name (read-string
 				 "Compile command: "
 				 compile-command)))
+      ;; Compile anything else.
       (compile compile-command-name))))
 
 
