@@ -77,17 +77,6 @@ umnt-android() { sudo fusermount -u "$1"; }
 
 rmthisdir() { p_=`pwd`; b_=`basename $p_`; cd ..; /bin/rmdir $b_; unset p_ b_; }
 
-undup() { if [ $# != 2 ]; then echo Usage: undup dir1 dir2; return; fi
-    dir1=$1; dir2=$2;
-    for f in "$dir1"/*.jpg "$dir1"/*.JPG; do
-	b=$(basename "$f")
-	if ( cmp -s "$f" "$dir2/$b") ; then
-	    # Files are the same
-	    echo cmp "$f" "$dir2/$b"
-	    echo rm $f
-	fi
-    done; }
-
 google() { w3m lynx http://www.google.com/; }
 citeseer() { w3m http://citeseer.nj.nec.com/cs; }
 jeff() { w3m http://localhost/~jeff/purple/jeff/private/jeff.html; }
@@ -147,6 +136,30 @@ gq-make-laptop() {
     if [ ! -d laptop ]; then mkdir laptop; fi
     for f in *jpg; do if [ ! -e laptop/$f ]; then echo $f; convert -geometry 1366x768 $f laptop/$f; fi; done
 }
+
+undup() { if [ $# != 2 ]; then echo Usage: undup dir1 dir2; return; fi
+    dir1=$1; dir2=$2;
+    for f in "$dir1"/*.jpg "$dir1"/*.JPG; do
+	b=$(basename "$f")
+	if ( cmp -s "$f" "$dir2/$b") ; then
+	    # Files are the same
+	    echo cmp "$f" "$dir2/$b"
+	    echo rm $f
+	fi
+    done; }
+
+# Rename an image from facebook.  Just a shortcut for changing the
+# long facebook string to a date and a note that it came from
+# facebook.
+#
+# Usage: fbi 11224383_10153806222239905_443955585564182480_o.jpg 20151130
+fbi() {
+    mv "$1" "$2"-facebook.jpg
+}
+# And if I am currently downloading, so I know that the image is the
+# most recently touched, I can just specify the date.
+fba() { fbi $(ls -t | head -1) $1; }
+
 
 ###########################################################################
 # MOOC
