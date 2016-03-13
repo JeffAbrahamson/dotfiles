@@ -3,6 +3,7 @@
 # Please see http://i3wm.org/docs/userguide.html for a complete reference!
 
 set $mod Mod1
+set $exit_mode Do you really want to exit?
 
 # Font for window titles. Will also be used by the bar unless a different font
 # is used in the bar {} block below.
@@ -122,7 +123,7 @@ mode "i3" {
     # used to upgrade i3): i3-msg restart
 
     # Exit i3 (log out of X session).
-    bindsym  $mod+Shift+q exec "i3-nagbar -t warning -m 'You pressed the exit shortcut. Do you really want to exit i3? This will end your X session.' -b 'Yes, exit i3' 'i3-msg exit'"
+    bindsym Control+Shift+Q mode "$exit_mode"
 
     bindsym Escape     mode "default"
     bindsym Enter      mode "default"
@@ -191,6 +192,13 @@ mode "resize" {
     bindsym Return     mode "default"
     bindsym Escape     mode "default"
     bindsym Control+g  mode "default"
+}
+
+mode "$exit_mode" {
+    bindsym y          exit
+    bindsym Control+g  mode default
+    bindsym n          mode default
+    bindsym Escape     mode default
 }
 
 # Start i3bar to display a workspace bar (plus the system information i3status
