@@ -106,6 +106,7 @@ python-skimage-doc
 python-skimage-lib
 python-sklearn-doc
 python-sklearn-lib
+python-sklearn
 python3-skimage-lib
 sshfs
 scrot
@@ -172,3 +173,4 @@ libgflags-dev
 libgflags-doc
 libgflags2v5
 vdpauinfo
+libyaml-cpp-dev
