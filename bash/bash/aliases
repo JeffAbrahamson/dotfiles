@@ -227,6 +227,11 @@ internet() {
     echo RX: $((6 * (RX_new - $RX_old) )) bytes/minute;
     echo TX: $((6 * (TX_new - $TX_old) )) bytes/minute;
 }
+# Restart wifi, gently, then with gusto.
+# This might better belong in the power manager after-sleep/suspend functions.
+wifi() { nmcli radio wifi on; }
+WIFI() { sudo /bin/systemctl restart network-manager.service; }
+
 cppdoc() { ff $HOME/work/c++-docs/cpp.html & }
 
 #workm-periodic() { while true; do date; workm force-put; sleep 900; separator; done; }
