@@ -174,3 +174,5 @@ libgflags-doc
 libgflags2v5
 vdpauinfo
 libyaml-cpp-dev
+exfat-fuse
+exfat-utils
