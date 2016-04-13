@@ -1,0 +1,6 @@
+#!/bin/bash
+
+PATH=/usr/bin:/bin
+
+rsync -a  /d1/stephane  /d3/stephane
+rsync -a  /d2/jeff/     /d3/jeff/
