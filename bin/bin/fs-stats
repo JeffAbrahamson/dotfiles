@@ -2,14 +2,14 @@
 
 fs_dir="$HOME/data/hosts/fileserver"
 
-cat <<HERE | gnuplot
+cat <<HERE | gnuplot -persist
+set term x11
 set xdata time
 set timefmt "%s"
 set format x "%Y-%m-%d"
 set format y "%.1f GB"
 plot "$fs_dir/d1" using 1:(\$2/1000/1000) title "Disk usage, SB" with lines lt 1 lw 2, \\
-"$fs_dir/d2" using 1:(\$2/1000/1000) title "Disk usage, JMA" with lines lt 4 lw 2
-
-pause 100 ""
+"$fs_dir/d2" using 1:(\$2/1000/1000) title "Disk usage, JMA" with lines lt 4 lw 2, \\
+"$fs_dir/d3" using 1:(\$2/1000/1000) title "Disk usage, JMA" with lines lt 7 lw 2
 HERE
 
