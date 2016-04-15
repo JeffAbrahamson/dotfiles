@@ -245,6 +245,8 @@ rpass() { head -c $((40 + $RANDOM / 2000)) < /dev/urandom | base64; }
 voyages() { gnumeric $HOME/work/finance/France/impots/$(date '+%Y')/voyages.gnumeric & }
 cheque() { gnumeric $HOME/data/chequier.gnumeric & }
 house() { gnumeric $HOME/common/work/financial/real_estate/Nantes/Metzinger/costs.gnumeric & }
+secu() { gnumeric $HOME/data/secu.gnumeric & }
+food() { gnumeric $HOME/work/finance/jeff-stephane/food-spending.gnumeric & }
 term() { terminator -b -m & }
 recipes() { case "X$HOSTNAME" in
     Xsiegfried|Xbirdsong) file=$HOME/src/jma/recipes/pdf/recipes-nexus9.pdf;;
@@ -254,7 +256,6 @@ recipes() { case "X$HOSTNAME" in
 }
 
 pm() { ogg=$(/bin/ls *ogg */*ogg 2>/dev/null); mp3=$(/bin/ls *mp3 */*mp3 2>/dev/null); if [ "x$ogg" != x ]; then ogg123 $ogg; fi; if [ "x$mp3" != x ]; then mpg123 $mp3; fi; unset mp3; unset ogg; }
-secu() { gnumeric $HOME/data/secu.gnumeric & }
 script() { SCRIPT_NAME="$1" /usr/bin/script "$@"; }
 fr() {
     if [ $# -gt 0 ]; then
