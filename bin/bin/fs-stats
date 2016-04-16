@@ -1,15 +1,35 @@
 #!/bin/bash
 
 fs_dir="$HOME/data/hosts/fileserver"
+total_disk_space() {
+    d_last=$(tail -1 $fs_dir/$1 | awk '{print $2}')
+    dr_last=$(tail -1 $fs_dir/$1-remaining | awk '{print $2}')
+    echo $(($d_last + $dr_last))
+}
+d1_total=$(total_disk_space /d1)
+d2_total=$(total_disk_space /d2)
+d3_total=$(total_disk_space /d3)
+MB=1000000.0
 
 cat <<HERE | gnuplot -persist
-set term x11
+set term qt
+set termoption dashed
 set xdata time
 set timefmt "%s"
-set format x "%Y-%m-%d"
+set format x "%Y\n%m-%d"
 set format y "%.1f GB"
-plot "$fs_dir/d1" using 1:(\$2/1000/1000) title "Disk usage, SB (/d1)" with lines lt 1 lw 2, \\
-"$fs_dir/d2" using 1:(\$2/1000/1000) title "Disk usage, JMA (/d2)" with lines lt 4 lw 2, \\
-"$fs_dir/d3" using 1:(\$2/1000/1000) title "Disk usage, combined (/d3)" with lines lt 7 lw 2
+plot \\
+"$fs_dir/d1" using 1:(\$2/$MB) title "Disk usage, SB (/d1)" \\
+    with lines linestyle 1 linecolor rgb '#ff0000' linewidth 2, \\
+$d1_total/$MB title "Capacity, SB (/d1)" \\
+    with lines linestyle 2 linecolor rgb '#ff0000' linewidth 1, \\
+"$fs_dir/d2" using 1:(\$2/$MB) title "Disk usage, JMA (/d2)" \\
+    with lines linestyle 1 linecolor rgb '#0000ff' linewidth 2, \\
+$d2_total/$MB title "Capacity, JMA (/d2)" \\
+    with lines linestyle 7 linecolor rgb '#0000ff' linewidth 1, \\
+"$fs_dir/d3" using 1:(\$2/$MB) title "Disk usage, combined (/d3)" \\
+    with lines linestyle 1 linecolor rgb '#bb00bb' linewidth 2, \\
+$d3_total/$MB title "Capacity, combined (/d3)" \\
+    with lines linestyle 2 linecolor rgb '#bb00bb' linewidth 1
 HERE
 
