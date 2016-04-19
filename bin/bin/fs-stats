@@ -12,11 +12,11 @@ d3_total=$(total_disk_space /d3)
 MB=1000000.0
 
 cat <<HERE | gnuplot -persist
-set term qt
+set term x11
 set termoption dashed
 set xdata time
 set timefmt "%s"
-set format x "%Y\n%m-%d"
+set format x "%Y-%m-%d"
 set format y "%.1f GB"
 plot \\
 "$fs_dir/d1" using 1:(\$2/$MB) title "Disk usage, SB (/d1)" \\
