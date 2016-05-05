@@ -43,7 +43,12 @@ sync-fileserver() { sync-data; time rsync -a fileserver:data/ $HOME/data/hosts/f
 sync-data() { time unison -auto data; }
 sync-fast() { time unison -auto fast; }
 sync-full() { time unison -auto full; }
-sync-images() { time unison -auto images; }
+sync-images() {
+    time unison -auto images;
+    if [ -e $HOME/.unison/images-2.prf ]; then
+	time unison -auto images-2;
+    fi
+}
 
 fog() { ssh manx.misty.com; }
 
