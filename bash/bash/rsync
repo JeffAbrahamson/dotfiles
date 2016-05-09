@@ -81,3 +81,11 @@ uluks-backup() { lumnt backup; }
 # srd: hostname.
 mluks-images() { lmnt $1 home2; }
 uluks-images() { lumnt home2; }
+
+sync-images-23() {
+    if [ -d /images-2/jeff -a -d /images-3/jeff ]; then
+	rsync -va /images-2/jeff/ /images-3/jeff/
+    else
+	echo Missing volume.
+    fi
+}
