@@ -11,7 +11,7 @@ d2_total=$(total_disk_space /d2)
 d3_total=$(total_disk_space /d3)
 MB=1000000.0
 
-cat <<HERE | gnuplot -persist
+cat <<HERE | gnuplot
 set term x11
 set termoption dashed
 set xdata time
@@ -31,5 +31,6 @@ $d2_total/$MB title "Capacity, JMA (/d2)" \\
     with lines linestyle 1 linecolor rgb '#bb00bb' linewidth 2, \\
 $d3_total/$MB title "Capacity, combined (/d3)" \\
     with lines linestyle 2 linecolor rgb '#bb00bb' linewidth 1
+pause mouse close
 HERE
 

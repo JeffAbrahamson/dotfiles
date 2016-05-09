@@ -2,7 +2,7 @@
 
 fs_dir="$HOME/data/hosts/fileserver"
 
-cat <<HERE | gnuplot -persist
+cat <<HERE | gnuplot
 set xdata time
 set timefmt "%s"
 set format x "%d-%m-%Y"
@@ -24,5 +24,6 @@ plot "$fs_dir/speedtest-fileserver-ping" using 1:2 \
     title "Ping time (ms)" with lines
 unset multiplot
 set size 1,1
+pause mouse close
 HERE
 
