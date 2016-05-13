@@ -7,7 +7,7 @@
 
 sync-to-here() {
     vol=$1
-    if [ ! -d $vol ]; then
+    if [ ! -d $vol/backup ]; then
 	echo "$vol not mounted?"
     else
 	time rsync -va --delete jeff@fileserver:/d2/jeff/ $vol/backup/
