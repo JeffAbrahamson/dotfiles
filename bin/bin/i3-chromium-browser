@@ -1,0 +1,4 @@
+#!/bin/bash
+
+# Force chromium to play nice with HiDPI displays.
+chromium-browser --force-device-scale-factor=2
