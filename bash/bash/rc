@@ -198,6 +198,9 @@ fi
 if [ -f $HOME/.dotfiles/bash/pictools ]; then
 	. $HOME/.dotfiles/bash/pictools
 fi
+if [ -f $HOME/.dotfiles/bash/jellybooks ]; then
+	. $HOME/.dotfiles/bash/jellybooks
+fi
 
 shopt -s cdspell
 
