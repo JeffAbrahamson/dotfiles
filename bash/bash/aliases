@@ -207,6 +207,16 @@ jb-ports() {
 	-L 27017:api2.jellybooks.com:27017 \
 	seine.jellybooks.com 'while true; do echo "Forwarding ports (3306, 9500, 27017), $(date +%F_%T)"; sleep 60; done';
 }
+jb-fs() {
+    if [ ! -d $JELLYBOOKS_LOGS ]; then
+	mkdir $JELLYBOOKS_LOGS;
+    fi
+    if [ $(ls $JELLYBOOKS_LOGS | wc -l) -gt 1 ]; then
+	echo Jellybooks logs are already mounted.
+    else
+	sshfs jeff@seine.jellybooks.com:/var/log/chocolate/ $JELLYBOOKS_LOGS;
+    fi
+}
 
 data-notes() {
     cd $HOME/common/work/employment/Goldman-Sachs/data-notes/;

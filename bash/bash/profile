@@ -29,6 +29,7 @@ export PYTHONPATH=$HOME/local/python
 export CS_PAPER_DIR=$HOME/mst/work/Research/papers/
 export TSD_DIR=$HOME/common/data/tsd/
 export BIICODE_HOME=/home/jeff/src/biicode
+export JELLYBOOKS_LOGS=$HOME/src/jellybooks/logs
 export JELLYBOOKS_PRODUCTION_BASE=$HOME/src/jellybooks/production
 export JELLYBOOKS_BASH_ALIASES=$HOME/.dotfiles/bash/jellybooks
 
