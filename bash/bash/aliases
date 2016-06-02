@@ -201,24 +201,6 @@ separator() { echo =============================================================
 ssh-new() { unset SSH_AGENT_PID; unset SSH_AUTH_SOCK; exec ssh-agent bash; }
 ssh-github() { ssh-add ~/.ssh/id_rsa.github; }
 ssh-jelly() { ssh-add ~/.ssh/id_rsa.jellybooks; }
-jb-ports() {
-    ssh -L 3306:thames.jellybooks.com:3306 \
-	-L 9500:seine.jellybooks.com:9500  \
-	-L 9600:seine.jellybooks.com:9600  \
-	-L 9700:seine.jellybooks.com:9700  \
-	-L 27017:api2.jellybooks.com:27017 \
-	seine.jellybooks.com 'while true; do echo "Forwarding ports (3306, 9[567]00, 27017), $(date +%F_%T)"; sleep 60; done';
-}
-jb-fs() {
-    if [ ! -d $JELLYBOOKS_LOGS ]; then
-	mkdir $JELLYBOOKS_LOGS;
-    fi
-    if [ $(ls $JELLYBOOKS_LOGS | wc -l) -gt 1 ]; then
-	echo Jellybooks logs are already mounted.
-    else
-	sshfs jeff@seine.jellybooks.com:/var/log/chocolate/ $JELLYBOOKS_LOGS;
-    fi
-}
 
 data-notes() {
     cd $HOME/common/work/employment/Goldman-Sachs/data-notes/;
