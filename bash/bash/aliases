@@ -204,8 +204,10 @@ ssh-jelly() { ssh-add ~/.ssh/id_rsa.jellybooks; }
 jb-ports() {
     ssh -L 3306:thames.jellybooks.com:3306 \
 	-L 9500:seine.jellybooks.com:9500  \
+	-L 9600:seine.jellybooks.com:9600  \
+	-L 9700:seine.jellybooks.com:9700  \
 	-L 27017:api2.jellybooks.com:27017 \
-	seine.jellybooks.com 'while true; do echo "Forwarding ports (3306, 9500, 27017), $(date +%F_%T)"; sleep 60; done';
+	seine.jellybooks.com 'while true; do echo "Forwarding ports (3306, 9[567]00, 27017), $(date +%F_%T)"; sleep 60; done';
 }
 jb-fs() {
     if [ ! -d $JELLYBOOKS_LOGS ]; then
