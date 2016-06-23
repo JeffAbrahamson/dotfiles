@@ -32,3 +32,10 @@
 (setq transient-mark-mode nil)
 (setq browse-url-browser-function 'browse-url-generic
           browse-url-generic-program "firefox")
+
+(defun next-error-uses-highlight-mode()
+  "Turn on highlight mode in most recent compilation/grep/etc. buffer."
+  (with-current-buffer next-error-last-buffer
+    (hl-line-mode 1)))
+
+(add-hook 'next-error-hook 'next-error-uses-highlight-mode)
