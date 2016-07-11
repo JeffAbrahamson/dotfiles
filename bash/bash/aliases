@@ -247,6 +247,7 @@ cheque() { gnumeric $HOME/data/chequier.gnumeric & }
 house() { gnumeric $HOME/common/work/financial/real_estate/Nantes/Metzinger/costs.gnumeric & }
 secu() { gnumeric $HOME/data/secu.gnumeric & }
 food() { gnumeric $HOME/work/finance/jeff-stephane/food-spending.gnumeric & }
+trader() { gnumeric $HOME/work/finance/UK-taxes/2016-2017/sole-trader/sole-trader-2016-2017.gnumeric & }
 term() { terminator -b -m & }
 recipes() { case "X$HOSTNAME" in
     Xsiegfried|Xbirdsong) file=$HOME/src/jma/recipes/pdf/recipes-nexus9.pdf;;
