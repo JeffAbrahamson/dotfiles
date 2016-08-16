@@ -192,6 +192,9 @@ _note()
 }
 complete -F _note note
 
+if [ -f $HOME/.dotfiles/bash/git-prompt ]; then
+	. $HOME/.dotfiles/bash/git-prompt
+fi
 if [ -f $HOME/.dotfiles/bash/prompt ]; then
 	. $HOME/.dotfiles/bash/prompt
 fi
