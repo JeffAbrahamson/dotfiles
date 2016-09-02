@@ -1,6 +1,13 @@
 #!/bin/bash
 
 fs_dir="$HOME/data/hosts/fileserver"
+upload=/tmp/speedtest-upload
+download=/tmp/speedtest-dowload
+ping=/tmp/speedtest-ping
+
+cat $fs_dir/speedtest-fileserver-download $fs_dir/speedtest-siegfried-download | sort > $download
+cat $fs_dir/speedtest-fileserver-upload $fs_dir/speedtest-siegfried-upload | sort > $upload
+cat $fs_dir/speedtest-fileserver-ping $fs_dir/speedtest-siegfried-ping | sort > $ping
 
 cat <<HERE | gnuplot
 set xdata time
@@ -10,20 +17,21 @@ set multiplot
 set origin 0,.6
 set size 1,.4
 set yrange [0:]
-plot "$fs_dir/speedtest-fileserver-download" using 1:2 \
+plot "$download" using 1:2 \
     title "Download speed (Mbps)" with lines
 set origin 0,.2
 set size 1,.4
 set yrange [0:]
-plot "$fs_dir/speedtest-fileserver-upload" using 1:2 \
+plot "$upload" using 1:2 \
     title "Upload speed (Mbps)" with lines
 set origin 0,0
 set size 1,.2
 set yrange [0:]
-plot "$fs_dir/speedtest-fileserver-ping" using 1:2 \
+plot "$ping" using 1:2 \
     title "Ping time (ms)" with lines
 unset multiplot
 set size 1,1
 pause mouse close
 HERE
 
+rm $upload $download $ping
