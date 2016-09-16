@@ -49,38 +49,27 @@ apt-refresh() {
 	sudo apt-get autoremove -y;
 }
 
+minutes() {
+    minute_=0;
+    while true; do
+	echo -n "$minute_  ";
+	sleep 60;
+	minute_=$((minute_ + 1));
+    done;
+}
+
 ###########################################################################
 # ssh login
 
 tux() { xrlogin $tux; }
-php() { ssh -X purple@blog.purple.com; }
 
 mirror-slow() { wget --wait=30 --random-wait --no-host-directories --convert-links --mirror --no-parent $1; }
 mirror() { wget --wait=10 --random-wait --no-host-directories --convert-links --mirror --no-parent $1; }
 mirror-fast() { echo fast mirror; wget --no-host-directories --convert-links --mirror --no-parent $1; }
-get-music() { wget -nH -nd -r -N -l 1 --accept=.ogg,.mp3 $1; }
-
-
-cf-mv() { if [ "X$1" != "X" ]; then tmp=cflash_$$-$1 && mkdir $tmp && cd $tmp; fi; \
-    /bin/mv -i $cflash/* . && \
-    chmod -x *; }
-cf-cp() { if [ "X$1" != "X" ]; then tmp=cflash_$$-$1 && mkdir $tmp && cd $tmp; fi; \
-    /bin/cp -i --preserve=timestamps $cflash/* . && \
-    chmod -x *; }
-
-## Typical usage:
-##   {,u}mnt-android /usb
-## It may be that mtpfs would work as well as jmtpfs.
-## The day I tested, jmtpfs was substantially faster.
-mnt-android() { sudo jmtpfs -o allow_other "$1"; }
-umnt-android() { sudo fusermount -u "$1"; }
 
 rmthisdir() { p_=`pwd`; b_=`basename $p_`; cd ..; /bin/rmdir $b_; unset p_ b_; }
 
-google() { w3m lynx http://www.google.com/; }
-citeseer() { w3m http://citeseer.nj.nec.com/cs; }
-jeff() { w3m http://localhost/~jeff/purple/jeff/private/jeff.html; }
-xjeff() { gnome-terminal --hide-menubar --disable-factory --geometry=90x60 --window-with-profile=w3m; }
+google() { w3m http://www.google.com/; }
 
 ###########################################################################
 # gpg
@@ -160,22 +149,6 @@ fbi() {
 # most recently touched, I can just specify the date.
 fba() { fbi $(ls -t | head -1) $1; }
 
-
-###########################################################################
-# MOOC
-
-mooc() {
-    for f in *mp4; do
-	mplayer "$f"
-	echo -n "Delete '$f'? "
-	read x
-	if [ "X$x" = X -o "X$x" = Xy -o "X$x" = yes ]; then
-	    rm "$f"
-	else
-	    echo Not removing.
-	fi
-    done
-}
 
 ###########################################################################
 
