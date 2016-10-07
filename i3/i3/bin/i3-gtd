@@ -3,22 +3,25 @@
 PATH=/usr/bin:/bin
 renice -n 19 $$
 
+GTD_DIR=$HOME/data/gtd
+GTD_IMG_DIR=$HOME/data/gtd-img
+
 i3_pid=$(pidof i3)
 task_file=
 lock_minutes=
 while true; do
     ## When I3 exits, this script should quit as well.  I'm not sure
-    ## if I need this or not.  So watch for ratpoison exit and quit when
+    ## if I need this or not.  So watch for i3 exit and quit when
     ## no longer needed.
     if [ ! -e /proc/$i3_pid ]; then
 	exit 0
     fi
     if pidof i3lock >/dev/null; then
-	# If I go away, then start a new task file.
+	# If I (the human) go away, then start a new task file.
 	#
-	# This test only works if I'm manually locking my screen or if
-	# locked by xautolock, but would fail if I ran i3lock as a
-	# daemon.
+	# That is, test to see if the screen is locked.  This test
+	# only works if I'm manually locking my screen or if locked by
+	# xautolock, but would fail if I ran i3lock as a daemon.
 	task_file=
 	if [ "X$lock_minutes" = X ]; then
 	    # Only set once per absence.
@@ -26,7 +29,7 @@ while true; do
 	fi
     else
 	if [ "X$task_file" = X ]; then
-	    task_file=$HOME/data/gtd/$(hostname)__$(date +%F_%H%M%S)
+	    task_file=$GTD_DIR/$(hostname)__$(date +%F_%H%M%S)
 	    if [ "X$lock_minutes" != X ]; then
 		# Only report on return.
 		now_minutes=$(( $(date +%s) / 60))
@@ -38,6 +41,15 @@ while true; do
 	id=$(xprop -root |  awk '/_NET_ACTIVE_WINDOW\(WINDOW\)/{print $NF}')
 	task=$(xprop -id $id | awk '/_NET_WM_NAME/{$1=$2="";print}' | cut -d'"' -f2)
 	echo $(date +%s) $task >> $task_file
+
+	## Also capture an image of the active window.
+	## Suggestion by Hugo Mougard, 2016-10-05.
+	# We reduce image size.  At 150x150, images are over 20 KB.
+	# At 100x100, imges are about 10-20 KB.  At 10 KB per image,
+	# snapping once per minute, this stores 5 GB per year.  At 20
+	# KB (10*60*24*365/1024), that's 10 GB per year.
+	scrot --focused "$GTD_IMG_DIR/gtd-img-%s.png" \
+	      -e "convert -geometry 100x100 \$f $GTD_IMG_DIR/%s.png; chmod 400 $GTD_IMG_DIR/%s.png; rm \$f"
     fi
     sleep 60
 done
