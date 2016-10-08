@@ -48,8 +48,9 @@ while true; do
 	# At 100x100, imges are about 10-20 KB.  At 10 KB per image,
 	# snapping once per minute, this stores 5 GB per year.  At 20
 	# KB (10*60*24*365/1024), that's 10 GB per year.
+	hostname=$(hostname)
 	scrot --focused "$GTD_IMG_DIR/gtd-img-%s.png" \
-	      -e "convert -geometry 100x100 \$f $GTD_IMG_DIR/%s.png; chmod 400 $GTD_IMG_DIR/%s.png; rm \$f"
+	      -e "convert -geometry 100x100 \$f $GTD_IMG_DIR/${hostname}_%s.png; chmod 400 $GTD_IMG_DIR/${hostname}_%s.png; rm \$f"
     fi
     sleep 60
 done
