@@ -1,3 +1,6 @@
+(if (not (eq window-system nil))
+    (global-unset-key (kbd "C-z")))
+
 (defun jma-grep (pattern prefix)
   "Search for pattern in the files $HOME/data/notes/*txt.
 Search is case insensitive unless  a prefix argument is provided,
