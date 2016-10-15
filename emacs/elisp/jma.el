@@ -93,7 +93,11 @@ flag should be valid grep flags (typically '-i') or else the empty string."
 	      (insert (concat
 		       "#ifndef " guard-name "\n"
 		       "#define " guard-name " 1\n"
-		       "\n\n\n"
+		       "\n\n"
+		       "namespace analytis {\n"
+		       "\n\n"
+		       "}  // namespace analytics\n"
+		       "\n"
 		       "#endif  /* " guard-name "*/\n"))
 	      (beginning-of-line -2)))
 	(if (string-match "\\.cc$" (buffer-name))
@@ -101,7 +105,15 @@ flag should be valid grep flags (typically '-i') or else the empty string."
 		   (concat (replace-regexp-in-string "\\.cc" ".h" (buffer-name)))))
 	      (insert (concat
 		       "#include " include-name "\n"
-		       "\n")))))
+		       "\n\n\n"
+		       "namespace analytics {\n"
+		       "\n"
+		       "namespace {\n"
+		       "\n"
+		       "}  // namespace\n"
+		       "\n\n\n"
+		       "}  // namespace analytics\n"))
+	      (beginning-of-line -2))))
     (message "Buffer is not empty.")))
   
 
