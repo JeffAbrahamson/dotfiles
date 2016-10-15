@@ -94,7 +94,14 @@ flag should be valid grep flags (typically '-i') or else the empty string."
 		       "#ifndef " guard-name "\n"
 		       "#define " guard-name " 1\n"
 		       "\n\n\n"
-		       "#endif  /* " guard-name "*/\n")))))
+		       "#endif  /* " guard-name "*/\n"))
+	      (beginning-of-line -2)))
+	(if (string-match "\\.cc$" (buffer-name))
+	    (let ((include-name
+		   (concat (replace-regexp-in-string "\\.cc" ".h" (buffer-name)))))
+	      (insert (concat
+		       "#include " include-name "\n"
+		       "\n")))))
     (message "Buffer is not empty.")))
   
 
