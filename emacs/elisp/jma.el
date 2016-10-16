@@ -93,18 +93,18 @@ flag should be valid grep flags (typically '-i') or else the empty string."
 	      (insert (concat
 		       "#ifndef " guard-name "\n"
 		       "#define " guard-name " 1\n"
-		       "\n\n"
-		       "namespace analytis {\n"
-		       "\n\n"
+		       "\n\n\n"
+		       "namespace analytics {\n"
+		       "\n\n\n"
 		       "}  // namespace analytics\n"
 		       "\n"
 		       "#endif  /* " guard-name "*/\n"))
-	      (beginning-of-line -2)))
+	      (beginning-of-line -4)))
 	(if (string-match "\\.cc$" (buffer-name))
 	    (let ((include-name
 		   (concat (replace-regexp-in-string "\\.cc" ".h" (buffer-name)))))
 	      (insert (concat
-		       "#include " include-name "\n"
+		       "#include \"" include-name "\"\n"
 		       "\n\n\n"
 		       "namespace analytics {\n"
 		       "\n"
