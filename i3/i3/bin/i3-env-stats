@@ -1,0 +1,63 @@
+#!/bin/bash
+
+PATH=$HOME/bin:/usr/bin:/bin
+renice -n 19 $$
+
+# Functions to monitor disk usage.
+# This is a bit hard-coded.  It's also largely copied from disk-usage.sh.
+
+# Return size in megabytes for partition containing $1.
+get_size()
+{
+    df -BM "$1" | grep --fixed-strings "$1" | awk '{print $3}' | tr -d M
+}
+
+# Return space remaining in megabytes for partition $1.
+get_remaining()
+{
+    df -BM "$1" | grep --fixed-strings "$1" | awk '{print $4}' | tr -d M
+}
+
+# Write time and size in megabytes of partition containing $1 to datafile $2.
+record_size()
+{
+    now=$(date +%s)
+    size=$(get_size "$1")
+    remaining=$(get_remaining "$1")
+    echo $now $size >> "$2"
+    echo $now $remaining >> "$2"-remaining
+}
+
+# Record space used and space remaining for partition containing
+record_size_for()
+{
+    dir="$1"
+    series="$2"
+    if [ -d "$dir" ]; then
+	if [ $( ls "$dir" | wc -l ) -gt 0 ] ; then
+	    record_size "$dir" "$series"
+	fi
+    fi
+}
+
+i3_pid=$(pidof i3)
+SERIES_NAME=$HOME/data/hosts/$(hostname -s)/disk
+while true; do
+    ## When I3 exits, this script should quit as well.  I'm not sure
+    ## if I need this or not.  So watch for i3 exit and quit when
+    ## no longer needed.
+    if [ ! -e /proc/$i3_pid ]; then
+	exit 0
+    fi
+    if [ $RANDOM -lt 2000 ]; then
+	# < 2000 means about 1 in 16 times.  So with a five minute
+	# sleep, we'll record disk usage every 80 minutes or so.
+	record_size_for $HOME ${SERIES_NAME}-home
+	record_size_for /home2 ${SERIES_NAME}-images
+	record_size_for /images2 ${SERIES_NAME}-images-2
+	speedtest
+    fi
+    # Sleep five minutes plus from 0-16 seconds more to avoid any
+    # synchronisation issues.
+    sleep $(( 5 * 60 + $RANDOM / 2000 ))
+done

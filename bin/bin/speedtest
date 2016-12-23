@@ -4,7 +4,7 @@
 record_value()
 {
     now=$(date +%s)
-    echo $now "$1" >> "$HOME/data/speedtest-$2"
+    echo $now "$1" >> "$HOME/data/hosts/$(hostname -s)/speedtest-$2"
 }
 
 main()
@@ -17,9 +17,9 @@ main()
     upload=$(cat $outfile | awk '/Upload/ {print $2}')
 
     if [ "$Xping" != X ]; then
-	record_value $ping $(hostname)-ping
-	record_value $download $(hostname)-download
-	record_value $upload $(hostname)-upload
+	record_value $ping ping
+	record_value $download download
+	record_value $upload upload
     else
 	fail_log=/tmp/speedtest-failure-log
 	date >> $fail_log
