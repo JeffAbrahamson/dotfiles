@@ -36,3 +36,5 @@ xscreensaver.dpmsEnabled: True
 xscreensaver.dpmsStandby: 0:15:00
 xscreensaver.dpmsSuspend: 0:15:00
 xscreensaver.dpmsOff: 0:15:0
+
+! Xcursor*size: 96
