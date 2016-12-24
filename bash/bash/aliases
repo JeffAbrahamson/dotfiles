@@ -204,6 +204,8 @@ internet() {
 # This might better belong in the power manager after-sleep/suspend functions.
 wifi() { nmcli radio wifi on; }
 WIFI() { sudo /bin/systemctl restart network-manager.service; }
+# Learn about available connections.
+ls_wifi() { nmcli device wifi list; }
 
 cppdoc() { ff $HOME/work/c++-docs/cpp.html & }
 
