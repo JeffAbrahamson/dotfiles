@@ -7,8 +7,8 @@ export PATH=/usr/bin:/bin
 
 now=$(date +%s)
 logdate=$(date +%Y-%m-%d)
+log_dir="$HOME/data/hosts/$(hostname -s)"
 for host in $*; do
-    log_dir="$HOME/data"
     up_log="$log_dir/${host}-up"
     ping_log="$log_dir/${host}-ping"
 
