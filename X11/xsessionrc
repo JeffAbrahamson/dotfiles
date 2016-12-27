@@ -3,7 +3,7 @@ if [ "X$DESKTOP_SESSION" = Xi3 ]; then
     # calling notify-send when dunst is not running will also start
     # dunst.
     i3-gtd &
-    i3-env-stats
+    i3-env-stats &
     # Launch nm-applet with a slight delay so that the accessibility
     # bus is available.
     (sleep 2; nm-applet) &

@@ -3,6 +3,10 @@
 PATH=$HOME/bin:/usr/bin:/bin
 renice -n 19 $$
 
+log_status() {
+    echo $(date) "  " $* >> /tmp/i3-env-stats.log
+}
+
 # Functions to monitor disk usage.
 # This is a bit hard-coded.  It's also largely copied from disk-usage.sh.
 
@@ -49,13 +53,16 @@ while true; do
     if [ ! -e /proc/$i3_pid ]; then
 	exit 0
     fi
-    if [ $RANDOM -lt 2000 ]; then
-	# < 2000 means about 1 in 16 times.  So with a five minute
-	# sleep, we'll record disk usage every 80 minutes or so.
+    if [ $RANDOM -lt 3000 ]; then
+	# < 3000 means about 1 in 10 times.  So with a five minute
+	# sleep, we'll record disk usage every 50 minutes or so.
+	log_status recording
 	record_size_for $HOME ${SERIES_NAME}-home
 	record_size_for /home2 ${SERIES_NAME}-images
 	record_size_for /images2 ${SERIES_NAME}-images-2
 	speedtest
+    else
+	log_status skip recording
     fi
     # Sleep five minutes plus from 0-16 seconds more to avoid any
     # synchronisation issues.
