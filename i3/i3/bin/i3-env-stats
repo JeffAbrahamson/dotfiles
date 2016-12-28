@@ -48,10 +48,11 @@ i3_pid=$(pidof i3)
 SERIES_NAME=$HOME/data/hosts/$(hostname -s)/disk
 record_frequency_minutes=50
 time_delta=$(( $record_frequency_minutes * 60 ))
+first_recording_delay=600
 # First recording should not be immediate.  On session start, we may
 # not have a network connection.  In addition, it's annoying for
 # starting daemons immediately to monopolise resources.
-time_last=$(( $(date +%s) - $time_delta / 2 ))
+time_last=$(( $(date +%s) - $time_delta + $first_recording_delay ))
 while true; do
     ## When I3 exits, this script should quit as well.  I'm not sure
     ## if I need this or not.  So watch for i3 exit and quit when
