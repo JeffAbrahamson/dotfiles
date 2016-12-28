@@ -46,6 +46,12 @@ record_size_for()
 
 i3_pid=$(pidof i3)
 SERIES_NAME=$HOME/data/hosts/$(hostname -s)/disk
+record_frequency_minutes=50
+time_delta=$(( $record_frequency_minutes * 60 ))
+# First recording should not be immediate.  On session start, we may
+# not have a network connection.  In addition, it's annoying for
+# starting daemons immediately to monopolise resources.
+time_last=$(( $(date +%s) - $time_delta / 2 ))
 while true; do
     ## When I3 exits, this script should quit as well.  I'm not sure
     ## if I need this or not.  So watch for i3 exit and quit when
@@ -53,14 +59,14 @@ while true; do
     if [ ! -e /proc/$i3_pid ]; then
 	exit 0
     fi
-    if [ $RANDOM -lt 3000 ]; then
-	# < 3000 means about 1 in 10 times.  So with a five minute
-	# sleep, we'll record disk usage every 50 minutes or so.
+    time_now=$(date +%s)
+    if [ $(( $time_now - $time_last )) -gt $time_delta ]; then
 	log_status recording
 	record_size_for $HOME ${SERIES_NAME}-home
 	record_size_for /home2 ${SERIES_NAME}-images
-	record_size_for /images2 ${SERIES_NAME}-images-2
+	record_size_for /images-2 ${SERIES_NAME}-images-2
 	speedtest
+	time_last=$time_now
     else
 	log_status skip recording
     fi

@@ -11,7 +11,7 @@ main()
 {
     outfile=/tmp/speedtest_$$.out
     /bin/rm -f $outfile
-    $HOME/bin/speedtest_cli.py --simple > $outfile
+    $HOME/bin/speedtest.py --simple > $outfile
     ping=$(cat $outfile | awk '/Ping/ {print $2}')
     download=$(cat $outfile | awk /'Download/ {print $2}')
     upload=$(cat $outfile | awk '/Upload/ {print $2}')
