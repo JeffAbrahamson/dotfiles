@@ -180,3 +180,12 @@ pdftk
 xsel
 mariadb-client
 python-opencv
+libpqxx-dev
+libpqxx-dbg
+libpq-dev
+libpqxx-doc
+postgresql
+postgresql-doc
+postgresql-client
+global
+caca-utils
