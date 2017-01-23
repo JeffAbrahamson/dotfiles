@@ -24,6 +24,7 @@ main()
 	fail_log=/tmp/speedtest-failure-log
 	date >> $fail_log
 	cat $outfile >> $fail_log
+	record_value 1 failure
     fi
     /bin/rm -f $outfile
 }
