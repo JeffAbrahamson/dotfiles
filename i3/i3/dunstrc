@@ -1,6 +1,6 @@
 [global]
     # font = Terminus (TTF) 12
-    font = pango:DejaVu Sans Mono 18
+    font = pango:DejaVu Sans Mono {% fontsize %}
 
     allow_markup = yes
 
