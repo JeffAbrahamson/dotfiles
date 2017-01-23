@@ -27,6 +27,10 @@
 		      (local-set-key (kbd "C-M-q") 'clang-format-region)
 		      (google-set-c-style)
 		      (google-make-newline-indent)
+		      (gtags-mode 1)
+		      (local-set-key [mouse-2] 'mouse-yank-primary)
+		      (define-key gtags-mode-map [mouse-2] 'mouse-yank-primary)
+		      (define-key gtags-mode-map [control-mouse-2] 'gtags-find-tag-by-event)
 		      )))
 
 
@@ -48,6 +52,10 @@
 	     (setup-programmer-keys)
 	     (local-set-key (kbd "C-M-;") 'jma-dnc) ; A comment not to be committed.
 	     (local-set-key (kbd "C-;") 'jma-todo)  ; A TODO comment.
+	     (gtags-mode 1)
+	     (local-set-key [mouse-2] 'mouse-yank-primary)
+	     (define-key gtags-mode-map [mouse-2] 'mouse-yank-primary)
+	     (define-key gtags-mode-map [control-mouse-2] 'gtags-find-tag-by-event)
 	     )))
 
 ;; (setq emacs-lisp-mode-hook
