@@ -1,14 +1,22 @@
 #!/bin/bash
 
-# Record ping time to host.
-host="$1"
-
 export PATH=/usr/bin:/bin
 
+# For ease of analysis, we'll use the same time for all pings, even if
+# they vary by a second or two.  The log directory is the same for all
+# tests.
 now=$(date +%s)
-logdate=$(date +%Y-%m-%d)
 log_dir="$HOME/data/hosts/$(hostname -s)"
-for host in $*; do
+
+# Write time and value $1 to datafile $2-$3.
+record_value()
+{
+    echo $now "$1" >> "$log_dir/$2-$3"
+}
+
+# Record ping time to host.
+icmp_ping() {
+    host="$1"
     up_log="$log_dir/${host}-up"
     ping_log="$log_dir/${host}-ping"
 
@@ -17,10 +25,34 @@ for host in $*; do
 	# up
 	up=1
 	ping_time=$(echo $ping_ret | perl -pwe 's/^.*mdev = //; s|/.*$||;')
-	echo "$now $ping_time" >> $ping_log
+	record_value $ping_time $host "ping"
     else
 	# not up / not reachable
 	up=0
     fi
-    echo "$now $up" >> $up_log
-done
+    record_value $up "$host" "up"
+}
+
+
+http_ping() {
+    outfile=/tmp/up-monitor_http_ping_$$.out
+    host="$1"
+    hostname=$(echo $host | sed -e 's/^http://; s/^https://;' | tr -d '/')
+    up_log="$log_dir/${host}-up"
+    ping_log="$log_dir/${host}-ping"
+
+    curl --connect-timeout 1 --head --silent "$host" > $outfile
+    if [ 0 == $? ]; then
+	# status=$(grep
+	record_value 1 "$hostname" "http"
+    else
+	record_value 0 "$hostname" "http"
+    fi
+    /bin/rm -f $outfile
+}
+
+icmp_ping  8.8.8.8  8.8.4.4
+
+http_ping http://www.purple.com/
+http_ping https://www.jellybooks.com/
+http_ping https://www.google.com/

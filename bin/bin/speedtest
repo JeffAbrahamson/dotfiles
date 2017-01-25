@@ -12,18 +12,22 @@ main()
     outfile=/tmp/speedtest_$$.out
     /bin/rm -f $outfile
     $HOME/bin/speedtest.py --simple > $outfile
-    ping=$(cat $outfile | awk '/Ping/ {print $2}')
-    download=$(cat $outfile | awk /'Download/ {print $2}')
-    upload=$(cat $outfile | awk '/Upload/ {print $2}')
+    if [ "0" == "$?" ]; then
+	ping=$(cat $outfile | awk '/Ping/ {print $2}')
+	download=$(cat $outfile | awk /'Download/ {print $2}')
+	upload=$(cat $outfile | awk '/Upload/ {print $2}')
 
-    if [ "$Xping" != X ]; then
-	record_value $ping ping
-	record_value $download download
-	record_value $upload upload
+	if [ "$Xping" != X ]; then
+	    record_value $ping ping
+	    record_value $download download
+	    record_value $upload upload
+	else
+	    fail_log=/tmp/speedtest-failure-log
+	    date >> $fail_log
+	    cat $outfile >> $fail_log
+	    record_value 1 failure
+	fi
     else
-	fail_log=/tmp/speedtest-failure-log
-	date >> $fail_log
-	cat $outfile >> $fail_log
 	record_value 1 failure
     fi
     /bin/rm -f $outfile

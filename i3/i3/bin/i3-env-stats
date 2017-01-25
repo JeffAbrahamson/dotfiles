@@ -48,11 +48,10 @@ i3_pid=$(pidof i3)
 SERIES_NAME=$HOME/data/hosts/$(hostname -s)/disk
 record_frequency_minutes=50
 time_delta=$(( $record_frequency_minutes * 60 ))
-first_recording_delay=600
 # First recording should not be immediate.  On session start, we may
 # not have a network connection.  In addition, it's annoying for
 # starting daemons immediately to monopolise resources.
-time_last=$(( $(date +%s) - $time_delta + $first_recording_delay ))
+sleep 600
 while true; do
     ## When I3 exits, this script should quit as well.  I'm not sure
     ## if I need this or not.  So watch for i3 exit and quit when
@@ -60,18 +59,14 @@ while true; do
     if [ ! -e /proc/$i3_pid ]; then
 	exit 0
     fi
-    time_now=$(date +%s)
-    if [ $(( $time_now - $time_last )) -gt $time_delta ]; then
-	log_status recording
-	record_size_for $HOME ${SERIES_NAME}-home
-	record_size_for /home2 ${SERIES_NAME}-images
-	record_size_for /images-2 ${SERIES_NAME}-images-2
-	speedtest
-	time_last=$time_now
-    else
-	log_status skip recording
-    fi
-    # Sleep five minutes plus from 0-16 seconds more to avoid any
-    # synchronisation issues.
-    sleep $(( 5 * 60 + $RANDOM / 2000 ))
+    log_status recording
+    record_size_for $HOME ${SERIES_NAME}-home
+    record_size_for /home2 ${SERIES_NAME}-images
+    record_size_for /images-2 ${SERIES_NAME}-images-2
+    speedtest
+    up-monitor
+
+    # Sleep until next recording plus from 0-16 seconds more to avoid
+    # any synchronisation issues.
+    sleep $(( $record_frequency_minutes * 60 + $RANDOM / 2000 ))
 done
