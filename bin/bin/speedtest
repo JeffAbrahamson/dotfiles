@@ -16,11 +16,13 @@ main()
 	ping=$(cat $outfile | awk '/Ping/ {print $2}')
 	download=$(cat $outfile | awk /'Download/ {print $2}')
 	upload=$(cat $outfile | awk '/Upload/ {print $2}')
+	ssid=$(iwgetid -r || true)
 
 	if [ "$Xping" != X ]; then
 	    record_value $ping ping
 	    record_value $download download
 	    record_value $upload upload
+	    record_value $ssid ssid
 	else
 	    fail_log=/tmp/speedtest-failure-log
 	    date >> $fail_log
