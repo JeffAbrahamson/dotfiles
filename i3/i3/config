@@ -151,6 +151,9 @@ mode "focus" {
     # Enter fullscreen mode for the focused container.
     bindsym f  fullscreen; mode "default"
 
+    # Resize a window.
+    bindsym r  mode "resize"
+
     # back to normal: Enter or Escape
     bindsym Escape         mode "default"
     bindsym Enter          mode "default"
