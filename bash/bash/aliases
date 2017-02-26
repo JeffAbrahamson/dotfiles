@@ -185,7 +185,7 @@ data-notes() {
 todo() {
     # This assumes $1 is a number or doesn't exist.
     _tag==$(printf "=%.0s" $(seq 1 ${1:-1}))
-    grep $_tag $HOME/data/org/TODO | perl -pwe "s/$_tag$//;";
+    (cd $HOME/data/TODO/; grep $_tag *.txt | perl -pwe "s/$_tag$//;")
     unset _tag
 }
 
