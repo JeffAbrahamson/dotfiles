@@ -1,10 +1,15 @@
 #!/bin/bash
 
+# Analysis is more convenient if all times that we think of as the
+# same are the same.  So we avoid time skew by picking the script's
+# start time rather than several times during its very short run.
+now=$(date +%s)
+host_shortname=$(hostname -s)
+
 # Write time and value $1 to datafile $2.
 record_value()
 {
-    now=$(date +%s)
-    echo $now "$1" >> "$HOME/data/hosts/$(hostname -s)/speedtest-$2"
+    echo $now "$1" >> "$HOME/data/hosts/$host_shortname/speedtest-$2"
 }
 
 main()
@@ -22,7 +27,7 @@ main()
 	    record_value $ping ping
 	    record_value $download download
 	    record_value $upload upload
-	    record_value $ssid ssid
+	    record_value "$ssid" ssid
 	else
 	    fail_log=/tmp/speedtest-failure-log
 	    date >> $fail_log
