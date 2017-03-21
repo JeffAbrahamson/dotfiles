@@ -189,3 +189,4 @@ postgresql-doc
 postgresql-client
 global
 caca-utils
+elpa-markdown-mode
