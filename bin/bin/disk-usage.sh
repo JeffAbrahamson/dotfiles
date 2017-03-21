@@ -28,3 +28,4 @@ record_size()
 record_size /d1 $HOME/data/d1
 record_size /d2 $HOME/data/d2
 record_size /d3 $HOME/data/d3
+record_size /d3 $HOME/data/d4
