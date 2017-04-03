@@ -21,7 +21,7 @@ main()
 	ping=$(cat $outfile | awk '/Ping/ {print $2}')
 	download=$(cat $outfile | awk /'Download/ {print $2}')
 	upload=$(cat $outfile | awk '/Upload/ {print $2}')
-	ssid=$(iwgetid -r || true)
+	ssid=$(/sbin/iwgetid -r 2>> /tmp/iwgetid.log || echo 'unknown-ssid')
 
 	if [ "$Xping" != X ]; then
 	    record_value $ping ping
