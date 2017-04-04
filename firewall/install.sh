@@ -8,6 +8,9 @@ sudo ufw default deny incoming
 sudo ufw allow ssh/tcp
 sudo ufw limit ssh
 sudo ufw enable
+if [ "X$$HOSTNAME" = "Xsiegfried" ]; then
+    sudo ufw allow afpovertcp/tcp
+fi
 
 ## If we want to see the current iptables rules, we could call
 ## iptables-save.  Note that this doesn't actually persist the state.
