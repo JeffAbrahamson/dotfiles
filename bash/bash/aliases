@@ -362,4 +362,20 @@ alias evince="evince 2>/dev/null"
 ###########################################################################
 # UNA compta
 
-ebp() { grep -iE "$1" $HOME/work/UNA/comite-directeur/trésorier/bpe-compta-exports/EBP.EDI; }
+# Trouver compte par numéro.
+ebpc() {
+    grep -iE "^C;$1" $HOME/work/UNA/comite-directeur/trésorier/bpe-compta-exports/EBP.EDI | \
+	awk -F';' '{printf("%s | %-12s | %-50s | %s\n", $1, $2, $3, $4);}';
+}
+
+# Trouver compte par text libre.
+ebpct() {
+    grep -iE "^C;.*$1" $HOME/work/UNA/comite-directeur/trésorier/bpe-compta-exports/EBP.EDI | \
+	awk -F';' '{printf("%s | %-12s | %-50s | %s\n", $1, $2, $3, $4);}';
+}
+
+# Trouver écriture par texte libre.
+ebpe() {
+    grep -iE "^E;.*$1" $HOME/work/UNA/comite-directeur/trésorier/bpe-compta-exports/EBP.EDI | \
+	 awk -F';' '{printf("%s %-6s  %8s  %2s | %-25s | %-5s | %-40s | %s | %10.2f | %s | %s\n", $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11); }';
+}
