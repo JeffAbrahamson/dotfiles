@@ -359,3 +359,7 @@ redisp() {
 
 alias evince="evince 2>/dev/null"
 
+###########################################################################
+# UNA compta
+
+ebp() { grep -iE "$1" $HOME/work/UNA/comite-directeur/trésorier/bpe-compta-exports/EBP.EDI; }
