@@ -15,6 +15,7 @@
 
   ;;(set-default-font ("9x15"))
   (setq inhibit-startup-message t)
+  (setq use-gtags nil)
 
   (load-file (concat jma-elisp-base "useful.el"))
   (load-file (concat jma-elisp-base "mode-hooks.el"))

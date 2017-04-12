@@ -228,8 +228,10 @@ flag should be valid grep flags (typically '-i') or else the empty string."
 ;; Pull from PRIMARY selection.  This is the same as middle mouse
 ;; click, but gtags overrides click-2 in a way that I haven't quite
 ;; figured out how to fix.
-(defun paste-primary-selection ()
-  (interactive)
-  (insert
-   (x-get-selection 'PRIMARY)))
-(global-set-key (kbd "S-<insert>") 'paste-primary-selection)
+(if use-gtags
+    (defun paste-primary-selection ()
+      (interactive)
+      (insert
+       (x-get-selection 'PRIMARY)))
+  (global-set-key (kbd "S-<insert>") 'paste-primary-selection)
+  )
