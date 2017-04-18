@@ -377,5 +377,5 @@ ebpct() {
 # Trouver écriture par texte libre.
 ebpe() {
     grep -iE "^E;.*$1" $HOME/work/UNA/comite-directeur/trésorier/bpe-compta-exports/EBP.EDI | \
-	 awk -F';' '{printf("%s %-6s  %8s  %2s | %-25s | %-5s | %-40s | %s | %10.2f | %s | %s\n", $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11); }';
+	 awk -F';' '{printf("%s %-10s  %8s  %2s | %-25s | %-5s | %-45s | %s | %10.2f | %s | %s\n", $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11); }';
 }
