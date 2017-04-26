@@ -379,3 +379,38 @@ ebpe() {
     grep -iE "^E;.*$1" $HOME/work/UNA/comite-directeur/trésorier/bpe-compta-exports/EBP.EDI | \
 	 awk -F';' '{printf("%s %-10s  %8s  %2s | %-25s | %-5s | %-45s | %s | %10.2f | %s | %s\n", $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11); }';
 }
+
+## The same functions but looking at historical data.
+
+oebpc ()
+{
+    grep --no-filename -iE "^C;$1" $HOME/work/UNA/comite-directeur/trésorier/bpe-compta-exports/previous_year_exports/EBP*.EDI | \
+    awk -F';' '{printf("%s | %-12s | %-50s | %s\n", $1, $2, $3, $4);}' | sort -u
+}
+
+oebpct ()
+{
+    grep --no-filename -iE "^C.*$1" $HOME/work/UNA/comite-directeur/trésorier/bpe-compta-exports/previous_year_exports/EBP*.EDI | \
+    awk -F';' '{printf("%s | %-12s | %-50s | %s\n", $1, $2, $3, $4);}' | sort -u
+}
+
+oebpe ()
+{
+    grep --no-filename -iE "^E;.*$1" $HOME/work/UNA/comite-directeur/trésorier/bpe-compta-exports/previous_year_exports/EBP*.EDI | \
+    awk -F';' '{printf("%s %-10s  %8s  %2s | %-25s | %-5s | %-42s | %s | %10.2f | %s | %s\n", $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11); }'
+}
+
+# Some reporting examples.
+
+ebp_exemple_moteur()
+{
+    grep --color=auto --no-filename -iE "^E;" $HOME/work/UNA/comite-directeur/trésorier/bpe-compta-exports/previous_year_exports/EBP*.EDI | \
+	awk -F';' 'index($2, "401") != 0 && (index($7, "moteur") != 0 || index($7, "Yamaha") != 0) && $8 == "C" \
+            {printf("%-10s | %04d-%02d-%02d | %-40s | %10.2f € |\n",
+              $2, substr($3, 5, 4), substr($3, 3, 2), substr($3, 1, 2), $7, $9);
+             years[substr($3, 5, 4)] += $9; 
+            }
+            END {
+              for (y in years) printf("  %s: %10.2f €\n", y, years[y]);
+            }'
+}
