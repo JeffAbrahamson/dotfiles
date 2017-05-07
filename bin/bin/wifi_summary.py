@@ -9,6 +9,7 @@ import pandas as pd
 #import matplotlib
 #matplotlib.use('TkAgg') 
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 #import pyplot as plt
 import pylab
 
@@ -30,7 +31,13 @@ def get_data(ssid):
     df = df.join(df_ssid.set_index('timestamp'), how='inner')
     if ssid != '':
         df = df.loc[df.ssid == ssid]
-    plt.scatter(df.upload, df.download, s=20 * df.ping)
+    # The timestamp is now the index and not a column.  Oops.
+    time_min = df.index.min()
+    timespan = df.index.max() - time_min
+    color_min = 0
+    color_max = 256 - 64
+    df['color'] = (df.index - df.index.min()) / float(timespan) * color_max
+    plt.scatter(df.upload, df.download, s=20 * df.ping, c=df.color, cmap=cm.gray_r)
     plt.xlabel("Upload speed")
     plt.ylabel("Download speed")
     plt.title("{ssid} wifi performance (point size is ping time, larger is worse)".format(
