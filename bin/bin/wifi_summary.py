@@ -37,11 +37,13 @@ def get_data(ssid):
     color_min = 0
     color_max = 256 - 64
     df['color'] = (df.index - df.index.min()) / float(timespan) * color_max
-    plt.scatter(df.upload, df.download, s=20 * df.ping, c=df.color, cmap=cm.gray_r)
+    plt.scatter(df.upload, df.download, s=20 * df.ping, c=df.color, cmap=cm.gray, alpha=.2)
     plt.xlabel("Upload speed")
     plt.ylabel("Download speed")
     plt.title("{ssid} wifi performance (point size is ping time, larger is worse)".format(
         ssid=ssid))
+    plt.xlim(0, df.upload.max() * 1.1)
+    plt.ylim(0, df.download.max() * 1.1)
     #pylab.show()
     gc = plt.gcf()
     xdim = 16
