@@ -414,3 +414,11 @@ ebp_exemple_moteur()
               for (y in years) printf("  %s: %10.2f €\n", y, years[y]);
             }'
 }
+
+ebp-sum-account()
+{
+    grep --color=auto --no-filename -iE "^E;" $HOME/work/UNA/comite-directeur/trésorier/bpe-compta-exports/EBP.EDI | \
+	awk -F';' -v account=$1 '$2 == account { sums[$8] += $9; } \
+                                 END { printf("%-12s | débit=%10.2f | crédit=%10.2f\n", \
+                                       account, sums["D"], sums["C"]); }';
+}
