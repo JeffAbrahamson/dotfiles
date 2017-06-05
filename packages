@@ -190,3 +190,7 @@ postgresql-client
 global
 caca-utils
 elpa-markdown-mode
+hplip
+hplip-gui
+hpijs-ppds
+cups
