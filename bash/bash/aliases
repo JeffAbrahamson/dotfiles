@@ -375,9 +375,11 @@ ebpct() {
 }
 
 # Trouver écriture par texte libre.
+# Les champs 6 et 10 sont toujours vide pour nous.
+# Le champs 11 est le lettrage.  Je m'en fiche.
 ebpe() {
     grep -iE "^E;.*$1" $HOME/work/UNA/comite-directeur/trésorier/ebp-compta-exports/EBP.EDI | \
-	 awk -F';' '{printf("%s %-10s  %8s  %2s | %-25s | %-5s | %-45s | %s | %10.2f | %s | %s\n", $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11); }';
+	 awk -F';' '{printf("%s %-10s  %8s  %2s | %-25s | %-45s | %s | %10.2f\n", $1, $2, $3, $4, $5, $7, $8, $9); }';
 }
 
 ## The same functions but looking at historical data.
@@ -397,7 +399,7 @@ oebpct ()
 oebpe ()
 {
     grep --no-filename -iE "^E;.*$1" $HOME/work/UNA/comite-directeur/trésorier/ebp-compta-exports/previous_year_exports/EBP*.EDI | \
-    awk -F';' '{printf("%s %-10s  %8s  %2s | %-25s | %-5s | %-42s | %s | %10.2f | %s | %s\n", $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11); }'
+    awk -F';' '{printf("%s %-10s  %8s  %2s | %-25s | %-42s | %s | %10.2f\n", $1, $2, $3, $4, $5, $7, $8, $9); }'
 }
 
 # Some reporting examples.
