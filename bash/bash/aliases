@@ -382,6 +382,18 @@ ebpe() {
 	 awk -F';' '{printf("%s %-10s  %8s  %2s | %-25s | %-45s | %s | %10.2f\n", $1, $2, $3, $4, $5, $7, $8, $9); }';
 }
 
+
+ebpe2() {
+    grep -i "$1" $HOME/work/UNA/comite-directeur/trésorier/ebp-compta-exports/export.txt | \
+	 tr -d '"' | \
+	 awk -F';' '{printf("%8s  %-10s | %-20s | %-45s | %-45s | %10.2f | %s\n", $4, $5, $7, $9, $10, $13, $15); }';
+}
+ebpe2() {
+    grep -i "$1" $HOME/work/UNA/comite-directeur/trésorier/ebp-compta-exports/export.txt | \
+	 tr -d '"' | \
+	 awk -F';' '{printf("%8s  %-10s %10.2f  %s | %-20s | %-45s | %-s\n", $4, $5, $13, $15, $7, $9, $10); }';
+}
+
 ## The same functions but looking at historical data.
 
 oebpc ()
