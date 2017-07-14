@@ -21,6 +21,7 @@ PATH=$PATH:$HOME/bin/:$HOME/bin-elf/
 export EDITOR=emacs
 #export EMACSLOADPATH="$HOME/elisp"
 #export BROWSER=/usr/bin/w3m
+export PRINTER="プリンタ"
 
 export LESS="rEMX"
 
@@ -28,19 +29,9 @@ export PYTHONPATH=$HOME/local/python
 
 export CS_PAPER_DIR=$HOME/mst/work/Research/papers/
 export TSD_DIR=$HOME/common/data/tsd/
-export BIICODE_HOME=/home/jeff/src/biicode
-export JELLYBOOKS_LOGS=$HOME/src/jellybooks/logs
 export JELLYBOOKS_PRODUCTION_BASE=$HOME/src/jellybooks/production
 export JELLYBOOKS_BASH_ALIASES=$HOME/.dotfiles/bash/jellybooks
 
-#export cflash=/cflash/dcim/100nikon
-#export cflash=/cflash/dcim/100canon
-#export cflash='/cflash/dcim/1*canon'
-#export cflash_ro='/cflash/dcim/1*canon'
-#export cflash='/media/CANON_DC/dcim/[0-9]*canon'
-#export cflash='/media/EOS_DIGITAL/dcim/[0-9]*canon'
-#export cflash='/cflash/dcim/[0-9]*canon'
-#export cflash='/media/EOS_DIGITAL/DCIM/[0-9]*CANON'
 export cflash='/media/jeff/EOS_DIGITAL/DCIM/[0-9]*CANON'
 
 
