@@ -13,6 +13,8 @@ emacs24-el
 libboost-dev
 libboost-doc
 libboost-all-dev
+libasio-dev
+libasio-doc
 openssh-server
 gnumeric
 geeqie
