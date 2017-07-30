@@ -31,6 +31,7 @@ $d2_total/$MB title "Capacity, JMA (/d2)" \\
     with lines linestyle 1 linecolor rgb '#bb00bb' linewidth 2, \\
 $d3_total/$MB title "Capacity, combined (/d3)" \\
     with lines linestyle 2 linecolor rgb '#bb00bb' linewidth 1
+
 pause mouse close
 HERE
 
