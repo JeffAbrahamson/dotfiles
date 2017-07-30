@@ -363,13 +363,13 @@ alias evince="evince 2>/dev/null"
 # UNA compta
 
 # Trouver compte par numéro.
-ebpc() {
+unacc() {
     grep -iE "^C;$1" $HOME/work/UNA/comite-directeur/trésorier/ebp-compta-exports/EBP.EDI | \
 	awk -F';' '{printf("%s | %-12s | %-50s | %s\n", $1, $2, $3, $4);}';
 }
 
 # Trouver compte par text libre.
-ebpct() {
+unacct() {
     grep -iE "^C;.*$1" $HOME/work/UNA/comite-directeur/trésorier/ebp-compta-exports/EBP.EDI | \
 	awk -F';' '{printf("%s | %-12s | %-50s | %s\n", $1, $2, $3, $4);}';
 }
@@ -377,18 +377,12 @@ ebpct() {
 # Trouver écriture par texte libre.
 # Les champs 6 et 10 sont toujours vide pour nous.
 # Le champs 11 est le lettrage.  Je m'en fiche.
-ebpe() {
+OLD_unace() {
     grep -iE "^E;.*$1" $HOME/work/UNA/comite-directeur/trésorier/ebp-compta-exports/EBP.EDI | \
 	 awk -F';' '{printf("%s %-10s  %8s  %2s | %-25s | %-45s | %s | %10.2f\n", $1, $2, $3, $4, $5, $7, $8, $9); }';
 }
 
-
-ebpe2() {
-    grep -i "$1" $HOME/work/UNA/comite-directeur/trésorier/ebp-compta-exports/export.txt | \
-	 tr -d '"' | \
-	 awk -F';' '{printf("%8s  %-10s | %-20s | %-45s | %-45s | %10.2f | %s\n", $4, $5, $7, $9, $10, $13, $15); }';
-}
-ebpe2() {
+unace() {
     grep -i "$1" $HOME/work/UNA/comite-directeur/trésorier/ebp-compta-exports/export.txt | \
 	 tr -d '"' | \
 	 awk -F';' '{printf("%8s  %-10s %10.2f  %s | %-20s | %-45s | %-s\n", $4, $5, $13, $15, $7, $9, $10); }';
@@ -396,43 +390,78 @@ ebpe2() {
 
 ## The same functions but looking at historical data.
 
-oebpc ()
+ounacc ()
 {
     grep --no-filename -iE "^C;$1" $HOME/work/UNA/comite-directeur/trésorier/ebp-compta-exports/previous_year_exports/EBP*.EDI | \
     awk -F';' '{printf("%s | %-12s | %-50s | %s\n", $1, $2, $3, $4);}' | sort -u
 }
 
-oebpct ()
+ounacct ()
 {
     grep --no-filename -iE "^C.*$1" $HOME/work/UNA/comite-directeur/trésorier/ebp-compta-exports/previous_year_exports/EBP*.EDI | \
     awk -F';' '{printf("%s | %-12s | %-50s | %s\n", $1, $2, $3, $4);}' | sort -u
 }
 
-oebpe ()
+OLD_ounace ()
 {
     grep --no-filename -iE "^E;.*$1" $HOME/work/UNA/comite-directeur/trésorier/ebp-compta-exports/previous_year_exports/EBP*.EDI | \
     awk -F';' '{printf("%s %-10s  %8s  %2s | %-25s | %-42s | %s | %10.2f\n", $1, $2, $3, $4, $5, $7, $8, $9); }'
 }
 
+ounace ()
+{
+    grep --no-filename -i "$1" $HOME/work/UNA/comite-directeur/trésorier/ebp-compta-exports/previous_year_exports/20*.txt | \
+	 tr -d '"' | \
+	 awk -F';' '{printf("%8s  %-10s  | %-15s | %-30s | %-30s | %10.2f D | %10.2f C\n", $3, $2, $8, $9, $10, $11, $12); }';
+}
+
 # Some reporting examples.
 
-ebp_exemple_moteur()
+# ebp_exemple_moteur()
+# {
+#     grep --color=auto --no-filename -iE "^E;" $HOME/work/UNA/comite-directeur/trésorier/ebp-compta-exports/previous_year_exports/EBP*.EDI | \
+# 	awk -F';' 'index($2, "401") != 0 && (index($7, "moteur") != 0 || index($7, "Yamaha") != 0) && $8 == "C" \
+#             {printf("%-10s | %04d-%02d-%02d | %-40s | %10.2f € |\n",
+#               $2, substr($3, 5, 4), substr($3, 3, 2), substr($3, 1, 2), $7, $9);
+#              years[substr($3, 5, 4)] += $9;
+#             }
+#             END {
+#               for (y in years) printf("  %s: %10.2f €\n", y, years[y]);
+#             }'
+# }
+
+# Example report showing detail and year-by-year sums of all
+# transactions on accounts beginning 401 involving either "moteur" or
+# "Yamaha".
+una-exemple-moteur()
 {
-    grep --color=auto --no-filename -iE "^E;" $HOME/work/UNA/comite-directeur/trésorier/ebp-compta-exports/previous_year_exports/EBP*.EDI | \
-	awk -F';' 'index($2, "401") != 0 && (index($7, "moteur") != 0 || index($7, "Yamaha") != 0) && $8 == "C" \
+    cat $HOME/work/UNA/comite-directeur/trésorier/ebp-compta-exports/previous_year_exports/20*.txt | \
+        sort -u | \
+        tr -d '"' | \
+	awk -F';' 'index($2, "401") != 0 && (index($10, "moteur") != 0 || index($10, "Yamaha") != 0) && $12 > 0 \
             {printf("%-10s | %04d-%02d-%02d | %-40s | %10.2f € |\n",
-              $2, substr($3, 5, 4), substr($3, 3, 2), substr($3, 1, 2), $7, $9);
-             years[substr($3, 5, 4)] += $9; 
+              $2, substr($3, 7, 4), substr($3, 4, 2), substr($3, 1, 2), $10, $12);
+             years[substr($3, 7, 4)] += $12;
             }
             END {
               for (y in years) printf("  %s: %10.2f €\n", y, years[y]);
             }'
 }
 
-ebp-sum-account()
+# ebp-sum-account()
+# {
+#     grep --color=auto --no-filename -iE "^E;" $HOME/work/UNA/comite-directeur/trésorier/ebp-compta-exports/EBP.EDI | \
+# 	awk -F';' -v account=$1 '$2 == account { sums[$8] += $9; } \
+#                                  END { printf("%-12s | débit=%10.2f | crédit=%10.2f\n", \
+#                                        account, sums["D"], sums["C"]); }';
+# }
+
+una-sum-account()
 {
-    grep --color=auto --no-filename -iE "^E;" $HOME/work/UNA/comite-directeur/trésorier/ebp-compta-exports/EBP.EDI | \
-	awk -F';' -v account=$1 '$2 == account { sums[$8] += $9; } \
-                                 END { printf("%-12s | débit=%10.2f | crédit=%10.2f\n", \
-                                       account, sums["D"], sums["C"]); }';
+    cat $HOME/work/UNA/comite-directeur/trésorier/ebp-compta-exports/export.txt | \
+        sort -u | \
+        tr -d '"' | \
+	awk -F';' -v account=$1 '$5 == account { sums[$15] += $13; } \
+                                 END { printf("%-12s | débit=%10.2f | crédit=%10.2f | solde=%10.2f\n", \
+                                       account, sums["D"], sums["C"], sums["D"] + sums["C"]); }';
 }
