@@ -217,12 +217,11 @@ tea() { tsd tea $(date +%H%M); tsd tea; }
 
 # rpass() { head -c $((500 + $RANDOM)) < /dev/urandom | sha1sum; }
 rpass() { head -c $((40 + $RANDOM / 2000)) < /dev/urandom | base64; }
-voyages() { gnumeric $HOME/work/finance/France/impots/$(date '+%Y')/voyages.gnumeric & }
-cheque() { gnumeric $HOME/data/chequier.gnumeric & }
-house() { gnumeric $HOME/common/work/financial/real_estate/Nantes/Metzinger/costs.gnumeric & }
-secu() { gnumeric $HOME/data/secu.gnumeric & }
-food() { gnumeric $HOME/work/finance/jeff-stephane/food-spending.ods & }
-trader() { gnumeric $HOME/work/finance/UK-taxes/2016-2017/sole-trader/sole-trader-2016-2017.gnumeric & }
+voyages() { libreoffice $HOME/work/finance/France/impots/$(date '+%Y')/voyages.ods & }
+cheque() { libreoffice $HOME/data/chequier.ods & }
+secu() { libreoffice $HOME/data/secu.ods & }
+food() { libreoffice $HOME/work/finance/jeff-stephane/food-spending.ods & }
+trader() { libreoffice $HOME/work/finance/UK-taxes/2016-2017/sole-trader/sole-trader-2016-2017.ods & }
 term() { terminator -b -m & }
 recipes() { case "X$HOSTNAME" in
     Xsiegfried|Xbirdsong) file=$HOME/src/jma/recipes/pdf/recipes-nexus9.pdf;;
