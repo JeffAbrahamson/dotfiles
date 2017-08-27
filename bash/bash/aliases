@@ -361,57 +361,41 @@ alias evince="evince 2>/dev/null"
 ###########################################################################
 # UNA compta
 
+# Probably these should go through python (pandas) just so that I can
+# canonicalise the date format between EBP versions.  I would do that
+# in the preprocess.sh scripts in
+# $HOME/work/UNA/comite-directeur/trésorier/ebp-compta-exports/
+
 # Trouver compte par numéro.
 unacc() {
-    grep -iE "^C;$1" $HOME/work/UNA/comite-directeur/trésorier/ebp-compta-exports/EBP.EDI | \
-	awk -F';' '{printf("%s | %-12s | %-50s | %s\n", $1, $2, $3, $4);}';
-}
-
-# Trouver compte par text libre.
-unacct() {
-    grep -iE "^C;.*$1" $HOME/work/UNA/comite-directeur/trésorier/ebp-compta-exports/EBP.EDI | \
-	awk -F';' '{printf("%s | %-12s | %-50s | %s\n", $1, $2, $3, $4);}';
-}
-
-# Trouver écriture par texte libre.
-# Les champs 6 et 10 sont toujours vide pour nous.
-# Le champs 11 est le lettrage.  Je m'en fiche.
-OLD_unace() {
-    grep -iE "^E;.*$1" $HOME/work/UNA/comite-directeur/trésorier/ebp-compta-exports/EBP.EDI | \
-	 awk -F';' '{printf("%s %-10s  %8s  %2s | %-25s | %-45s | %s | %10.2f\n", $1, $2, $3, $4, $5, $7, $8, $9); }';
+     grep -i "$1" "$HOME/work/UNA/comite-directeur/trésorier/ebp-compta-exports/EBP.EDI-accounts";
 }
 
 unace() {
-    grep -i "$1" $HOME/work/UNA/comite-directeur/trésorier/ebp-compta-exports/export.txt | \
-	 tr -d '"' | \
-	 awk -F';' '{printf("%8s  %-10s %10.2f  %s | %-20s | %-45s | %-s\n", $4, $5, $13, $15, $7, $9, $10); }';
+    grep -i "$1" "$HOME/work/UNA/comite-directeur/trésorier/ebp-compta-exports/export.txt-entries";
 }
 
-## The same functions but looking at historical data.
+## The same functions but looking at historical data as well as current.
 
 ounacc ()
 {
-    grep --no-filename -iE "^C;$1" $HOME/work/UNA/comite-directeur/trésorier/ebp-compta-exports/previous_year_exports/EBP*.EDI | \
-    awk -F';' '{printf("%s | %-12s | %-50s | %s\n", $1, $2, $3, $4);}' | sort -u
-}
-
-ounacct ()
-{
-    grep --no-filename -iE "^C.*$1" $HOME/work/UNA/comite-directeur/trésorier/ebp-compta-exports/previous_year_exports/EBP*.EDI | \
-    awk -F';' '{printf("%s | %-12s | %-50s | %s\n", $1, $2, $3, $4);}' | sort -u
-}
-
-OLD_ounace ()
-{
-    grep --no-filename -iE "^E;.*$1" $HOME/work/UNA/comite-directeur/trésorier/ebp-compta-exports/previous_year_exports/EBP*.EDI | \
-    awk -F';' '{printf("%s %-10s  %8s  %2s | %-25s | %-42s | %s | %10.2f\n", $1, $2, $3, $4, $5, $7, $8, $9); }'
+    (
+	cd $HOME/work/UNA/comite-directeur/trésorier/ebp-compta-exports/;
+	grep --no-filename -i "$1" \
+             previous_year_exports/EBP*.EDI-accounts \
+             EBP.EDI-accounts | \
+	    sort -u
+    )
 }
 
 ounace ()
 {
-    grep --no-filename -i "$1" $HOME/work/UNA/comite-directeur/trésorier/ebp-compta-exports/previous_year_exports/20*.txt | \
-	 tr -d '"' | \
-	 awk -F';' '{printf("%8s  %-10s  | %-15s | %-30s | %-30s | %10.2f D | %10.2f C\n", $3, $2, $8, $9, $10, $11, $12); }';
+    (
+	cd $HOME/work/UNA/comite-directeur/trésorier/ebp-compta-exports/;
+	grep --no-filename -i "$1" \
+	     previous_year_exports/20*.txt-entries \
+	     export.txt-entries;
+    )
 }
 
 # Some reporting examples.
