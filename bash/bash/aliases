@@ -368,11 +368,15 @@ alias evince="evince 2>/dev/null"
 
 # Trouver compte par numéro.
 unacc() {
-     grep -i "$1" "$HOME/work/UNA/comite-directeur/trésorier/ebp-compta-exports/EBP.EDI-accounts";
+    una_base="$HOME/work/UNA/comite-directeur/trésorier/"
+    grep -i "$1" "$una_base/ebp-compta-exports/EBP.EDI-accounts" | \
+	sort;
 }
 
 unace() {
-    grep -i "$1" "$HOME/work/UNA/comite-directeur/trésorier/ebp-compta-exports/export.txt-entries";
+    una_base="$HOME/work/UNA/comite-directeur/trésorier/"
+    grep -i "$1" "$una_base/ebp-compta-exports/export.txt-entries" | \
+	sort;
 }
 
 ## The same functions but looking at historical data as well as current.
@@ -380,7 +384,8 @@ unace() {
 ounacc ()
 {
     (
-	cd $HOME/work/UNA/comite-directeur/trésorier/ebp-compta-exports/;
+	una_base="$HOME/work/UNA/comite-directeur/trésorier/"
+	cd $una_base/ebp-compta-exports/;
 	grep --no-filename -i "$1" \
              previous_year_exports/EBP*.EDI-accounts \
              EBP.EDI-accounts | \
@@ -394,7 +399,8 @@ ounace ()
 	cd $HOME/work/UNA/comite-directeur/trésorier/ebp-compta-exports/;
 	grep --no-filename -i "$1" \
 	     previous_year_exports/20*.txt-entries \
-	     export.txt-entries;
+	     export.txt-entries | \
+	    sort;
     )
 }
 
