@@ -14,14 +14,14 @@ sync-to-here() {
     fi
 }
 
-sync-backup640() { sync-to-here /media/jeff/Backup640; }
-sync-red640() { sync-to-here /media/jeff/Red-640; }
-sync-portable-640() { sync-to-here /media/jeff/Portable640; }
-sync-Black750() { sync-to-here /media/jeff/Black750; }
-sync-Black-1500() { sync-to-here /media/jeff/Black-1500; }
+# sync-backup640() { sync-to-here /media/jeff/Backup640; }
+# sync-red640() { sync-to-here /media/jeff/Red-640; }
+# sync-portable-640() { sync-to-here /media/jeff/Portable640; }
+# sync-Black750() { sync-to-here /media/jeff/Black750; }
+# sync-Black-1500() { sync-to-here /media/jeff/Black-1500; }
 
-sync-jeff-1TB-1() { sync-to-here /media/jeff/jeff-1TB-1/; }
-sync-jeff-1TB-2() { sync-to-here /media/jeff/jeff-1TB-2/; }
+# sync-jeff-1TB-1() { sync-to-here /media/jeff/jeff-1TB-1/; }
+# sync-jeff-1TB-2() { sync-to-here /media/jeff/jeff-1TB-2/; }
 
 # These exclusions are junk/cache, things that I already synchronize
 # with unison (cf. $HOME/.unison/{common,*prf}) or otherwise cache
@@ -89,3 +89,29 @@ sync-images-23() {
 	echo Missing volume.
     fi
 }
+
+sync-starshine() {
+    if [ ! -d /backup/starshine ]; then echo "Wrong host or /backup/ not mounted?"; return; fi
+    if [ ! -d /backup/starshine-images ]; then echo "Wrong host or /backup/ not mounted?"; return; fi
+    if [ ! -d /home2/jeff ]; then echo "Images not mounted, aborting."; return; fi
+    if [ ! -r /home/jeff/images/.mounted ]; then echo "Images not mounted, aborting."; return; fi
+    echo "Syncing home..."
+    time rsync -a --delete --exclude dconf --exclude .dbus --exclude .gvfs $HOME/ /backup/starshine/
+    echo "Syncing images..."
+    time rsync -a --delete images/ /backup/starshine-images/
+}
+
+sync-birdsong() {
+    if [ ! -d /backup/birdsong ]; then echo "Wrong host or /backup/ not mounted?"; return; fi
+    if [ ! -d /backup/birdsong-images ]; then echo "Wrong host or /backup/ not mounted?"; return; fi
+    if [ ! -d /backup/birdsong-images-2 ]; then echo "Wrong host or /backup/ not mounted?"; return; fi
+    if [ ! -d /home2/jeff ]; then echo "Images not mounted, aborting."; return; fi
+    if [ ! -d /images-2/jeff ]; then echo "Images not mounted, aborting."; return; fi
+    echo "Syncing home..."
+    time rsync -a --delete $HOME/ /backup/birdsong/
+    echo "Syncing images..."
+    time rsync -a --delete /home2/jeff/ /backup/birdsong-images/
+    echo "Sncing images-2..."
+    time rsync -a --delete /images-2/jeff/ /backup/birdsong-images-2/
+}
+
