@@ -225,13 +225,13 @@ workspace_layout tabbed
 # workspace 10 output DisplayPort-0
 
 # This works on birdsong:
-workspace 1 output HDMI3
-workspace 2 output HDMI1
-workspace 3 output HDMI3
-workspace 4 output HDMI1
-workspace 5 output HDMI3
-workspace 6 output HDMI1
-workspace 7 output HDMI3
-workspace 8 output HDMI1
-workspace 9 output HDMI3
-workspace 10 output HDMI1
+workspace 1 output HDMI-3
+workspace 2 output HDMI-1
+workspace 3 output HDMI-3
+workspace 4 output HDMI-1
+workspace 5 output HDMI-3
+workspace 6 output HDMI-1
+workspace 7 output HDMI-3
+workspace 8 output HDMI-1
+workspace 9 output HDMI-3
+workspace 10 output HDMI-1
