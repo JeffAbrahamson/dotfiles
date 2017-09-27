@@ -108,10 +108,9 @@ sync-birdsong() {
     if [ ! -d /home2/jeff ]; then echo "Images not mounted, aborting."; return; fi
     if [ ! -d /images-2/jeff ]; then echo "Images not mounted, aborting."; return; fi
     echo "Syncing home..."
-    time rsync -a --delete $HOME/ /backup/birdsong/
+    time rsync -a --delete --exclude .cache/dconf $HOME/ /backup/birdsong/
     echo "Syncing images..."
     time rsync -a --delete /home2/jeff/ /backup/birdsong-images/
     echo "Sncing images-2..."
     time rsync -a --delete /images-2/jeff/ /backup/birdsong-images-2/
 }
-
