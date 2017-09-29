@@ -1,0 +1,41 @@
+#!/bin/bash
+
+# Mount all LUKS partitions that I know about that are connected to
+# this machine but not already mounted.
+
+luks_mount() {
+    # This is the UUID we can see before luksOpen.
+    uuid="$1"
+    # Where to mount it.  Should be at the root of the root file
+    # system with no trailing slash.  That is, /foo, not /foo/,
+    # /foo/bar or simply foo.
+    mount_point="$2"
+    if [ ! -d $mount_point ]; then
+	echo "$mount_point does not exist or is not a directory."
+	return
+    fi
+    root_id=$(stat -c '%D %m' /)
+    mount_id=$(stat -c '%D %m' "$mount_point")
+    if [ "$root_id" != "$mount_id" ]; then
+	echo "$mount_point is already mounted (is not part of the root filesystem)."
+	echo "$root_id != $mount_id"
+	return
+    fi
+    if [ ! -e /dev/disk/by-uuid/$uuid ]; then
+	echo "LUKS volume for $mount_point not available."
+	return
+    fi
+    drive_letter=$(stat /dev/disk/by-uuid/$uuid -c '%N' | \
+		       sed -e 's/^.*sd//;' | \
+		       tr -d "'")
+    device=/dev/sd$drive_letter;
+    mapping=$(echo $mount_point | tr -d /);
+    echo "Mounting $mount_point:"
+    sudo cryptsetup open --type luks $device $mapping;
+    sudo mount /dev/mapper/$mapping /$mapping;
+}
+
+luks_mount 4d4bc0a0-e67a-4f9b-8c70-05cfdbf9282c /jma-4t
+luks_mount 4b824f8c-94d4-4655-8e56-67ead167ed4c /jma-3t
+luks_mount 5d6777f0-f475-451e-bad8-3cdf6e80f7c5 /sb-4t
+luks_mount 4ea3852f-8cdd-4ed9-898e-d86a851e0a9c /sb-3t
