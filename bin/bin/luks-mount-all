@@ -3,6 +3,8 @@
 # Mount all LUKS partitions that I know about that are connected to
 # this machine but not already mounted.
 
+logfile=/tmp/luks-mount-all.log
+
 luks_mount() {
     # This is the UUID we can see before luksOpen.
     uuid="$1"
@@ -11,18 +13,25 @@ luks_mount() {
     # /foo/bar or simply foo.
     mount_point="$2"
     if [ ! -d $mount_point ]; then
-	echo "$mount_point does not exist or is not a directory."
+	echo "$mount_point does not exist or is not a directory." >> $logfile
 	return
     fi
     root_id=$(stat -c '%D %m' /)
     mount_id=$(stat -c '%D %m' "$mount_point")
     if [ "$root_id" != "$mount_id" ]; then
-	echo "$mount_point is already mounted (is not part of the root filesystem)."
-	echo "$root_id != $mount_id"
+	echo "$mount_point is already mounted (is not part of the root filesystem)." >> $logfile
+	echo "$root_id != $mount_id" >> $logfile
+	echo "$mount_point is already mounted." | tee -a $logfile
 	return
     fi
     if [ ! -e /dev/disk/by-uuid/$uuid ]; then
-	echo "LUKS volume for $mount_point not available."
+	echo "LUKS volume for $mount_point not available." >> $logfile
+	return
+    fi
+    if [ -f $mount_point/.mounted ]; then
+	# This case (already mounted) should be caught by the stat
+	# check above.  I don't expect this case to be possible.
+	echo "$mount_point is already mounted." | tee -a $logfile
 	return
     fi
     drive_letter=$(stat /dev/disk/by-uuid/$uuid -c '%N' | \
@@ -30,12 +39,21 @@ luks_mount() {
 		       tr -d "'")
     device=/dev/sd$drive_letter;
     mapping=$(echo $mount_point | tr -d /);
-    echo "Mounting $mount_point:"
+    echo "Mounting $mount_point." | tee -a $logfile
     sudo cryptsetup open --type luks $device $mapping;
     sudo mount /dev/mapper/$mapping /$mapping;
 }
 
+echo >> $logfile
+echo "$(date)    luks-mount-all" >> $logfile
+
+# siegfried / fileserver
 luks_mount 4d4bc0a0-e67a-4f9b-8c70-05cfdbf9282c /jma-4t
 luks_mount 4b824f8c-94d4-4655-8e56-67ead167ed4c /jma-3t
 luks_mount 5d6777f0-f475-451e-bad8-3cdf6e80f7c5 /sb-4t
 luks_mount 4ea3852f-8cdd-4ed9-898e-d86a851e0a9c /sb-3t
+
+# birdsong
+luks_mount f2d2634c-8d85-40d5-a770-e940807a548f /home2
+luks_mount 1adff2f1-b5e0-4782-900c-e65c77e7bf6b /images-2
+luks_mount cb67c4e8-9c87-41b1-93ad-3704be60f7f0 /birdsong-backup
