@@ -56,6 +56,7 @@ luks_mount 4ea3852f-8cdd-4ed9-898e-d86a851e0a9c /sb-3t
 # birdsong
 luks_mount f2d2634c-8d85-40d5-a770-e940807a548f /home2
 luks_mount 1adff2f1-b5e0-4782-900c-e65c77e7bf6b /images-2
+luks_mount 4e9f9771-df39-4cdd-943e-a69aafd83a4e /images-3
 luks_mount cb67c4e8-9c87-41b1-93ad-3704be60f7f0 /birdsong-backup
 
 # starshine
