@@ -317,6 +317,13 @@ gfd() { (cd "$HOME/data/hosts"; grep --no-filename "$1" */files.txt | \
 	     xargs dirname | \
 	     sort -u --ignore-case)  }
 
+u2ps() {
+    tmpfile=$(mktemp)
+    cat > $tmpfile
+    cedilla $tmpfile | lpr
+    rm $tmpfile
+}
+
 ###########################################################################
 # python
 
