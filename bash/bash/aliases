@@ -214,6 +214,7 @@ cppdoc() { ff $HOME/work/c++-docs/cpp.html & }
 srd-here() { srd "$*" -g "$(hostname)"; }
 tsd-last() { tsd $1 $(tsd $1 | tail -1 | awk '{print $2}'); }
 tea() { tsd tea $(date +%H%M); tsd tea; }
+tsd-stats() { cat tsd/$1 | awk '{sum += $2; sumsq += $2^2;} END {printf("µ = %.1f   σ = %.1f   n = %d\n", sum/NR, sqrt(sumsq/NR-(sum/NR)^2), NR);}'; }
 
 # rpass() { head -c $((500 + $RANDOM)) < /dev/urandom | sha1sum; }
 rpass() { head -c $((40 + $RANDOM / 2000)) < /dev/urandom | base64; }
