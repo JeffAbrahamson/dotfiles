@@ -102,15 +102,25 @@ sync-starshine() {
 }
 
 sync-birdsong() {
-    if [ ! -d /backup/birdsong ]; then echo "Wrong host or /backup/ not mounted?"; return; fi
-    if [ ! -d /backup/birdsong-images ]; then echo "Wrong host or /backup/ not mounted?"; return; fi
-    if [ ! -d /backup/birdsong-images-2 ]; then echo "Wrong host or /backup/ not mounted?"; return; fi
-    if [ ! -d /home2/jeff ]; then echo "Images not mounted, aborting."; return; fi
-    if [ ! -d /images-2/jeff ]; then echo "Images not mounted, aborting."; return; fi
+    if [ ! -d /birdsong-backup/birdsong ]; then
+	echo "Wrong host or /birdsong-backup/ not mounted?"; return;
+    fi
+    if [ ! -d /birdsong-backup/birdsong-images ]; then
+	echo "Wrong host or /backup/ not mounted?"; return;
+    fi
+    #if [ ! -d /birdsong-backup/birdsong-images-2 ]; then
+    #    echo "Wrong host or /backup/ not mounted?"; return;
+    #fi
+    if [ ! -d /home2/jeff ]; then
+	echo "Images not mounted, aborting."; return;
+    fi
+    #if [ ! -d /images-2/jeff ]; then
+    #    echo "Images not mounted, aborting."; return;
+    #fi
     echo "Syncing home..."
-    time rsync -a --delete --exclude .cache/dconf $HOME/ /backup/birdsong/
+    time rsync -a --delete --exclude .cache/dconf $HOME/ /birdsong-backup/birdsong/
     echo "Syncing images..."
-    time rsync -a --delete /home2/jeff/ /backup/birdsong-images/
-    echo "Sncing images-2..."
-    time rsync -a --delete /images-2/jeff/ /backup/birdsong-images-2/
+    time rsync -a --delete /home2/jeff/ /birdsong-backup/birdsong-images/
+    #echo "Syncing images-2..."
+    #time rsync -a --delete /images-2/jeff/ /birdsong-backup/birdsong-images-2/
 }
