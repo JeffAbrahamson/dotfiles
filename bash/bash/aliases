@@ -480,3 +480,23 @@ una-sum-account()
                                  END { printf("%-12s | débit=%10.2f | crédit=%10.2f | solde=%10.2f\n", \
                                        account, sums["D"], sums["C"], sums["D"] + sums["C"]); }';
 }
+
+una-balances()
+{
+    # $5 == account.
+    # $13 == amount.
+    # $15 == C or D.
+    cat $HOME/work/UNA/comite-directeur/trésorier/ebp-compta-exports/export.txt | \
+        sort -u | \
+        tr -d '"' | \
+	awk -F';' '
+	{
+            sums[$5][$15] += $13;
+        }
+	END { for (account in sums) {
+            printf("%-12s | débit=%10.2f | crédit=%10.2f | solde=%10.2f\n",
+                   account, sums[account]["D"], sums[account]["C"],
+		   sums[account]["D"] + sums[account]["C"]);
+            }
+        }' | sort -n;
+}
