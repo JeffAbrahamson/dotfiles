@@ -202,9 +202,13 @@ todo() {
 # version, which corresponds to a prefix tag on the relevant lines of
 # the schedule file.
 sched() {
-    _schedule=${1:-es}
-    (cd $HOME/data/; grep -E "^$_schedule" schedule | sed -e "s/^$_schedule//;")
-    unset _schedule
+    if [ -z "$1" ]; then
+	(cd $HOME/data/; cat schedule | awk '{print $1}' | sort -u | sed /^$/d; )
+    else
+	_schedule=${1:-es}
+	(cd $HOME/data/; grep -E "^$_schedule" schedule | sed -e "s/^$_schedule//;")
+	unset _schedule
+    fi
 }
 
 internet() {
