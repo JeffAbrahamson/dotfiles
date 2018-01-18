@@ -1,5 +1,11 @@
 #!/bin/bash
 
+if [ "X$HOSTNAME" != Xbirdsong -a "X$HOSTNAME" != Xstarshine ]; then
+    echo "Not setting ufw firewall rules on this host."
+    return
+fi
+
+
 . ../script/lib.sh
 
 echo "Setting up firewall, will require sudo."
