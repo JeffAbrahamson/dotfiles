@@ -504,3 +504,22 @@ una-balances()
             }
         }' | sort -n;
 }
+
+# To help with helloasso.
+ha-stats4() {
+    csv_file="$1"
+    # Field $4 is the amount for billetrie.
+    # For gifts it is $6.
+    # So fix that here.
+    tail +2 "$csv_file" | awk -F';' '{sum += $4}
+                                     END {printf("%.2f € collected, %d contributers\n",
+                                                 sum, NR); }'
+}
+
+ha-stats6() {
+    csv_file="$1"
+    # Duplicate...
+    tail +2 "$csv_file" | awk -F';' '{sum += $6}
+                                     END {printf("%.2f € collected, %d contributers\n",
+                                                 sum, NR); }'
+}
