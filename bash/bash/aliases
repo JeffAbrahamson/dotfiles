@@ -44,17 +44,17 @@ fi
 
 apt-refresh() {
     sudo apt-get update && \
-	sudo apt-get upgrade -y && \
-	sudo apt-get dist-upgrade -y && \
-	sudo apt-get autoremove -y;
+        sudo apt-get upgrade -y && \
+        sudo apt-get dist-upgrade -y && \
+        sudo apt-get autoremove -y;
 }
 
 minutes() {
     minute_=0;
     while true; do
-	echo -n "$minute_  ";
-	sleep 60;
-	minute_=$((minute_ + 1));
+        echo -n "$minute_  ";
+        sleep 60;
+        minute_=$((minute_ + 1));
     done;
 }
 
@@ -82,12 +82,12 @@ signed-me() { gpg --list-sigs |egrep '(^pub|jeff@purple.com)'| perl -wne 'my $la
 view-urls-by-file() {
     first_window=true;
     for p in $(egrep -v '^#' $1); do 
-	if( $first_window ); then
-	    $www_browser --new-window "$p"; 
-	    first_window=false;
-	else
-	    $www_browser "$p"; 
-	fi
+        if( $first_window ); then
+            $www_browser --new-window "$p"; 
+            first_window=false;
+        else
+            $www_browser "$p"; 
+        fi
     done;
     unset first_window
 }
@@ -111,11 +111,11 @@ afternoon() {
 
 gq-slideshow() {
     if [ $# -gt 0 ]; then
-	images=$*
+        images=$*
     elif [ -e laptop ]; then
-	images=laptop/*.jpg
+        images=laptop/*.jpg
     else
-	images=*.jpg
+        images=*.jpg
     fi
     geeqie $images --remote --slideshow-start --fullscreen-start --delay=1
 }
@@ -129,12 +129,12 @@ gq-make-laptop() {
 undup() { if [ $# != 2 ]; then echo Usage: undup dir1 dir2; return; fi
     dir1=$1; dir2=$2;
     for f in "$dir1"/*.jpg "$dir1"/*.JPG; do
-	b=$(basename "$f")
-	if ( cmp -s "$f" "$dir2/$b") ; then
-	    # Files are the same
-	    echo cmp "$f" "$dir2/$b"
-	    echo rm $f
-	fi
+        b=$(basename "$f")
+        if ( cmp -s "$f" "$dir2/$b") ; then
+            # Files are the same
+            echo cmp "$f" "$dir2/$b"
+            echo rm $f
+        fi
     done; }
 
 # Rename an image from facebook.  Just a shortcut for changing the
@@ -203,11 +203,11 @@ todo() {
 # the schedule file.
 sched() {
     if [ -z "$1" ]; then
-	(cd $HOME/data/; cat schedule | awk '{print $1}' | sort -u | sed /^$/d; )
+        (cd $HOME/data/; cat schedule | awk '{print $1}' | sort -u | sed /^$/d; )
     else
-	_schedule=${1:-es}
-	(cd $HOME/data/; grep -E "^$_schedule" schedule | sed -e "s/^$_schedule//;")
-	unset _schedule
+        _schedule=${1:-es}
+        (cd $HOME/data/; grep -E "^$_schedule" schedule | sed -e "s/^$_schedule//;")
+        unset _schedule
     fi
 }
 
@@ -257,9 +257,9 @@ pm() { ogg=$(/bin/ls *ogg */*ogg 2>/dev/null); mp3=$(/bin/ls *mp3 */*mp3 2>/dev/
 script() { SCRIPT_NAME="$1" /usr/bin/script "$@"; }
 fr() {
     if [ $# -gt 0 ]; then
-     	echo "$*" >> $HOME/work/notes/french-learning.txt;
+        echo "$*" >> $HOME/work/notes/french-learning.txt;
     else
-	more $HOME/work/notes/french-learning.txt;
+        more $HOME/work/notes/french-learning.txt;
     fi
 }
 note() { ec $HOME/data/notes/$1; }
@@ -291,11 +291,11 @@ gtdnow() { tail -1 $HOME/data/gtd/gtd_$(hostname); }
 ## History
 gtdlast() {
     _this_session=$(cd ~/data/gtd; ls -t $(hostname)__* | \
-			head -1 | \
-			sed -e "s/^$(hostname)__//");
+                        head -1 | \
+                        sed -e "s/^$(hostname)__//");
     echo This session began at $_this_session.
     _prev_session=$(cd ~/data/gtd; ls -t $(hostname)__* | \
-			head -2 | tail -1)
+                        head -2 | tail -1)
     echo "  Last event from previous session:"
     _prev_last_event=$(tail -1 $HOME/data/gtd/$_prev_session)
     echo $_prev_last_event
@@ -318,9 +318,9 @@ t2d() { date -d @$1 -R; }
 
 fs-mount() {
     if [ $(ls $HOME/fs | wc -l) -gt 1 ]; then
-	echo fs is already mounted.
+        echo fs is already mounted.
     else
-	(cd; sshfs jeff@fileserver:/d2/jeff fs)
+        (cd; sshfs jeff@fileserver:/d2/jeff fs)
     fi
 }
 fs-umount() { (cd; fusermount -u fs) }
@@ -335,10 +335,10 @@ serve-this() {
 }
 
 gf() { (cd "$HOME/data/hosts"; grep --no-filename "$1" */files.txt | \
-	    sort --ignore-case) }
+            sort --ignore-case) }
 gfd() { (cd "$HOME/data/hosts"; grep --no-filename "$1" */files.txt | \
-	     xargs dirname | \
-	     sort -u --ignore-case)  }
+             xargs dirname | \
+             sort -u --ignore-case)  }
 
 u2ps() {
     tmpfile=$(mktemp)
@@ -372,14 +372,14 @@ sndmute() { amixer -D pulse set Master toggle; }
 undisp() { if [ $DISPLAY ]; then DISPLAY_WAS="$DISPLAY"; unset DISPLAY; fi; }
 redisp() {
     if [ "X$DISPLAY" = X ]; then
-	DISPLAY=$DISPLAY_WAS xwininfo -root >/dev/null 2>/dev/null
-	if [ 0 = $? ]; then
-	    export DISPLAY="$DISPLAY_WAS";
-	else
-	    echo Previous DISPLAY $DISPLAY_WAS is no longer valid.
-	fi
+        DISPLAY=$DISPLAY_WAS xwininfo -root >/dev/null 2>/dev/null
+        if [ 0 = $? ]; then
+            export DISPLAY="$DISPLAY_WAS";
+        else
+            echo Previous DISPLAY $DISPLAY_WAS is no longer valid.
+        fi
     else
-	echo DISPLAY is already set.
+        echo DISPLAY is already set.
     fi;
 }
 
@@ -400,13 +400,13 @@ alias evince="evince 2>/dev/null"
 unacc() {
     una_base="$HOME/work/UNA/comite-directeur/trésorier/"
     grep -i "$1" "$una_base/ebp-compta-exports/EBP.EDI-accounts" | \
-	sort;
+        sort;
 }
 
 unace() {
     una_base="$HOME/work/UNA/comite-directeur/trésorier/"
     grep -i "$1" "$una_base/ebp-compta-exports/export.txt-entries" | \
-	sort;
+        sort;
 }
 
 ## The same functions but looking at historical data as well as current.
@@ -414,23 +414,23 @@ unace() {
 ounacc ()
 {
     (
-	una_base="$HOME/work/UNA/comite-directeur/trésorier/"
-	cd $una_base/ebp-compta-exports/;
-	grep --no-filename -i "$1" \
+        una_base="$HOME/work/UNA/comite-directeur/trésorier/"
+        cd $una_base/ebp-compta-exports/;
+        grep --no-filename -i "$1" \
              previous_year_exports/EBP*.EDI-accounts \
              EBP.EDI-accounts | \
-	    sort -u
+            sort -u
     )
 }
 
 ounace ()
 {
     (
-	cd $HOME/work/UNA/comite-directeur/trésorier/ebp-compta-exports/;
-	grep --no-filename -i "$1" \
-	     previous_year_exports/20*.txt-entries \
-	     export.txt-entries | \
-	    sort;
+        cd $HOME/work/UNA/comite-directeur/trésorier/ebp-compta-exports/;
+        grep --no-filename -i "$1" \
+             previous_year_exports/20*.txt-entries \
+             export.txt-entries | \
+            sort;
     )
 }
 
@@ -439,7 +439,7 @@ ounace ()
 # ebp_exemple_moteur()
 # {
 #     grep --color=auto --no-filename -iE "^E;" $HOME/work/UNA/comite-directeur/trésorier/ebp-compta-exports/previous_year_exports/EBP*.EDI | \
-# 	awk -F';' 'index($2, "401") != 0 && (index($7, "moteur") != 0 || index($7, "Yamaha") != 0) && $8 == "C" \
+#       awk -F';' 'index($2, "401") != 0 && (index($7, "moteur") != 0 || index($7, "Yamaha") != 0) && $8 == "C" \
 #             {printf("%-10s | %04d-%02d-%02d | %-40s | %10.2f € |\n",
 #               $2, substr($3, 5, 4), substr($3, 3, 2), substr($3, 1, 2), $7, $9);
 #              years[substr($3, 5, 4)] += $9;
@@ -457,7 +457,7 @@ una-exemple-moteur()
     cat $HOME/work/UNA/comite-directeur/trésorier/ebp-compta-exports/previous_year_exports/20*.txt | \
         sort -u | \
         tr -d '"' | \
-	awk -F';' 'index($2, "401") != 0 && (index($10, "moteur") != 0 || index($10, "Yamaha") != 0) && $12 > 0 \
+        awk -F';' 'index($2, "401") != 0 && (index($10, "moteur") != 0 || index($10, "Yamaha") != 0) && $12 > 0 \
             {printf("%-10s | %04d-%02d-%02d | %-40s | %10.2f € |\n",
               $2, substr($3, 7, 4), substr($3, 4, 2), substr($3, 1, 2), $10, $12);
              years[substr($3, 7, 4)] += $12;
@@ -470,7 +470,7 @@ una-exemple-moteur()
 # ebp-sum-account()
 # {
 #     grep --color=auto --no-filename -iE "^E;" $HOME/work/UNA/comite-directeur/trésorier/ebp-compta-exports/EBP.EDI | \
-# 	awk -F';' -v account=$1 '$2 == account { sums[$8] += $9; } \
+#       awk -F';' -v account=$1 '$2 == account { sums[$8] += $9; } \
 #                                  END { printf("%-12s | débit=%10.2f | crédit=%10.2f\n", \
 #                                        account, sums["D"], sums["C"]); }';
 # }
@@ -480,7 +480,7 @@ una-sum-account()
     cat $HOME/work/UNA/comite-directeur/trésorier/ebp-compta-exports/export.txt | \
         sort -u | \
         tr -d '"' | \
-	awk -F';' -v account=$1 '$5 == account { sums[$15] += $13; } \
+        awk -F';' -v account=$1 '$5 == account { sums[$15] += $13; } \
                                  END { printf("%-12s | débit=%10.2f | crédit=%10.2f | solde=%10.2f\n", \
                                        account, sums["D"], sums["C"], sums["D"] + sums["C"]); }';
 }
@@ -493,14 +493,14 @@ una-balances()
     cat $HOME/work/UNA/comite-directeur/trésorier/ebp-compta-exports/export.txt | \
         sort -u | \
         tr -d '"' | \
-	awk -F';' '
-	{
+        awk -F';' '
+        {
             sums[$5][$15] += $13;
         }
-	END { for (account in sums) {
+        END { for (account in sums) {
             printf("%-12s | débit=%10.2f | crédit=%10.2f | solde=%10.2f\n",
                    account, sums[account]["D"], sums[account]["C"],
-		   sums[account]["D"] + sums[account]["C"]);
+                   sums[account]["D"] + sums[account]["C"]);
             }
         }' | sort -n;
 }
@@ -522,4 +522,11 @@ ha-stats6() {
     tail +2 "$csv_file" | awk -F';' '{sum += $6}
                                      END {printf("%.2f € collected, %d contributers\n",
                                                  sum, NR); }'
+}
+
+ha-stats-textile() {
+    csv_file="$1"
+    tail +2 "$csv_file" | \
+        awk -F';' '{printf("%3d | %15s | %5.2f € | %24s | %10s | %15s \n",
+                           $1, $3, $4, $8 " " $7, substr($10, 1, length($10) - 3), $15); }'
 }
