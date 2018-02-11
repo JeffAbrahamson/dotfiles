@@ -88,6 +88,7 @@
 
 (defun setup-programmer-keys ()
   "Set up some key bindings that are useful while programming."
+  (highlight-indentation-mode)
   (if (not buffer-read-only)
       (local-set-key [(return)] 'newline-and-indent)))
 

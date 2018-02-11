@@ -32,7 +32,8 @@
   (load-file (concat jma-elisp-base "google-c-style.el"))
   (load-file (concat jma-elisp-base "clang-format.el"))
   (load-file (concat jma-elisp-base "puppet-mode.el"))
-  
+  (load-file (concat jma-elisp-base "highlight-indentation.el"))
+
   ;; cf. https://github.com/spotify/dockerfile-mode
   (load-file (concat jma-elisp-base "dockerfile-mode.el"))
   (add-to-list 'auto-mode-alist '("Dockerfile\\'" . dockerfile-mode))
