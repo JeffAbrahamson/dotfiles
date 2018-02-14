@@ -70,6 +70,7 @@ mirror-fast() { echo fast mirror; wget --no-host-directories --convert-links --m
 rmthisdir() { p_=`pwd`; b_=`basename $p_`; cd ..; /bin/rmdir $b_; unset p_ b_; }
 
 google() { w3m http://www.google.com/; }
+cnn() { w3m https://lite.cnn.io/en; }
 
 ###########################################################################
 # gpg
