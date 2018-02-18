@@ -137,3 +137,8 @@
 	  (function
 	   (lambda ()
 	     (org-indent-mode))))
+
+(add-hook 'yaml-mode-hook
+	  (function
+	   (lambda()
+	     (setup-programmer-keys))))
