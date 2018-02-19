@@ -1,0 +1,42 @@
+## See also  https://gitlab.com/muttmua/mutt/wikis/ConfigTricks
+
+# Whoami.
+set from = "jeff@p27.eu"
+set realname = "Jeff Abrahamson"
+set use_from = yes
+set envelope_from = yes
+
+# Where my mail is.
+set folder = "imaps://mail.p27.eu/"
+set spoolfile = "+INBOX"
+set postponed = "+Drafts"
+set record = "+Sent"
+set trash = "+Trash"
+
+# Sending mail.
+# Use SSL/TLS, not STARTTLS.  Prompt for password.
+set smtp_url = "smtps://jeff@mail.p27.eu:465/"
+set ssl_force_tls = yes
+
+# keep a cache of headers for faster loading (1.5.9+?)
+set header_cache=~/.mutt/cache/headers
+set message_cachedir=~/.mutt/cache/bodies
+set certificate_file=~/.mutt/certificates
+# Move read messages from your spool mailbox to your $mbox mailbox
+set move = no
+# Reduce polling frequency to a sane level
+set mail_check=60
+# And poll the current mailbox more often (not needed with IDLE in post 1.5.11)
+#set timeout=10
+
+# Display download progress every 5K
+set net_inc=5
+# Don't switch to next mail when paging down in a mail and hitting bottom
+set pager_stop=yes
+# Confirm quit
+set quit=ask-yes
+# Date format in index view. Standard strftime syntax.
+set date_format="!%a, %b %d, %Y at %I:%M:%S%p %Z"
+# Default index format
+#set index_format="%4C %Z %{%b %d} %-15.15L (%?l?%4l&%4c?) %s"
+set index_format="%4C %Z %{%b %d %H:%M} %-15.15L (%?l?%4l&%4c?) %s"
