@@ -1,0 +1,11 @@
+application/pdf;            okular '%s';        nametemplate=%s.pdf;      test=test "$DISPLAY" != ""
+application/x-pdf;          okular '%s';        nametemplate=%s.pdf;      test=test "$DISPLAY" != ""
+
+text/html; /usr/bin/sensible-browser %s; description=HTML Text; nametemplate=%s.html; test=RunningX
+# text/html; /usr/bin/w3m %s; description=HTML Text; nametemplate=%s.html; test=RunningX
+text/html; w3m -I %{charset} -T text/html; copiousoutput;
+
+image/*;  (anytopnm %s | pnmscale -xysize 80 46 | ppmtopgm | pgmtopbm | pbmtoascii -1x2 ) 2>&1 ; copiousoutput
+
+autoview text/html;
+autoview image/*;

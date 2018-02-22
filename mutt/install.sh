@@ -12,6 +12,12 @@ copy_to muttrc $HOME/.muttrc
 	copy_to $f $dest
     done
 )
+(
+    cd bin
+    for f in *; do
+	copy_to $f $HOME/bin/
+    done
+)
 
 p27="$dest/private-credentials-p27"
 if [ ! -r "$p27" ]; then

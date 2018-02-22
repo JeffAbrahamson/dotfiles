@@ -22,21 +22,29 @@ set ssl_force_tls = yes
 set header_cache=~/.mutt/cache/headers
 set message_cachedir=~/.mutt/cache/bodies
 set certificate_file=~/.mutt/certificates
-# Move read messages from your spool mailbox to your $mbox mailbox
+
+# Move read messages from spool mailbox to $mbox mailbox
 set move = no
 # Reduce polling frequency to a sane level
 set mail_check=60
 # And poll the current mailbox more often (not needed with IDLE in post 1.5.11)
 #set timeout=10
+set delete = yes
 
-# Display download progress every 5K
-set net_inc=5
-# Don't switch to next mail when paging down in a mail and hitting bottom
-set pager_stop=yes
-# Confirm quit
+set net_inc=5	     # Display download progress every 5K.
+set pager_stop=yes   # Don't switch to next mail at bottom of message.
 set quit=ask-yes
+set confirmappend = no
+
 # Date format in index view. Standard strftime syntax.
 set date_format="!%a, %b %d, %Y at %I:%M:%S%p %Z"
 # Default index format
 #set index_format="%4C %Z %{%b %d} %-15.15L (%?l?%4l&%4c?) %s"
 set index_format="%4C %Z %{%b %d %H:%M} %-15.15L (%?l?%4l&%4c?) %s"
+# Use my mailcap, then the system's for what I don't specify.
+set mailcap_path=$HOME/.dotfiles/mutt/mailcap:/etc/mailcap
+
+# View html automatically.
+auto_view text/html
+# Sadly, when text/html is present, text/plain is rarely well presented.
+alternative_order  text/html text/plain text/enriched
