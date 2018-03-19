@@ -48,3 +48,10 @@ set mailcap_path=$HOME/.dotfiles/mutt/mailcap:/etc/mailcap
 auto_view text/html
 # Sadly, when text/html is present, text/plain is rarely well presented.
 alternative_order  text/html text/plain text/enriched
+
+# simulate the old url menu
+macro index,pager,attach,compose \cb "\
+<enter-command> set my_pipe_decode=\$pipe_decode pipe_decode<Enter>\
+<pipe-message> urlscan<Enter>\
+<enter-command> set pipe_decode=\$my_pipe_decode; unset my_pipe_decode<Enter>" \
+"call urlscan to extract URLs out of a message"

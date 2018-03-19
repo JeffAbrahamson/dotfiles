@@ -6,3 +6,4 @@
 (cd bin && ./test.sh)
 (cd ratpoison && ./test.sh)
 (cd notion && ./test.sh)
+(cd mutt && ./test.sh)
