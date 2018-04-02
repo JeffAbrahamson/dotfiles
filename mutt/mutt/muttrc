@@ -5,6 +5,7 @@ set from = "jeff@p27.eu"
 set realname = "Jeff Abrahamson"
 set use_from = yes
 set envelope_from = yes
+source ~/.dotfiles/mutt/secrets
 
 # Where my mail is.
 set folder = "imaps://mail.p27.eu/"

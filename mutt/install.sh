@@ -19,13 +19,13 @@ copy_to muttrc $HOME/.muttrc
     done
 )
 
-p27="$dest/private-credentials-p27"
-if [ ! -r "$p27" ]; then
-    # This file provides p27 credentials.  It is sensitive and so not
+secrets="$dest/secrets"
+if [ ! -r "$secrets" ]; then
+    # This file provides credentials.  It is sensitive and so not
     # in git.
-    echo "Warning: p27 credentials are absent on this machine!"
+    echo "Warning: secret credentials are absent on this machine!"
 else
-    chmod 600 "$p27"
+    chmod 600 "$secrets"
 fi
 
 mutt_cache_dir="$HOME/.mutt"
