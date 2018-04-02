@@ -40,17 +40,16 @@ sync-machine() {
 }
 
 sync-fileserver() { sync-data; time rsync -a fileserver:data/ $HOME/data/hosts/fileserver/; sync-data; }
-sync-data() { time unison -auto data; }
-sync-fast() { time unison -auto fast; }
-sync-full() { time unison -auto full; }
+sync-data() { time unison -auto data; date; }
+sync-fast() { time unison -auto fast; date; }
+sync-full() { time unison -auto full; date; }
 sync-images() {
     time unison -auto images;
     if [ -e $HOME/.unison/images-2.prf ]; then
 	time unison -auto images-2;
     fi
+    date
 }
-
-fog() { ssh manx.misty.com; }
 
 ## blog.purple.com
 blog-down() { time rsync -va --delete --exclude common purple@blog.purple.com:./ $HOME/public_html/purple/blog/; }
