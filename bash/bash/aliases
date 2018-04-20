@@ -240,6 +240,26 @@ WIFI() { sudo /bin/systemctl restart network-manager.service; }
 # Learn about available connections.
 ls_wifi() { nmcli device wifi list; }
 
+bandwidth() {
+    # Argument, if present, is number of lines of tail at the end.
+    if [ "X$1" = X ]; then
+	tail_cmd=cat
+    else
+	tail_cmd="tail -$1"
+    fi
+    bandwidth_format() {
+	awk '{printf("%10d  %-20s    %6.1f    %6.1f    %5.1f\n", $1, $2, $3, $4, $5);}'
+    }
+    tmp1=$(mktemp)
+    tmp2=$(mktemp)
+    echo "time        ssid                  download    upload     ping"
+    (cd /home/jeff/data/hosts/starshine;
+     join speedtest-ssid speedtest-download > $tmp1; join $tmp1 speedtest-upload > $tmp2; join $tmp2 speedtest-ping | bandwidth_format | $tail_cmd;
+    )
+    rm $tmp1 $tmp2
+    unset bandwidth_format tail_cmd
+}
+
 cppdoc() { ff $HOME/work/c++-docs/cpp.html & }
 
 #workm-periodic() { while true; do date; workm force-put; sleep 900; separator; done; }
