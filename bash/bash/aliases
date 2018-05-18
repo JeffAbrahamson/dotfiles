@@ -263,7 +263,7 @@ bandwidth() {
     tmp1=$(mktemp)
     tmp2=$(mktemp)
     echo "time        ssid                  download    upload     ping"
-    (cd /home/jeff/data/hosts/starshine;
+    (cd /home/jeff/data/hosts/$(hostname -s);
      join speedtest-ssid speedtest-download > $tmp1; join $tmp1 speedtest-upload > $tmp2; join $tmp2 speedtest-ping | bandwidth_format | $tail_cmd;
     )
     rm $tmp1 $tmp2
