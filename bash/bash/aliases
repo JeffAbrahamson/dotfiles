@@ -581,16 +581,34 @@ ha-stats6() {
                                                  sum, NR); }'
 }
 
-ha-stats-textile() {
+# Textiles et autres billeterie.
+ha-billeterie() {
+    # Champs :
+    #  1  - numéro
+    #  3  - formule
+    #  4  - montant
+    #  8  - prénom
+    #  7  - nom
+    #  10 - date
+    #  11 - email
     csv_file="$1"
     tail +2 "$csv_file" | \
         awk -F';' '{printf("%3d | %15s | %5.2f € | %24s | %10s | %15s \n",
-                           $1, $3, $4, $8 " " $7, substr($10, 1, length($10) - 3), $15); }'
+                           $1, $3, $4, $8 " " $7, substr($10, 1, length($10) - 3), $11); }'
 }
 
-csv-all() {
-    if [ -e all.CSV ]; then /bin/mv all.CSV all.CSV.bak; fi
-    cat *csv | sort -u > all.CSV
-    if cmp --silent all.CSV all.CSV.bak; then rm all.CSV.bak; fi
-    wc -l *
+# Adhésion.
+ha-adhésions() {
+    # Champs :
+    #  1  - numéro
+    #  2  - formule (un peu longue...)
+    #  3  - montant
+    #  7  - prénom
+    #  8  - nom
+    #  9  - date
+    #  10 - mél
+    csv_file="$1"
+    tail +2 "$csv_file" | \
+        awk -F';' '{printf("%3d | %15s | %5.2f € | %26s | %10s | %15s \n",
+                           $1, $3, $5, $7 " " $6, substr($9, 1, length($9) - 3), $10); }'
 }
