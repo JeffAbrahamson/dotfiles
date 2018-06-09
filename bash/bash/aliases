@@ -274,12 +274,7 @@ cppdoc() { ff $HOME/work/c++-docs/cpp.html & }
 
 #workm-periodic() { while true; do date; workm force-put; sleep 900; separator; done; }
 #workm-push() { workm force-put; }
-tsd-last() { tsd $1 $(tsd $1 | tail -1 | awk '{print $2}'); }
 tea() { tsd tea $(date +%H%M); tsd tea; }
-tsd-stats() { cat tsd/$1 | awk '{sum += $2; sumsq += $2^2;} END {printf("µ = %.1f   σ = %.1f   n = %d\n", sum/NR, sqrt(sumsq/NR-(sum/NR)^2), NR);}'; }
-tsd-value() {
-    tsd $1 | tail -1 | awk '{ printf("%d", $2) }';
-}
 tsd-chocolat() {
     echo $(( $(tsd-value araguani) + $(tsd-value guanaja) + $(tsd-value guanaja-lacte) +
 	     $(tsd-value abinao) + $(tsd-value barry-cuba) + $(tsd-value barry-equiteur) +
