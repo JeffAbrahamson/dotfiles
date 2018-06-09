@@ -109,38 +109,10 @@ if [ -f /etc/bash_completion ] && ! shopt -oq posix; then
 fi
 
 ###########################################################################
-# Completions for tsd
-_tsd()
-{
-    local cur prev pprev opts base
-    COMPREPLY=()
-    cur="${COMP_WORDS[COMP_CWORD]}"
-    prev="${COMP_WORDS[COMP_CWORD-1]}"
-    if [ ${#COMP_WORDS[@]} -gt 2 ]; then
-	pprev="${COMP_WORDS[COMP_CWORD-2]}"
-    else
-	pprev=
-    fi
-    
-    if [ Xtsd = X${prev} ]; then
-	completions=$(tsd.py -L)
-	COMPREPLY=( $(compgen -W "$completions" -- ${cur}) )
-	return 0
-    fi
 
-    if [ Xtsd = X${pprev} ]; then
-	completions=$(tsd.py -C)
-	COMPREPLY=( $(compgen -W "$completions" -- ${cur}) )
-	return 0
-    fi
-    
-    #COMPREPLY=( $(compgen -W "" -- ${cur}) )
-    return 0
-}
-complete -F _tsd tsd
-# I don't want to have to type the .py, but I do want python to
-# compile just once (create a .pyc).
-tsd() { tsd.py $*; }
+if [ -f $HOME/.dotfiles/bash/tsd ]; then
+    . $HOME/.dotfiles/bash/tsd
+fi
 
 ###########################################################################
 # Completions for gtd
