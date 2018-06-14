@@ -3,8 +3,9 @@
 PATH=/usr/bin:/bin
 renice -n 19 $$
 
-# Log what we do lest it be mysterious.
-LOG="/tmp/${LOGNAME:-root}-lid-monitor.log"
+# Log what we do lest it be mysterious.  Write the log somewhere where
+# it will still be visible after restart/crash.
+LOG="$HOME/.i3/${LOGNAME:-root}-lid-monitor.log"
 
 log()
 {
@@ -23,13 +24,7 @@ check_lid()
 	# if I want the visual effect to be the same as timeout.
 	# Let i3lock fork so that we also suspend.
 	log "$0 locking."
-	i3lock --dpms --color=220022 --inactivity-timeout 10
-	log "$0 suspending."
-	# In order for this to work, I'll need a line in a file in /etc/sudoers.d/
-	# something like this:
-	#
-	#   jeff starshine = (root) NOPASSWD: /usr/sbin/pm-suspend
-	/usr/sbin/pm-suspend
+	i3-lock-suspend suspend
     else
 	log state: $state
     fi

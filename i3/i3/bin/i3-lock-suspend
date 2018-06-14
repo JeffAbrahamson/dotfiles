@@ -2,13 +2,21 @@
 
 PATH=/usr/bin:/bin
 
+# Argument $1 should be absent to request simple screen lock.
+# If present, it should be the word "suspend" to trigger pm-suspend.
+suspend_requested=$1
+
 # On laptops where it makes sense to be able to suspend, suspend if on
 # battery power.  On other hosts, or if on mains power, just lock.
 
 # If I should sleep instead of suspend, say due to a BIOS bug in my
 # Dell Precision m3800, the existence of this file will alert me.
 no_suspend_file=$HOME/.unable_to_suspend
-logfile=/tmp/i3-lock-suspend
+
+# Write the log somewhere where it will still be visible after
+# restart/crash.
+logfile=$HOME/.i3/i3-lock-suspend.log
+
 power_source=mains
 batteries=$(upower -e | grep battery)
 # Normally I have only one battery, but watch out for multiple entries
@@ -20,17 +28,18 @@ for battery in $batteries; do
     fi
 done
 
-if [ "X$HOSTNAME" = Xstarshine -a $power_source = battery ]; then
-    xautolock -locknow &
-    sleep 1			# Make sure I'm locked before suspending.
-    if [ -e $no_suspend_file ]; then
-	echo "i3-lock-suspend sleeping." >> $logfile
-	# If I close the lid, it will be in the next few seconds.  So
-	# wait a few seconds, then restart wifi, which is harmless if
-	# wifi is already running.
-	(sleep 5; nmcli radio wifi on) &
-    else
+echo "i3-lock-suspend locking." >> $logfile
+xautolock -locknow
+
+if [ "X$suspend_request" = Xsuspend -a \
+     "X$HOSTNAME" = Xstarshine -a \
+     "X$power_source" = Xbattery ]; then
+    if [ ! -e $no_suspend_file ]; then
 	echo "i3-lock-suspend suspending." >> $logfile
+	# In order for this to work, I'll need a line in a file in /etc/sudoers.d/
+	# something like this:
+	#
+	#   jeff starshine = (root) NOPASSWD: /usr/sbin/pm-suspend
 	sudo /usr/sbin/pm-suspend
     fi
     # Things to do on wake-up.
@@ -42,8 +51,6 @@ if [ "X$HOSTNAME" = Xstarshine -a $power_source = battery ]; then
     # Either the battery can't immediately report its status, or else
     # the query needs to happen after I've unlocked the screen.  Let's
     # try a short pause.
+    (sleep 3; notify-send "Awoken from suspend.")
     (sleep 5; notify-send "$(i3-power-status)")
-else
-    echo "i3-lock-suspend locking." >> $logfile
-    xautolock -locknow
 fi
