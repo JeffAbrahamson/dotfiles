@@ -29,9 +29,14 @@ for battery in $batteries; do
 done
 
 echo "i3-lock-suspend locking." >> $logfile
+# Now I lay me down to sleep,
+# Pray the Lord my soul to keep.
 xautolock -locknow
+# If I should die before I wake,
+# I pray the Disk my soul to take.
+sync
 
-if [ "X$suspend_request" = Xsuspend -a \
+if [ "X$suspend_requested" = Xsuspend -a \
      "X$HOSTNAME" = Xstarshine -a \
      "X$power_source" = Xbattery ]; then
     if [ ! -e $no_suspend_file ]; then
