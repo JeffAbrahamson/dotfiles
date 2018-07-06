@@ -29,6 +29,9 @@ bindsym XF86AudioLowerVolume exec amixer -D pulse set Master 5%-
 bindsym XF86AudioRaiseVolume exec amixer -D pulse set Master 5%+
 bindsym XF86AudioMute exec amixer -D pulse set Master toggle
 
+bindsym XF86MonBrightnessUp exec "light -A 5"
+bindsym XF86MonBrightnessDown exec "light -U 5"
+
 bindsym $mod+Tab mode "i3"
 
 mode "i3" {
