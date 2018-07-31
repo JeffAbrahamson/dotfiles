@@ -176,6 +176,9 @@ fi
 if [ -f $HOME/.dotfiles/bash/jellybooks ]; then
 	. $HOME/.dotfiles/bash/jellybooks
 fi
+if [ -f $HOME/.dotfiles/bash/una ]; then
+	. $HOME/.dotfiles/bash/una
+fi
 
 shopt -s cdspell
 
