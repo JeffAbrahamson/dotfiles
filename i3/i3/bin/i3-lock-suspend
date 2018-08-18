@@ -1,6 +1,6 @@
 #!/bin/bash
 
-PATH=/usr/bin:/bin
+PATH=/usr/bin:/bin:$HOME/bin
 
 # Argument $1 should be absent to request simple screen lock.
 # If present, it should be the word "suspend" to trigger pm-suspend.
