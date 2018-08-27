@@ -79,33 +79,6 @@ gpg-update-sigs() { gpg --recv-keys `gpg --list-sigs $1|grep sig|cut -c 12-20|so
 signed-me-verbose() { gpg --list-sigs |egrep '(^pub|jeff@purple.com)'| perl -wne 'my $last_line = ""; while(my $line = <>) { if($line !~ /^pub/) { print $last_line; print $line; } $last_line = $line; }'; }
 signed-me() { gpg --list-sigs |egrep '(^pub|jeff@purple.com)'| perl -wne 'my $last_line = ""; while(my $line = <>) { if($line !~ /^pub/ and $last_line =~ /^pub/) { print $last_line; } $last_line = $line; }'; }
 
-view-urls-by-file() {
-    first_window=true;
-    for p in $(egrep -v '^#' $1); do 
-        if( $first_window ); then
-            $www_browser --new-window "$p"; 
-            first_window=false;
-        else
-            $www_browser "$p"; 
-        fi
-    done;
-    unset first_window
-}
-morning() {
-    view-urls-by-file $HOME/data/morning-web
-    (
-    #birthdays;
-    #pilot-agenda;
-    cat $HOME/common/data/to-do.txt | egrep -v '^#';
-    ) | more
-}
-afternoon() { 
-    view-urls-by-file $HOME/data/afternoon-web
-    (
-    cat $HOME/common/data/to-do.txt | egrep -v '^#';
-    ) | more
-}
-
 ###########################################################################
 # Pictures
 
