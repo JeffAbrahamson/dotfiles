@@ -413,3 +413,13 @@ alias evince="evince 2>/dev/null"
 jb-a() { cd $HOME/src/jellybooks/analytics; }
 jb-p() { cd $HOME/src/jellybooks/pliny; }
 jb-i() { cd $HOME/src/jellybooks/production; } # Should be infrastructure.
+nux() {
+    n=$1;
+    if [ $n -gt 0 ]; then
+        while [ $n -gt 0 ]; do
+            (urxvt &)
+            n=$(($n - 1))
+        done
+    fi
+    unset n;
+}
