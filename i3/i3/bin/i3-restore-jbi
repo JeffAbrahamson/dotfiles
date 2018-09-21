@@ -1,0 +1,12 @@
+#!/bin/bash
+
+i3-msg "append_layout $HOME/.i3/workspace-jb.json"
+(
+    cd $HOME/src/jellybooks/production
+    emacs&
+    urxvt&
+    urxvt&
+    urxvt&
+    urxvt&
+    urxvt&
+)

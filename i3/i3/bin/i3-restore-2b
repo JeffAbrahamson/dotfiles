@@ -1,0 +1,8 @@
+#!/bin/bash
+
+i3-msg "append_layout $HOME/.i3/workspace-2.json"
+emacs&
+urxvt&
+(urxvt&; urxvt&)
+(xload&; urxvt&)
+urxvt&
