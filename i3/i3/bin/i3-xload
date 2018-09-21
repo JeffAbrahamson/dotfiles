@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# I generally want to xload processes running on my desktop.  Start
+# them here after I've added the appropriate key credentials.
+xload &
+ssh -X -f fileserver xload
