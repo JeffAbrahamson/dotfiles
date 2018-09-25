@@ -242,6 +242,14 @@ bandwidth() {
     rm $tmp1 $tmp2
     unset bandwidth_format tail_cmd
 }
+bandwidth-stats() {
+    ssid="$1"			# Fragment of SSID.
+    ssid_name=$(bandwidth | grep "$ssid" | awk '{print $2}' | sort -u) # Verify what I matched.
+    download=$(bandwidth | grep "$ssid" | awk '{sum += $3; sumsq += $3^2} END { printf("μ=%.1f σ=%.1f", sum / NR, sqrt((sumsq - sum^2 / NR)/NR));}')
+    upload=$(bandwidth | grep "$ssid" | awk '{sum += $4; sumsq += $4^2} END { printf("μ=%.1f σ=%.1f", sum / NR, sqrt((sumsq - sum^2 / NR)/NR));}')
+    ping=$(bandwidth | grep "$ssid" | awk '{sum += $5; sumsq += $5^2} END { printf("μ=%.1f σ=%.1f", sum / NR, sqrt((sumsq - sum^2 / NR)/NR));}')
+    echo "$ssid_name    down: $download    up: $upload    ping: $ping"
+}
 
 cppdoc() { ff $HOME/work/c++-docs/cpp.html & }
 
