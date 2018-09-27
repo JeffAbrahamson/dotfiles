@@ -1,0 +1,30 @@
+#!/bin/bash
+
+una_dir="$HOME/work/UNA/comite-directeur/trésorier"
+tn_dir="$HOME/work/startup/transport-nantes/finances"
+declare -A accounts
+accounts['una-1718']="$una_dir/2017-2018/gnucash/una-2017-2018.gnucash"
+accounts['una-1819']="$una_dir/2018-2019/gnucash/una-2018-2019.gnucash"
+accounts['tn-18']="$tn_dir/2018/gnucash/transport-nantes-2018.gnucash"
+accounts['tn-19']="$tn_dir/2019/gnucash/transport-nantes-2019.gnucash"
+accounts['perso']="$HOME/work/finance/work/finance/gnucash/jeff_abrahamson.gnucash"
+
+account="$1"
+if [ X = X${accounts[$account]} ]; then
+    notify-send "gc: invalid account" "$(
+	echo "The account '$account' does not exist."
+	echo "Available accounts:"
+	for avail in ${!accounts[*]}; do
+	    echo "  $avail"
+	done
+    )"
+    echo "The account '$account' does not exist."
+    echo "Available accounts:"
+    for avail in ${!accounts[*]}; do
+	echo "  $avail"
+    done
+    exit 1
+fi
+filename="${accounts[$account]}"
+echo Opening $filename.
+gnucash "$filename" &
