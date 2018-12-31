@@ -5,8 +5,10 @@ tn_dir="$HOME/work/startup/transport-nantes/finances"
 declare -A accounts
 accounts['una-1718']="$una_dir/2017-2018/gnucash/una-2017-2018.gnucash"
 accounts['una-1819']="$una_dir/2018-2019/gnucash/una-2018-2019.gnucash"
-accounts['tn-18']="$tn_dir/2018/gnucash/transport-nantes-2018.gnucash"
-accounts['tn-19']="$tn_dir/2019/gnucash/transport-nantes-2019.gnucash"
+accounts['tn']="$tn_dir/2018-2019/gnucash/transport-nantes-2018.gnucash"
+# TN had so little activity in 2018 and no need to publish a report,
+# so just merge with 2019 for now.
+accounts['tn-19']="$tn_dir/2018-2019/gnucash/transport-nantes-2018.gnucash"
 accounts['perso']="$HOME/work/finance/work/finance/gnucash/jeff_abrahamson.gnucash"
 
 account="$1"
