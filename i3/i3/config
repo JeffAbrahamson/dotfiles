@@ -31,15 +31,31 @@ bindsym XF86AudioLowerVolume exec amixer -D pulse set Master 5%-
 bindsym XF86AudioRaiseVolume exec amixer -D pulse set Master 5%+
 bindsym XF86AudioMute exec amixer -D pulse set Master toggle
 
+# This is only meaningful on starshine, and even there light seems no
+# longer to work.
 bindsym XF86MonBrightnessUp exec "light -A 5"
 bindsym XF86MonBrightnessDown exec "light -U 5"
 
 bindsym $mod+Tab mode "i3"
 
+# Change focus.
+bindsym $mod+Shift+Left   focus left
+bindsym $mod+Shift+Down   focus down
+bindsym $mod+Shift+Up     focus up
+bindsym $mod+Shift+Right  focus right
+
+# Move focused window.
+bindsym $mod+Control+Left   move left
+bindsym $mod+Control+Down   move down
+bindsym $mod+Control+Up     move up
+bindsym $mod+Control+Right  move right
+
 mode "i3" {
     # Start a terminal
     bindsym c  exec urxvt;mode "default"
 
+    ## To deprecate as of 1 July 2019 if I'm satisified with the
+    ## direct bindings above.
     # Change focus.
     bindsym Left   focus left;  mode "focus"
     bindsym Down   focus down;  mode "focus"
@@ -137,6 +153,7 @@ mode "i3" {
     bindsym Control+g  mode "default"
 }
 
+## Deprecate from 1 July 2019.
 mode "focus" {
     # A somewhat harmless mode for moving focus, so that I don't
     # accidentally do something too damaging when I forget to cancel
@@ -178,6 +195,7 @@ mode "workspace" {
     bindsym c  workspace 5; workspace 6;  mode "default"
     bindsym d  workspace 7; workspace 8;  mode "default"
     bindsym e  workspace 9; workspace 10; mode "default"
+    bindsym p  workspace b; mode "default"
 
     # back to normal: Enter or Escape
     bindsym Escape     mode "default"
@@ -185,6 +203,7 @@ mode "workspace" {
     bindsym Control+g  mode "default"
 }
 
+## Deprecate from 1 July 2019.
 # Resize window (you can also use the mouse for that).
 mode "resize" {
     # These bindings trigger as soon as you enter the resize mode
@@ -241,3 +260,4 @@ workspace 7 output HDMI-3
 workspace 8 output HDMI-1
 workspace 9 output HDMI-3
 workspace 10 output HDMI-1
+workspace b output HDMI-1
