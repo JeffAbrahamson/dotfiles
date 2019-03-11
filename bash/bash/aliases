@@ -435,3 +435,12 @@ nux() {
     fi
     unset n;
 }
+jb-sprint() {
+    pushd $HOME/work/startup/jellybooks/sprints/
+    today_="$(date +%Y-%m-%d)"
+    if [ ! -d "${today_}" ]; then
+	mkdir "${today_}"
+    fi
+    cd "${today_}"
+    unset today_
+}
