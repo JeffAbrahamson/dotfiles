@@ -99,9 +99,6 @@ mode "i3" {
 
     bindsym o  "workspace back_and_forth"
 
-    # Presentation mode.  Hopefully useful when presenting work in public.
-    bindsym Shift+p mode "presentation"
-
     # Workspace mode.
     bindsym Shift+w  mode "workspace"
 
@@ -152,36 +149,6 @@ mode "i3" {
     bindsym Enter      mode "default"
     bindsym Control+g  mode "default"
 }
-
-# ## Deprecate from 1 July 2019.
-# mode "focus" {
-#     # A somewhat harmless mode for moving focus, so that I don't
-#     # accidentally do something too damaging when I forget to cancel
-#     # it.
-
-#     # Change focus.
-#     bindsym Left           focus left
-#     bindsym Down           focus down
-#     bindsym Up             focus up
-#     bindsym Right          focus right
-
-#     # Move focused window.
-#     bindsym Control+Left   move left
-#     bindsym Control+Down   move down
-#     bindsym Control+Up     move up
-#     bindsym Control+Right  move right
-
-#     # Enter fullscreen mode for the focused container.
-#     bindsym f  fullscreen; mode "default"
-
-#     # Resize a window.
-#     bindsym r  mode "resize"
-
-#     # back to normal: Enter or Escape
-#     bindsym Escape         mode "default"
-#     bindsym Enter          mode "default"
-#     bindsym Control+g      mode "default"
-# }
 
 mode "workspace" {
     # Switch to workspace.
