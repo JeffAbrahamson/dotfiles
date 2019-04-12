@@ -156,13 +156,13 @@ mode "workspace" {
     # This depends on my having set up odd workspaces on the left
     # monitor and even workspaces on the right monitor.  Kludges
     # around an otherwise good feature in i3.
-
     bindsym a  workspace 1; workspace 2;  mode "default"
     bindsym b  workspace 3; workspace 4;  mode "default"
     bindsym c  workspace 5; workspace 6;  mode "default"
     bindsym d  workspace 7; workspace 8;  mode "default"
     bindsym e  workspace 9; workspace 10; mode "default"
     bindsym p  workspace b; mode "default"
+    bindsym Shift+p  workspace a; workspace b; mode "default"
 
     # back to normal: Enter or Escape
     bindsym Escape     mode "default"
@@ -226,4 +226,5 @@ workspace 7 output HDMI-3
 workspace 8 output HDMI-1
 workspace 9 output HDMI-3
 workspace 10 output HDMI-1
+workspace a output HDMI-3
 workspace b output HDMI-1
