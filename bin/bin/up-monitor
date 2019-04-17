@@ -54,5 +54,6 @@ http_ping() {
 icmp_ping  8.8.8.8  8.8.4.4
 
 http_ping http://www.purple.com/
+http_ping https://www.p27.eu/
 http_ping https://www.jellybooks.com/
 http_ping https://www.google.com/
