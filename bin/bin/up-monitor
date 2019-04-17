@@ -51,7 +51,9 @@ http_ping() {
     /bin/rm -f $outfile
 }
 
-icmp_ping  8.8.8.8  8.8.4.4
+icmp_ping  8.8.8.8
+icmp_ping  8.8.4.4
+icmp_ping  1.1.1.1
 
 http_ping http://www.purple.com/
 http_ping https://www.p27.eu/
