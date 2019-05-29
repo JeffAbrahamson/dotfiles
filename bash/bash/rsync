@@ -55,6 +55,8 @@ sync-images() {
 blog-down() { time rsync -va --delete --exclude common purple@blog.purple.com:./ $HOME/public_html/purple/blog/; }
 
 ## Tools for mounting/unmounting luks volumes.
+# Example:
+# lmnt e mydisk  (assuming recognized at /dev/sde and mounting at /mydisk)
 lmnt() {
     device=/dev/sd$1
     mapping=$2
