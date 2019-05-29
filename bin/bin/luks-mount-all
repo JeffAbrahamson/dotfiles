@@ -47,11 +47,15 @@ luks_mount() {
 echo >> $logfile
 echo "$(date)    luks-mount-all" >> $logfile
 
+## These are the filesystem uuid's.  That is, they are the symbolic
+## links in /dev/disk/by-uuid/ that point to the /dev/sd* file.
+
 # siegfried / fileserver
 luks_mount 4d4bc0a0-e67a-4f9b-8c70-05cfdbf9282c /jma-4t
 luks_mount 4b824f8c-94d4-4655-8e56-67ead167ed4c /jma-3t
 luks_mount 5d6777f0-f475-451e-bad8-3cdf6e80f7c5 /sb-4t
 luks_mount 4ea3852f-8cdd-4ed9-898e-d86a851e0a9c /sb-3t
+luks_mount 52c1125a-cb3f-4d8a-bd16-443ee394ad2e /sb-r4t
 
 # birdsong
 luks_mount f2d2634c-8d85-40d5-a770-e940807a548f /home2

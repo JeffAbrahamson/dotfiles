@@ -25,7 +25,8 @@ record_size()
     echo $now $remaining >> "$2"-remaining
 }
 
-record_size /d1 $HOME/data/d1
-record_size /d2 $HOME/data/d2
-record_size /d3 $HOME/data/d3
-record_size /d3 $HOME/data/d4
+record_size /sb-4t $HOME/data/sb-4t
+record_size /jma-4t $HOME/data/jma-4t
+record_size /sb-3t $HOME/data/sb-3t
+record_size /jma-3t $HOME/data/jma-3t
+record_size /sb-r4t $HOME/data/sb-r4t
