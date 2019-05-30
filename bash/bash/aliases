@@ -246,11 +246,17 @@ bandwidth() {
 }
 bandwidth-stats() {
     ssid="$1"			# Fragment of SSID.
-    ssid_name=$(bandwidth | grep "$ssid" | awk '{print $2}' | sort -u)
+    depth="$2"
+    if [ "$depth" ]; then
+	restrict="tail -$depth"
+    else
+	restrict=cat
+    fi
+    ssid_name=$( bandwidth | grep "$ssid" | awk '{print $2}' | sort -u)
     for one_ssid in $ssid_name; do
-	download=$(bandwidth | grep "$one_ssid" | awk '{sum += $3; sumsq += $3^2} END { printf("μ=%5.1f  σ=%5.1f", sum / NR, sqrt((sumsq - sum^2 / NR)/NR));}')
-	upload=$(bandwidth | grep "$one_ssid" | awk '{sum += $4; sumsq += $4^2} END { printf("μ=%5.1f  σ=%5.1f", sum / NR, sqrt((sumsq - sum^2 / NR)/NR));}')
-	ping=$(bandwidth | grep "$one_ssid" | awk '{sum += $5; sumsq += $5^2} END { printf("μ=%7.1f  σ=%7.1f", sum / NR, sqrt((sumsq - sum^2 / NR)/NR));}')
+	download=$( bandwidth | grep " $one_ssid " | eval $restrict | awk '{sum += $3; sumsq += $3^2} END { printf("μ=%5.1f  σ=%5.1f", sum / NR, sqrt((sumsq - sum^2 / NR)/NR));}')
+	upload=$( bandwidth | grep " $one_ssid " | eval $restrict | awk '{sum += $4; sumsq += $4^2} END { printf("μ=%5.1f  σ=%5.1f", sum / NR, sqrt((sumsq - sum^2 / NR)/NR));}')
+	ping=$( bandwidth | grep " $one_ssid " | eval $restrict | awk '{sum += $5; sumsq += $5^2} END { printf("μ=%7.1f  σ=%7.1f", sum / NR, sqrt((sumsq - sum^2 / NR)/NR));}')
 	printf "%-20s  |  %s  |  %s  |  %s\n" "$one_ssid" "down: $download" "up: $upload" "ping: $ping"
     done
 }
