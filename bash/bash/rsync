@@ -27,7 +27,7 @@ sync-to-here() {
 # with unison (cf. $HOME/.unison/{common,*prf}) or otherwise cache
 # from the fileserver, or remote filesystems.
 declare -a machine_exclusions_
-machine_exclusions_=( .cache .macromedia Videos brunhilde fs common data Documents Downloads templates Music work)
+machine_exclusions_=( .cache .macromedia Videos brunhilde fs common data Documents Downloads templates Music work venv .vagrant.d 'VirtualBox\\ VMs' )
 if [ $HOSTNAME = birdsong -o $HOSTNAME = starshine ]; then
    machine_exclusions_[${#machine_exclusions_[*]}]=Pictures
 fi
@@ -36,7 +36,7 @@ for me in ${machine_exclusions_[*]}; do
     machine_exclusions_pattern_="$machine_exclusions_pattern_ --exclude $me/"
 done
 sync-machine() { 
-    time rsync -va --delete $machine_exclusions_pattern_ $HOME/ jeff@fileserver:/d2/jeff/machines/$HOSTNAME/;
+    time rsync -va --delete $machine_exclusions_pattern_ $HOME/ jeff@siegfried:/jma-4t/jeff/machines/$HOSTNAME/;
 }
 
 sync-fileserver() { sync-data; time rsync -a fileserver:data/ $HOME/data/hosts/fileserver/; sync-data; }
