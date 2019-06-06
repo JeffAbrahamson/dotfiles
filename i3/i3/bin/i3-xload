@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# I generally want to xload processes running on my desktop.  Start
-# them here after I've added the appropriate key credentials.
-xload &
+# I generally want two xload processes running on my desktop.  One I
+# start with i3-restore-2b.  The other I start here after I've added
+# the appropriate key credentials.
 ssh -X -f fileserver xload
