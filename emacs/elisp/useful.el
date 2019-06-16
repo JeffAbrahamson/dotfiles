@@ -146,7 +146,9 @@ mkaefile-name-alt. If neither exists, return nil. Else return t."
       ;; (compile (concat "latex -interaction=nonstopmode " latex-name
       ;; 		              " && dvips -t a4 -f " dvi-name " > " ps-name
       ;; 		              " && dvipdfm -p a4 -o " pdf-name " " dvi-name)))))
-      (compile (concat "pdflatex -interaction=nonstopmode " latex-name)))))
+      ;;;; Before using xelatex:
+      ;;(compile (concat "pdflatex -interaction=nonstopmode " latex-name)))))
+      (compile (concat "xelatex -interaction=nonstopmode " latex-name)))))
 
 
 ;; (defun latex-compile ()
