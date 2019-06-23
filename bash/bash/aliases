@@ -274,6 +274,13 @@ tsd-chocolat() {
 	     $(tsd-value alain-ducasse) + $(tsd-value bonnat) + $(tsd-value chocolate-other) +
 	     $(tsd-value coeur-de-guanaja) + $(tsd-value nyangbo) + $(tsd-value pate-de-cacao) ));
 }
+tsd-farine() {
+    for f in $(tsd -L | grep farine); do
+	the_date=$(tsd $f | tail -1 | awk '{print $1}')
+	the_mass=$(tsd $f | tail -1 | awk '{print $2}')
+	printf "%-20s   %-4.0f g   %s\n" "$f" "$the_mass" "$the_date"
+    done
+}
 
 # rpass() { head -c $((500 + $RANDOM)) < /dev/urandom | sha1sum; }
 rpass() { head -c $((40 + $RANDOM / 2000)) < /dev/urandom | base64; }
