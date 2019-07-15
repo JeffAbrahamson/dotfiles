@@ -169,6 +169,11 @@ ssh-setup() {
     ssh-add -l
 }
 
+ssl-status() {
+    name="$1"
+    echo | openssl s_client -servername "$name" -connect "$name":443 2>/dev/null | openssl x509 -noout -dates
+}
+
 data-notes() {
     cd $HOME/common/work/employment/Goldman-Sachs/data-notes/;
     tr 'n-za-mN-ZA-M5-90-4' 'a-zA-Z0-9' < /tmp/gs.tgz | uudecode;
