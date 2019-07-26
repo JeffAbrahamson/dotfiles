@@ -24,7 +24,9 @@ for battery in $batteries; do
     esac
     percent=$(upower -i $battery | grep percent | awk -F: '{print $2}' | tr -d ' \t')
     if [ "X$1" = Xns ]; then
-	notify-send "$state ($delay, $percent)"
+	# Include the time, because often I use this in full-screen
+	# mode precisely because I can't see the i3 bar.
+	notify-send "$state ($delay, $percent)" "$(echo; date)"
     else
 	echo "$state ($delay, $percent)"
     fi

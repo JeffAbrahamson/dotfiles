@@ -122,6 +122,10 @@ fbi() {
 # most recently touched, I can just specify the date.
 fba() { fbi $(ls -t | head -1) $1; }
 
+imgcp() {
+    echo "<img src='data:image/png;base64,"$(base64 -w0 "$1")"' />" | \
+	xclip -selection clipboard -t text/html;
+}
 
 ###########################################################################
 
