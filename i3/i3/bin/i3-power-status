@@ -26,7 +26,8 @@ for battery in $batteries; do
     if [ "X$1" = Xns ]; then
 	# Include the time, because often I use this in full-screen
 	# mode precisely because I can't see the i3 bar.
-	notify-send "$state ($delay, $percent)" "$(echo; date)"
+	date_string=$(date "+%Y-%m-%d \t  %R \t %z   %Z   (%A)")
+	notify-send "$state ($delay, $percent)" "$(echo; echo $date_string)"
     else
 	echo "$state ($delay, $percent)"
     fi
