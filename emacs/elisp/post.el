@@ -612,7 +612,7 @@ the buffer"
 					     (region-end))))
     (switch-to-buffer post-select-signature-last-buffer)
     (goto-char (post-kill-signature))
-    (insert-string "-- \n")
+    (insert "-- \n")
     (insert sig))
   (insert-file post-fixed-signature-source)
   (post-select-signature-quit))
@@ -646,7 +646,7 @@ the buffer"
     (setq sig-to-load (buffer-substring-no-properties sig-start (point)))
     (switch-to-buffer post-select-signature-last-buffer)
     (goto-char (post-kill-signature))
-    (insert-string "-- \n")
+    (insert "-- \n")
     (insert-file (concat post-signature-directory sig-to-load))
     (message "Signature set to %s%s" post-signature-directory sig-to-load)
     (post-select-signature-quit)))
@@ -835,7 +835,7 @@ When you finish editing this message, type \\[post-save-current-buffer-and-exit]
       (when (re-search-forward (concat "^\\($\\|" field ": \\)"))
 	(if (looking-at "^$")
 	    (progn
-	      (insert-string field ": \n")
+	      (insert field ": \n")
 	      (forward-char -1))
 	  (header-position-on-value))))))
 
@@ -866,7 +866,7 @@ When you finish editing this message, type \\[post-save-current-buffer-and-exit]
 	  (widen)
 	  (goto-char (point-min))
 	  (search-forward-regexp "^$")
-	  (insert-string (concat "Attach: " (file-truename file) " "
+	  (insert (concat "Attach: " (file-truename file) " "
 				 description "\n"))
 	  (message (concat "Attached '" file "'."))
 	  (setq post-has-attachment t))))))
@@ -919,7 +919,7 @@ When you finish editing this message, type \\[post-save-current-buffer-and-exit]
   (cond ((header-goto-field header)
          (beginning-of-line)
          (kill-line)
-         (insert-string (concat header ": " value)))
+         (insert (concat header ": " value)))
         (t
          (header-append-value header value)))
   (message "%s: %s" header value))
@@ -928,7 +928,7 @@ When you finish editing this message, type \\[post-save-current-buffer-and-exit]
   "Add a header and set it's value (if header exists, will add multiple headers)"
   (goto-char (point-min))
   (search-forward-regexp "^$" nil t)
-  (insert-string (concat header ": " value "\n")))
+  (insert (concat header ": " value "\n")))
 
 (defun header-check-references ()
   "Check the length of the references header and place the cursor on the header

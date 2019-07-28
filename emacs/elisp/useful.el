@@ -1,10 +1,8 @@
 (setq makefile-name "GNUmakefile")
 (setq makefile-name-alt "Makefile")
 
-(global-set-key [C-f1] '(lambda () (interactive) (insert-string "Stéphane")))
-(global-set-key [C-S-f1] '(lambda () (interactive) (insert-string "£")))
-(global-set-key [?\C-$] '(lambda () (interactive) (insert 2211)))
-(global-set-key [C-$] '(lambda () (interactive) (insert £)))
+(global-set-key [C-f1] '(lambda () (interactive) (insert "Stéphane")))
+(global-set-key (kbd "<C-$>") '(lambda () (interactive) (insert "£")))
 (global-set-key [f2] 'compile-something)
 
 ;(global-set-key [(f3)] 'speedbar-get-focus)
@@ -195,7 +193,7 @@ mkaefile-name-alt. If neither exists, return nil. Else return t."
       (backward-char)
       (if (= (char-after) (string-to-char "\\"))
 	  (while (< (current-column) target-column)
-	    (insert-string "\t")))
+	    (insert "\t")))
       (forward-line 1))))
 
 
@@ -233,7 +231,7 @@ first two lines of the paragraph. Ideally, it should watch to see
 where the paragraph ends, and even prompt for a prefix."
   (interactive)
   (delete-backward-char 1)
-  (insert-string " ")
+  (insert " ")
   (end-of-line)
   (forward-char 1))
 
