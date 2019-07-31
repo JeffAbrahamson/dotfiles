@@ -115,7 +115,14 @@ $zero_\[$exit_color_\]$one_prefix_\${exit_status_indicator_}${screen_indicator_}
     esac
 }
 
+# # Put this at the end of PROMPT_COMMAND to indicate i3lock running.
+# # This was useful for a while when I had some bug about extra i3locks
+# # being present.  I don't know why I'd need it anymore.
+# i3lock_indicator() {
+#     pg i3lock | grep -v grep | grep -v pidof | grep -v xauto || true;
+# }
+
 # Prompt command outputs nothing, only sets state.
 # The prompt itself computes nothing, only displays state.
-PROMPT_COMMAND="exit_status_indicator; script_indicator; display_indicator; screen_indicator; virtualenv_indicator; line_zero; line_zero_format; setup_prompt; pg i3lock | grep -v grep | grep -v pidof | grep -v xauto || true"
+PROMPT_COMMAND="exit_status_indicator; script_indicator; display_indicator; screen_indicator; virtualenv_indicator; line_zero; line_zero_format; setup_prompt"
 
