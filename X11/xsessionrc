@@ -7,8 +7,10 @@ if [ "X$DESKTOP_SESSION" = Xi3 ]; then
     # Launch nm-applet with a slight delay so that the accessibility
     # bus is available.
     (sleep 2; nm-applet) &
+    # I think I call i3lock with --nofork because of an errant i3lock process
+    # that was sometimes hanging around.
     xautolock -detectsleep \
-	-time 3 -locker "i3lock --dpms --color=220022 --inactivity-timeout 10 --nofork" \
+	-time 3 -locker "i3lock --color=000000 --nofork" \
 	-notify 30 \
 	-notifier "notify-send -u critical -t 10000 -- 'LOCKING screen in 30 seconds'" &
     redshift &

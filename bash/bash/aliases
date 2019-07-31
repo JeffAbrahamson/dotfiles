@@ -466,3 +466,9 @@ jb-sprint() {
     cd "${today_}"
     unset today_
 }
+
+# This is useful for ingesting bonbon discovery content and producing URL's.
+# Probably I should instead push this into bonbon itself.
+jb-stream_links() {
+    grep t_ | sed -e 's/^t_.*__id_//; s|^|/https://www.jellybooks.com/papaya/crowberry/|;'
+}
