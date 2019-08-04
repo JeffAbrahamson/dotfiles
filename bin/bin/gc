@@ -30,4 +30,7 @@ if [ X = X${accounts[$account]} ]; then
 fi
 filename="${accounts[$account]}"
 echo Opening $filename.
+
+# Cf. https://bugs.launchpad.net/ubuntu/+source/gnucash/+bug/1802994
+unset GTK_IM_MODULE
 gnucash "$filename" &
