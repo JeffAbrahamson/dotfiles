@@ -71,6 +71,10 @@ if [ "X$HOSTNAME" = Xstarshine ]; then
     #export GDK_SCALE=2
 fi
 
+# To avoid dbind errors about not being able to register with the
+# accessibility bus (a gnome thing, I believe), I set this:
+export NO_AT_BRIDGE=1
+
 ## This should be the last block of this file
 # For local customization, at end of bash_profile
 # This file should not be included with this distribution, as
