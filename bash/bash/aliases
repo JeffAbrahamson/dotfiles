@@ -275,21 +275,23 @@ cppdoc() { ff $HOME/work/c++-docs/cpp.html & }
 #workm-periodic() { while true; do date; workm force-put; sleep 900; separator; done; }
 #workm-push() { workm force-put; }
 tea() { tsd tea $(date +%H%M); tsd tea; }
-tsd-chocolat() {
-    echo $(( $(tsd-value araguani) + $(tsd-value guanaja) + $(tsd-value guanaja-lacte) +
-	     $(tsd-value abinao) + $(tsd-value barry-cuba) + $(tsd-value barry-equiteur) +
-	     $(tsd-value barry-tanzanie) + $(tsd-value barry-venezuela) +
-	     $(tsd-value barry-madagascar) + $(tsd-value barry-ocoa) + $(tsd-value fleur-de-cao) +
-	     $(tsd-value alain-ducasse) + $(tsd-value bonnat) + $(tsd-value chocolate-other) +
-	     $(tsd-value coeur-de-guanaja) + $(tsd-value nyangbo) + $(tsd-value pate-de-cacao) ));
-}
-tsd-farine() {
-    for f in $(tsd -L | grep farine); do
+
+tsd-group() {
+    filter="$1"
+    option="$2"
+    value=0
+    for f in $(tsd -L | grep "$filter"); do
 	the_date=$(tsd $f | tail -1 | awk '{print $1}')
 	the_mass=$(tsd $f | tail -1 | awk '{print $2}')
-	printf "%-20s   %-4.0f g   %s\n" "$f" "$the_mass" "$the_date"
+	value=$(( $value + $(tsd-value $f) ))
+	if [ "X$option" = X ]; then
+	    printf "%-25s   %-4.0f g   %s\n" "$f" "$the_mass" "$the_date"
+	fi
     done
+    printf "  Σ=%d\n", $value
 }
+tsd-chocolat() { tsd-group chocolat $*; }
+tsd-farine() { tsd-group farine $*; }
 
 # rpass() { head -c $((500 + $RANDOM)) < /dev/urandom | sha1sum; }
 rpass() { head -c $((40 + $RANDOM / 2000)) < /dev/urandom | base64; }
