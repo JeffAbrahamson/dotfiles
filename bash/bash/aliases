@@ -288,10 +288,11 @@ tsd-group() {
 	    printf "%-25s   %-4.0f g   %s\n" "$f" "$the_mass" "$the_date"
 	fi
     done
-    printf "  Σ=%d\n", $value
+    printf "  Σ=%d\n" $value
 }
 tsd-chocolat() { tsd-group chocolat $*; }
 tsd-farine() { tsd-group farine $*; }
+tsd-riz() { tsd-group "riz-" $*; }
 
 # rpass() { head -c $((500 + $RANDOM)) < /dev/urandom | sha1sum; }
 rpass() { head -c $((40 + $RANDOM / 2000)) < /dev/urandom | base64; }
