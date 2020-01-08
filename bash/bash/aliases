@@ -182,6 +182,8 @@ ssl-status() {
     echo | openssl s_client -servername "$name" -connect "$name":443 2>/dev/null | openssl x509 -noout -dates
 }
 
+siegfried-xload() { ssh siegfried -f -X xload; }
+
 # This used to be my way of transferring personal notes home from work.
 # I keep the alias just to remind me of these old notes.
 data-notes() {
