@@ -142,6 +142,7 @@ separator() { echo =============================================================
 # done
 
 srd-here() { srd "$*" -g "$(hostname)"; }
+srd-here-e() { srd -E "$*" -g "$(hostname)"; }
 
 ###########################################################################
 # ssh
@@ -161,14 +162,17 @@ ssh-list-all-keys() {
 # https://blog.g3rt.nl/upgrade-your-ssh-keys.
 ssh-tabula-rasa() { unset SSH_AGENT_PID; unset SSH_AUTH_SOCK; exec ssh-agent bash; }
 ssh-github() { ssh-add ~/.ssh/id_rsa.github; }
+ssh-p27() { ssh-add ~/.ssh/id_ed25519.p27; }
 ssh-jelly() { ssh-add ~/.ssh/id_rsa.jellybooks; }
 
 ssh-setup() {
-    srd-here ssh
+    srd-here-e ssh
     srd-here gith
+    srd-here-e p27-ssh
     srd-here ssh
     ssh-add
     ssh-github
+    ssh-p27
     ssh-jelly
     ssh-add -l
 }
@@ -178,11 +182,13 @@ ssl-status() {
     echo | openssl s_client -servername "$name" -connect "$name":443 2>/dev/null | openssl x509 -noout -dates
 }
 
+# This used to be my way of transferring personal notes home from work.
+# I keep the alias just to remind me of these old notes.
 data-notes() {
-    cd $HOME/common/work/employment/Goldman-Sachs/data-notes/;
-    tr 'n-za-mN-ZA-M5-90-4' 'a-zA-Z0-9' < /tmp/gs.tgz | uudecode;
-    tar xzf gs.tgz;
-    rm gs.tgz;
+    cd $HOME/work/employment/old/Goldman-Sachs/data-notes/;
+    # tr 'n-za-mN-ZA-M5-90-4' 'a-zA-Z0-9' < /tmp/gs.tgz | uudecode;
+    # tar xzf gs.tgz;
+    # rm gs.tgz;
 };
 
 # Things I should be doing.  A number indicates a priority, so the
@@ -296,12 +302,12 @@ tsd-riz() { tsd-group "riz-" $*; }
 
 # rpass() { head -c $((500 + $RANDOM)) < /dev/urandom | sha1sum; }
 rpass() { head -c $((40 + $RANDOM / 2000)) < /dev/urandom | base64; }
-voyages() { libreoffice $HOME/work/finance/France/impots/$(date '+%Y')/voyages.ods & }
+# voyages() { libreoffice $HOME/work/finance/France/impots/$(date '+%Y')/voyages.ods & }
 cheque() { libreoffice $HOME/data/chequier.ods & }
 secu() { libreoffice $HOME/data/secu.ods & }
-food() { libreoffice $HOME/work/finance/jeff-stephane/food-spending.ods & }
-trader() { libreoffice $HOME/work/finance/UK-taxes/2016-2017/sole-trader/sole-trader-2016-2017.ods & }
-term() { terminator -b -m & }
+# food() { libreoffice $HOME/work/finance/jeff-stephane/food-spending.ods & }
+# trader() { libreoffice $HOME/work/finance/UK-taxes/2016-2017/sole-trader/sole-trader-2016-2017.ods & }
+# term() { terminator -b -m & }
 recipes() { case "X$HOSTNAME" in
     Xsiegfried|Xbirdsong) file=$HOME/src/jma/recipes/pdf/recipes-nexus9.pdf;;
     Xnantes|Xstarshine) file=$HOME/src/jma/recipes/pdf/recipes-laptop.pdf;;
@@ -438,6 +444,8 @@ redisp() {
         echo DISPLAY is already set.
     fi;
 }
+xal-disable() { xautolock -disable; }
+xal-enable() { xautolock -enable; }
 
 ###########################################################################
 # Silence glibc asserts.
