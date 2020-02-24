@@ -274,7 +274,8 @@ bandwidth-stats() {
 	download=$( bandwidth | grep " $one_ssid " | eval $restrict | awk '{sum += $3; sumsq += $3^2} END { printf("μ=%5.1f  σ=%5.1f", sum / NR, sqrt((sumsq - sum^2 / NR)/NR));}')
 	upload=$( bandwidth | grep " $one_ssid " | eval $restrict | awk '{sum += $4; sumsq += $4^2} END { printf("μ=%5.1f  σ=%5.1f", sum / NR, sqrt((sumsq - sum^2 / NR)/NR));}')
 	ping=$( bandwidth | grep " $one_ssid " | eval $restrict | awk '{sum += $5; sumsq += $5^2} END { printf("μ=%7.1f  σ=%7.1f", sum / NR, sqrt((sumsq - sum^2 / NR)/NR));}')
-	printf "%-20s  |  %s  |  %s  |  %s\n" "$one_ssid" "down: $download" "up: $upload" "ping: $ping"
+	NR=$( bandwidth | grep " $one_ssid " | eval $restrict | wc -l )
+	printf "%-22s  #=%-4d |  %s  |  %s  |  %s\n"  "$one_ssid" "$NR" "down: $download" "up: $upload" "ping: $ping"
     done
 }
 
