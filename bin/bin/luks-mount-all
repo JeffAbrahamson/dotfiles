@@ -51,6 +51,7 @@ echo "$(date)    luks-mount-all" >> $logfile
 ## links in /dev/disk/by-uuid/ that point to the /dev/sd* file.
 
 # siegfried / fileserver
+luks_mount 512b9875-1c91-4599-9aa5-c6477cade66e /jma-5t
 luks_mount 4d4bc0a0-e67a-4f9b-8c70-05cfdbf9282c /jma-4t
 luks_mount 4b824f8c-94d4-4655-8e56-67ead167ed4c /jma-3t
 luks_mount 5d6777f0-f475-451e-bad8-3cdf6e80f7c5 /sb-4t
