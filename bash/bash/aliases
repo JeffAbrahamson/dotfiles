@@ -416,7 +416,7 @@ u2ps() {
 # python
 
 # Shortcut for activating my virtual environments.
-alias activate=". venv/bin/activate"
+alias activate=". $HOME/.dotfiles/bash/activate.sh"
 
 ###########################################################################
 # docker
