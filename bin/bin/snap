@@ -4,6 +4,6 @@ PATH=/usr/bin:/bin
 
 snap() {
     tmp=$(mktemp /tmp/fooXXXXXXXXX.png);
-    scrot -s $tmp && eog $tmp && rm $tmp;
+    scrot -s --overwrite $tmp && eog $tmp && rm $tmp;
 }
 snap
