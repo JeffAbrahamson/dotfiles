@@ -303,7 +303,7 @@ tsd-chocolat() { tsd-group chocolat $*; }
 tsd-farine() { tsd-group farine $*; }
 tsd-riz() { tsd-group "riz-" $*; }
 
-tsd-mass() {
+tsd-balance() {
     for f in $(tsd -L | grep "balance-"); do
 	last_reading=$(tsd $f | tail -1 | awk '{print $2}')
 	read -p "$f  (was: $last_reading)  " value
