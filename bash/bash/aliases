@@ -303,6 +303,15 @@ tsd-chocolat() { tsd-group chocolat $*; }
 tsd-farine() { tsd-group farine $*; }
 tsd-riz() { tsd-group "riz-" $*; }
 
+tsd-mass() {
+    for f in $(tsd -L | grep "balance-"); do
+	last_reading=$(tsd $f | tail -1 | awk '{print $2}')
+	read -p "$f  (was: $last_reading)  " value
+	tsd $f $value
+    done
+    tsd-today | grep "balance-"
+}
+
 # rpass() { head -c $((500 + $RANDOM)) < /dev/urandom | sha1sum; }
 rpass() { head -c $((40 + $RANDOM / 2000)) < /dev/urandom | base64; }
 # voyages() { libreoffice $HOME/work/finance/France/impots/$(date '+%Y')/voyages.ods & }
