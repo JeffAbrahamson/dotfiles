@@ -289,7 +289,7 @@ tsd-group() {
     filter="$1"
     option="$2"
     value=0
-    for f in $(tsd -L | grep "$filter"); do
+    for f in $(tsd -L | grep -E "^$filter"); do
 	the_date=$(tsd $f | tail -1 | awk '{print $1}')
 	the_mass=$(tsd $f | tail -1 | awk '{print $2}')
 	value=$(( $value + $(tsd-value $f) ))
