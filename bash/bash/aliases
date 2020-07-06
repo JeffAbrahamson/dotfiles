@@ -342,9 +342,9 @@ notegr() { grep $1 $HOME/data/notes/$1; }
 ###########################################################################
 # git
 
-git-log-graph() { git log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit; }
-git-log-terse() { git log --pretty=format:"%ad%x09%an%x09%s" --date=short; }
-git-log-table() { git log --pretty=format:'%C(yellow)%h|%Cred%ad|%Cblue%an|%Cgreen%d %Creset%s' --date=short | column -ts'|' | less -r; }
+git-log-graph() { git log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit $*; }
+git-log-terse() { git log --pretty=format:"%ad%x09%an%x09%s" --date=short $*; }
+git-log-table() { git log --pretty=format:'%C(yellow)%h|%Cred%ad|%Cblue%an|%Cgreen%d %Creset%s' --date=short $*; }
 # git config --global alias.lg "log --color --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit"
 # git lg
 # git lg -p
