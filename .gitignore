@@ -10,3 +10,4 @@ textpattern/
 HISTORY.txt
 README.txt
 *~
+__pycache__

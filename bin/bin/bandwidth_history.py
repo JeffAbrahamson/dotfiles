@@ -19,6 +19,7 @@ import datetime
 import glob
 import math
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 from pandas.plotting import register_matplotlib_converters
 
@@ -72,11 +73,26 @@ def plot_ping_latency_by_day(dframe, image_name):
     mean_latency_df['date'] = mean_latency_df['index'].apply(
         datetime.date.fromtimestamp)
     # plt.scatter(mean_latency_df.date, mean_latency_df.log_latency)
-    plt.scatter(mean_latency_df.date, mean_latency_df.clipped_latency, s=1, c='b')
+    plt.scatter(mean_latency_df.date, mean_latency_df.clipped_latency, s=1, c='orange')
+
+    date_group = mean_latency_df.loc[:, ['latency', 'date']].groupby('date')
+    lower_percentile = 5
+    upper_percentile = 95
+    alpha = .1
+    dframe_p_lower = date_group.agg(
+        lambda val: min(max_latency, np.percentile(val, lower_percentile)))
+    dframe_p_upper = date_group.agg(
+        lambda val: min(max_latency, np.percentile(val, upper_percentile)))
+    plt.scatter(dframe_p_lower.index, dframe_p_lower.ewm(alpha=alpha).mean(), s=1, c='darkblue')
+    plt.scatter(dframe_p_upper.index, dframe_p_upper.ewm(alpha=alpha).mean(), s=2, c='slateblue')
+
     plt.title('Mean ping latency by day, clipped to ' + str(max_latency))
     plt.ylabel('Ping latency, seconds')
-    plt.xlabel('Date')
+    plt.xlabel('EWMA of ' + str(lower_percentile) + ' and ' + \
+               str(upper_percentile) + \
+               ' percentiles with alpha = ' + str(alpha))
     plt.ylim((0, None))
+    plt.legend()
     plt.show()
     image_name = None
 
