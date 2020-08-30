@@ -57,6 +57,7 @@ def join_on_time(filenames):
 def plot_ping_latency_by_day(dframe, image_name):
     """Plot.
     """
+    max_latency = 400           # Clip below this value.
     ping_latency_df = dframe.loc[:, ['ping' in x and 'speedtest' not in x
                                      for x in dframe.columns]].copy()
     # Compute mean at each time point.  Note that mean will ignore NaN
@@ -64,12 +65,16 @@ def plot_ping_latency_by_day(dframe, image_name):
     # least one valid entry (double).
     ping_latency_series = ping_latency_df.mean(axis=1).dropna()
     mean_latency_df = pd.DataFrame(ping_latency_series, columns=['latency'])
-    mean_latency_df['log_latency'] = mean_latency_df.latency.apply(math.log10)
+    # mean_latency_df['log_latency'] = mean_latency_df.latency.apply(math.log10)
+    mean_latency_df['clipped_latency'] = mean_latency_df.latency.apply(
+        lambda val : min(max_latency, val))
     mean_latency_df['index'] = mean_latency_df.index
     mean_latency_df['date'] = mean_latency_df['index'].apply(
         datetime.date.fromtimestamp)
-    plt.scatter(mean_latency_df.date, mean_latency_df.log_latency)
-    plt.ylabel('Log ping latency, seconds')
+    # plt.scatter(mean_latency_df.date, mean_latency_df.log_latency)
+    plt.scatter(mean_latency_df.date, mean_latency_df.clipped_latency, s=1, c='b')
+    plt.title('Mean ping latency by day, clipped to ' + str(max_latency))
+    plt.ylabel('Ping latency, seconds')
     plt.xlabel('Date')
     plt.ylim((0, None))
     plt.show()
