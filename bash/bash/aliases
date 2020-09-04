@@ -458,6 +458,7 @@ redisp() {
 }
 xal-disable() { xautolock -disable; }
 xal-enable() { xautolock -enable; }
+xal() { xal-disable; banner '' xautolock off " "; read -p 'Press any key to re-enable' -n 1; xal-enable; echo; }
 
 ###########################################################################
 # Silence glibc asserts.
