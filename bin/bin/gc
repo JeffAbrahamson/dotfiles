@@ -1,11 +1,8 @@
 #!/bin/bash
 
-una_dir="$HOME/work/UNA/comite-directeur/trésorier"
 tn_dir="$HOME/work/startup/transport-nantes/finances"
 nmla_dir="$HOME/work/startup/ML-meetup/compta/gnucash"
 declare -A accounts
-accounts['una-1718']="$una_dir/gnucash/una-2017-2018.gnucash"
-accounts['una-1819']="$una_dir/gnucash/una-2018-2019.gnucash"
 
 accounts['tn']="$tn_dir/gnucash/transport-nantes.gnucash"
 accounts['nmla']="$nmla_dir/nmla.gnucash"
