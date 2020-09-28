@@ -37,21 +37,32 @@ record_size_for()
 {
     dir="$1"
     series="$2"
+    series_base="$3"
     if [ -d "$dir" ]; then
 	if [ $( ls "$dir" | wc -l ) -gt 0 ] ; then
-	    record_size "$dir" "$series"
+	    record_size "$dir" "$series_base$series"
 	fi
     fi
 }
 
+record_disk_usage() {
+    series_base="$1"
+    # I think what I care about and what is ext4 is precisely identical.
+    disks=$(cat /proc/mounts | awk '/ext4/ {print $1}')
+    for disk in $disks; do
+	mount_dir=$(df --output=target $mount_point | tail -1)
+	record_size_for "$mount_dir" "$(basename $disk)" "$series_base"
+    done
+}
+
 i3_pid=$(pidof i3)
-SERIES_NAME=$HOME/data/hosts/$(hostname -s)/disk
-record_frequency_minutes=31
+SERIES_BASE=$HOME/data/hosts/$(hostname -s)/disk-
+record_frequency_minutes=11
 time_delta=$(( $record_frequency_minutes * 60 ))
 # First recording should not be immediate.  On session start, we may
 # not have a network connection.  In addition, it's annoying for
 # starting daemons immediately to monopolise resources.
-sleep 600
+sleep 300
 while true; do
     ## When I3 exits, this script should quit as well.  I'm not sure
     ## if I need this or not.  So watch for i3 exit and quit when
@@ -60,9 +71,7 @@ while true; do
 	exit 0
     fi
     log_status recording
-    record_size_for $HOME ${SERIES_NAME}-home
-    record_size_for /home2 ${SERIES_NAME}-images
-    record_size_for /images-2 ${SERIES_NAME}-images-2
+    record_disk_usage $SERIES_BASE
     speedtest
     up-monitor
 
