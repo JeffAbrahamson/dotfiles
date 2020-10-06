@@ -313,3 +313,11 @@ only a short time has passed between the two times."
   (interactive "*r")
   (save-excursion
     (shell-command-on-region start end "sort -u" nil t)))
+
+(defun unfill-region (beg end)
+  "Unfill the region, joining text paragraphs into a single
+    logical line.  This is useful, e.g., for use with
+    `visual-line-mode'."
+  (interactive "*r")
+  (let ((fill-column (point-max)))
+    (fill-region beg end)))
