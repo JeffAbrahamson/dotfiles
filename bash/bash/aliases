@@ -466,6 +466,11 @@ xal() { xal-disable; banner '' xautolock off " "; read -p 'Press any key to re-e
 alias evince="evince 2>/dev/null"
 
 ###########################################################################
+# Quick directory access for favourite spots.
+jbks() { cd $HOME/work/startup/jellybooks/; }
+tn() { cd $HOME/work/startup/transport-nantes/; }
+
+###########################################################################
 # Jellybooks personal.
 
 jb-a() { cd $HOME/src/jellybooks/analytics; }
