@@ -474,8 +474,7 @@ tn() { cd $HOME/work/startup/transport-nantes/; }
 # Jellybooks personal.
 
 jb-a() { cd $HOME/src/jellybooks/analytics; }
-jb-p() { cd $HOME/src/jellybooks/pliny; }
-jb-i() { cd $HOME/src/jellybooks/production; } # Should be infrastructure.
+jb-i() { cd $HOME/src/jellybooks/infrastructure; }
 nux() {
     n=$1;
     if [ $n -gt 0 ]; then
