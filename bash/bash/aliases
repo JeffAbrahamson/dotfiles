@@ -349,6 +349,15 @@ git-log-table() { git log --pretty=format:'%C(yellow)%h|%Cred%ad|%Cblue%an|%Cgre
 # git lg
 # git lg -p
 
+# From https://stackoverflow.com/a/3452888/833300
+pip-update-all() {
+    pip list --outdated --format=freeze | \
+	grep -v '^\-e' | \
+	cut -d = -f 1  | \
+	xargs -n1 pip install -U;
+}
+
+
 ###########################################################################
 # gtd
 
