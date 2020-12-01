@@ -484,6 +484,7 @@ tn() { cd $HOME/work/startup/transport-nantes/; }
 
 jb-a() { cd $HOME/src/jellybooks/analytics; }
 jb-i() { cd $HOME/src/jellybooks/infrastructure; }
+jb-p() { cd $HOME/src/jellybooks/production; }
 nux() {
     n=$1;
     if [ $n -gt 0 ]; then
