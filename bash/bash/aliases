@@ -441,13 +441,18 @@ gc-use() {
     unset _gc__default_filename
     _gc__temp="_gc__$1";
     if [ -r $_gc__temp ]; then
+	_gc__default_index=
 	_gc__default_filename="$_gc__temp";
     else
+	_gc__default_index="$_gc__temp";
 	_gc__default_filename=${!_gc__temp};
-	export _gc__default_filename
     fi
+    export _gc__default_index
+    export _gc__default_filename
     unset _gc__temp;
 }
+# Search for accounts in default gnucash file.
+gcg() { grep $* "$_gc__cache/$_gc__default_index" | sort; }
 
 ###########################################################################
 # docker
