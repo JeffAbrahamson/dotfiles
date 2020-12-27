@@ -436,6 +436,18 @@ u2ps() {
 # Shortcut for activating my virtual environments.
 alias activate=". $HOME/.dotfiles/bash/activate.sh"
 alias gc-activate=". $HOME/bin/gc-activate.sh"
+gc-use() {
+    unset _gc__temp
+    unset _gc__default_filename
+    _gc__temp="_gc__$1";
+    if [ -r $_gc__temp ]; then
+	_gc__default_filename="$_gc__temp";
+    else
+	_gc__default_filename=${!_gc__temp};
+	export _gc__default_filename
+    fi
+    unset _gc__temp;
+}
 
 ###########################################################################
 # docker
