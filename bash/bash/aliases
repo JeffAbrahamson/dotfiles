@@ -450,6 +450,7 @@ gc-use() {
     export _gc__default_index
     export _gc__default_filename
     unset _gc__temp;
+    prompt_extra=" gc=$1"
 }
 # Search for accounts in default gnucash file.
 gcg() { grep $* "$_gc__cache/$_gc__default_index" | sort; }

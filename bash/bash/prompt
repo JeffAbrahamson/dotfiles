@@ -11,6 +11,9 @@ fg_cyan="$(tput setaf 6)"
 fg_white="$(tput setaf 7)"
 reset="$(tput sgr0)"
 
+# Set this to something if I want some extra info in the prompt.
+prompt_extra=
+
 # This function must be called first in PROMPT_COMMAND in order to capture $?.
 exit_status_indicator() {
     # And this must be the first line:
@@ -78,7 +81,7 @@ line_zero() {
     if [ "X$git_" != X -a "X$virt_" != X ]; then
 	zerospace=' '
     fi
-    line_zero_="$git_$zerospace$virt_"
+    line_zero_="$git_$zerospace$virt_$prompt_extra"
 }
 
 line_zero_format() {
