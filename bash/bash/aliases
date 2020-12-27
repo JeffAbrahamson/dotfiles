@@ -435,6 +435,7 @@ u2ps() {
 
 # Shortcut for activating my virtual environments.
 alias activate=". $HOME/.dotfiles/bash/activate.sh"
+alias gc-activate=". $HOME/bin/gc-activate.sh"
 
 ###########################################################################
 # docker
