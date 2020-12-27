@@ -437,6 +437,7 @@ u2ps() {
 alias activate=". $HOME/.dotfiles/bash/activate.sh"
 alias gc-activate=". $HOME/bin/gc-activate.sh"
 gc-use() {
+    gc-activate
     unset _gc__temp
     unset _gc__default_filename
     _gc__temp="_gc__$1";
