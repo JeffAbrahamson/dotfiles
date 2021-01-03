@@ -235,3 +235,10 @@ flag should be valid grep flags (typically '-i') or else the empty string."
        (x-get-selection 'PRIMARY)))
   (global-set-key (kbd "S-<insert>") 'paste-primary-selection)
   )
+
+(setq calendar-week-start-day 1
+      calendar-day-name-array ["Dimanche" "Lundi" "Mardi" "Mercredi"
+			       "Jeudi" "Vendredi" "Samedi"]
+      calendar-month-name-array ["Janvier" "Février" "Mars" "Avril" "Mai"
+				 "Juin" "Juillet" "Août" "Septembre"
+				 "Octobre" "Novembre" "Décembre"])
