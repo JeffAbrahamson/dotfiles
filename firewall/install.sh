@@ -16,7 +16,14 @@ sudo ufw allow ssh/tcp
 sudo ufw limit ssh
 sudo ufw enable
 if [ "X$$HOSTNAME" = "Xsiegfried" ]; then
-    sudo ufw allow afpovertcp/tcp
+    ## AFP no longer works with Stéphane's iMac (12/2020)
+    ## and he's not willing to help fix it (taking the
+    ## time to try things and explore what might work).
+    ## So deactivating, 1/2021.
+    # sudo ufw allow afpovertcp/tcp    # 548/tcp
+    ## For pi-hole:
+    sudo ufw allow 80/tcp
+    sudo ufw allow 53/udp    # DNS
 fi
 
 ## If we want to see the current iptables rules, we could call
