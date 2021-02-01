@@ -42,21 +42,21 @@ while true; do
 	task=$(xprop -id $id | awk '/_NET_WM_NAME/{$1=$2="";print}' | cut -d'"' -f2)
 	echo $(date +%s) $task >> $task_file
 
-	## Also capture an image of the active window.
-	## Suggestion by Hugo Mougard, 2016-10-05.
-	# We reduce image size.  At 150x150, images are over 20 KB.
-	# At 100x100, imges are about 10-20 KB.  At 10 KB per image,
-	# snapping once per minute, this stores 5 GB per year.  At 20
-	# KB (10*60*24*365/1024), that's 10 GB per year.
-	hostname=$(hostname)
-	time_base=$(date +%s)
-	time_component=$(echo $time_base | perl -pwe 's/[0-9]{5}$//;')
-	gtd_dir="$GTD_IMG_DIR/$hostname/$time_component"
-	if [ ! -d $gtd_dir ]; then
-	    mkdir -p $gtd_dir
-	fi
-	scrot --focused "$GTD_IMG_DIR/gtd-img-%s.png" \
-	      -e "convert -geometry 100x100 \$f $gtd_dir/${hostname}_${time_base}.png; chmod 400 $gtd_dir/${hostname}_${time_base}.png; rm \$f"
+	# ## Also capture an image of the active window.
+	# ## Suggestion by Hugo Mougard, 2016-10-05.
+	# # We reduce image size.  At 150x150, images are over 20 KB.
+	# # At 100x100, imges are about 10-20 KB.  At 10 KB per image,
+	# # snapping once per minute, this stores 5 GB per year.  At 20
+	# # KB (10*60*24*365/1024), that's 10 GB per year.
+	# hostname=$(hostname)
+	# time_base=$(date +%s)
+	# time_component=$(echo $time_base | perl -pwe 's/[0-9]{5}$//;')
+	# gtd_dir="$GTD_IMG_DIR/$hostname/$time_component"
+	# if [ ! -d $gtd_dir ]; then
+	#     mkdir -p $gtd_dir
+	# fi
+	# scrot --focused "$GTD_IMG_DIR/gtd-img-%s.png" \
+	#       -e "convert -geometry 100x100 \$f $gtd_dir/${hostname}_${time_base}.png; chmod 400 $gtd_dir/${hostname}_${time_base}.png; rm \$f"
     fi
     sleep 60
 done
