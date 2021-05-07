@@ -52,7 +52,8 @@ bindsym $mod+Control+Right  move right
 
 mode "i3" {
     # Start a terminal
-    bindsym c  exec urxvt;mode "default"
+    bindsym c	     exec urxvt;mode "default"
+    bindsym Shift+c  exec i3-restore-2;mode "default"
 
     # ## To deprecate as of 1 July 2019 if I'm satisified with the
     # ## direct bindings above.
