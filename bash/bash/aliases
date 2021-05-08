@@ -499,6 +499,7 @@ alias evince="evince 2>/dev/null"
 # Quick directory access for favourite spots.
 jbks() { cd $HOME/work/startup/jellybooks/; }
 tn() { cd $HOME/work/startup/transport-nantes/; }
+tns() { cd $HOME/src/jma/transport-nantes/tn_web/; }
 
 ###########################################################################
 # Jellybooks personal.
