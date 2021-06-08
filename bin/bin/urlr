@@ -1,0 +1,24 @@
+#!/usr/bin/python3
+
+"""
+Take a single URL as argument.
+
+Repeatedly HEAD the URL until it no longer redirects.
+Print the final destination.
+"""
+
+import requests
+import sys
+
+def resolve_url(url):
+    """Resolve a URL to its final form.
+    """
+    while True:
+        r = requests.head(url)
+        if "Location" not in r.headers:
+            print(url)
+            return 0
+        url = r.headers["Location"]
+
+url = sys.argv[1]
+resolve_url(url)
