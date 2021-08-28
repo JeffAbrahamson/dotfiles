@@ -21,8 +21,16 @@
       (progn
 	(load-file (concat jma-elisp-base "useful.el"))
 	(load-file (concat jma-elisp-base "mode-hooks.el"))
-	(load-file (concat jma-elisp-base "post.el"))
-	(load-file (concat jma-elisp-base "mutt-alias.el"))
+	;; Post mode seems to have been abandonned in 2014 or so.
+	;; It was written for emacs 20.
+	;; Its use of old-style backticks causes emacs 27 to fail at
+	;; startup in 8/2021.  So don't include it, but keep it in git
+	;; in case I some day need something like this and don't find
+	;; a better alternative.
+	;;;; (load-file (concat jma-elisp-base "post.el"))
+	;; The mutt-alias package uses cl, which is deprecated.
+	;; Since I'm not using mutt-alias, don't load this for now.
+	;;;; (load-file (concat jma-elisp-base "mutt-alias.el"))
 	(load-file (concat jma-elisp-base "dict.el"))
 	(load-file (concat jma-elisp-base "evan.el"))
 	(load-file (concat jma-elisp-base "jma.el"))
