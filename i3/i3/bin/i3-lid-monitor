@@ -1,17 +1,12 @@
 #!/bin/bash
 
-PATH=/usr/bin:/bin
-renice -n 19 $$
-
+. $HOME/bin/p27.sh
 # Log what we do lest it be mysterious.  Write the log somewhere where
 # it will still be visible after restart/crash.
-LOG="$HOME/.i3/${LOGNAME:-root}-lid-monitor.log"
+log_to_file "$HOME/.i3/${LOGNAME:-root}-lid-monitor.log"
 
-log()
-{
-    now=$(date "+%F %T")
-    echo "$now    $*" >> $LOG
-}
+PATH=/usr/bin:/bin
+renice -n 19 $$
 
 check_lid()
 {
@@ -23,10 +18,10 @@ check_lid()
 	# This should be the same as what I do in $HOME/.xsessionrc
 	# if I want the visual effect to be the same as timeout.
 	# Let i3lock fork so that we also suspend.
-	log "$0 locking."
+	log_line "$0 locking."
 	i3-lock-suspend suspend
     else
-	log state: $state
+	log_line state: $state
     fi
 }
 
@@ -40,7 +35,7 @@ main()
 	check_lid
 	sleep 1
 	if [ ! -e /proc/$i3_pid ]; then
-	    log "i3 has exited, and so shall I."
+	    log_line "i3 has exited, and so shall I."
 	    return
 	fi
     done

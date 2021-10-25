@@ -35,7 +35,13 @@ log_to_file() {
     # persistence but would also have to manage log rotation, which
     # makes the sort of ad hoc usage I have in my personal life more
     # difficult.
-    log_path="/tmp/$1"
+    absolute_filename_pattern="^/"
+    [[ "$1" =~ $absolute_filename_pattern ]]
+    if [ "${BASH_REMATCH[0]}" ]; then
+	log_path="$1"
+    else
+	log_path="/tmp/$1"
+    fi
 
     # Save file descriptors so they can be restored to whatever they were
     # before redirection or used themselves to output to whatever they

@@ -2,8 +2,13 @@ if [ "X$DESKTOP_SESSION" = Xi3 ]; then
     # It seems dunst is started automatically.  This is good, since
     # calling notify-send when dunst is not running will also start
     # dunst.
-    i3-gtd &
-    i3-env-stats &
+    #
+    # Sleep before starting scripts that depend on i3.  Starting these
+    # from i3's config is possible but leads to more challenges to
+    # avoid concurrent instances, since i3 can be asked to reload its
+    # config.
+    (sleep 15; i3-gtd &)&
+    (sleep 17; i3-env-stats &)&
     # Launch nm-applet with a slight delay so that the accessibility
     # bus is available.
     (sleep 2; nm-applet) &
@@ -22,7 +27,7 @@ if [ "X$DESKTOP_SESSION" = Xi3 ]; then
        # If I have a retina display, use it.
        xrandr --dpi 192
        # Lock the screen and suspend when I close the lid.
-       i3-lid-monitor &
+       (sleep 9; i3-lid-monitor &)&
        synclient TapButton2=1
        synclient TapButton3=2
        # Disable light tap on the touchpad, as it moves the mouse as
