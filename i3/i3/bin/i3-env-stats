@@ -1,11 +1,10 @@
 #!/bin/bash
 
+. $HOME/bin/p27.sh
+log_to_file i3-env-stats.log
+
 PATH=$HOME/bin:/usr/bin:/bin
 renice -n 19 $$
-
-log_status() {
-    echo $(date) "  " $* >> /tmp/i3-env-stats.log
-}
 
 # Functions to monitor disk usage.
 # This is a bit hard-coded.  It's also largely copied from disk-usage.sh.
@@ -55,10 +54,13 @@ record_disk_usage() {
     done
 }
 
+log_line "Starting..."
 i3_pid=$(pidof i3)
 SERIES_BASE=$HOME/data/hosts/$(hostname -s)/disk-
 record_frequency_minutes=11
 time_delta=$(( $record_frequency_minutes * 60 ))
+log_line "I3 pid = $i3_pid"
+log_line "Log frequency = $record_frequency_minutes minutes."
 # First recording should not be immediate.  On session start, we may
 # not have a network connection.  In addition, it's annoying for
 # starting daemons immediately to monopolise resources.
@@ -70,12 +72,14 @@ while true; do
     if [ ! -e /proc/$i3_pid ]; then
 	exit 0
     fi
-    log_status recording
+    log_line Recording
     record_disk_usage $SERIES_BASE
     speedtest
     up-monitor
 
     # Sleep until next recording plus from 0-7 seconds more to avoid
     # any synchronisation issues.  RANDOM is an integer in [0, 32767].
-    sleep $(( $record_frequency_minutes * 60 + $RANDOM / 3277 ))
+    sleep_time=$(( $record_frequency_minutes * 60 + $RANDOM / 3277 ))
+    log_line Sleeping $sleep_time seconds.
+    sleep $sleep_time
 done
