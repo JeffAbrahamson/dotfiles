@@ -58,7 +58,7 @@ log_line "Starting..."
 i3_pid=$(pidof i3)
 SERIES_BASE=$HOME/data/hosts/$(hostname -s)/disk-
 record_frequency_minutes=11
-time_delta=$(( $record_frequency_minutes * 60 ))
+# time_delta=$(( $record_frequency_minutes * 60 ))
 log_line "I3 pid = $i3_pid"
 log_line "Log frequency = $record_frequency_minutes minutes."
 # First recording should not be immediate.  On session start, we may
@@ -75,11 +75,21 @@ while true; do
     log_line Recording
     record_disk_usage $SERIES_BASE
     speedtest
-    up-monitor
-
-    # Sleep until next recording plus from 0-7 seconds more to avoid
-    # any synchronisation issues.  RANDOM is an integer in [0, 32767].
-    sleep_time=$(( $record_frequency_minutes * 60 + $RANDOM / 3277 ))
-    log_line Sleeping $sleep_time seconds.
-    sleep $sleep_time
+    # I'd like to monitor connectivity more frequently than I run
+    # speedtest, as it's a lighter test.  So rather than sleeping for
+    #     $(( $record_frequency_minutes * 60 + $RANDOM / 3277 ))
+    # I loop and call up-monitor about once a minute.  The end result
+    # is sleeping about $record_frequency_minutes between calls to
+    # speedtest.
+    loop_index=$record_frequency_minutes
+    while [[ $loop_index -gt 0 ]]; do
+	up-monitor
+	# Sleep a bit less than a minute : 45 seconds plus 0-9 seconds
+	# more to avoid any synchronisation issues.  RANDOM is an
+	# integer in [0, 32767].
+	sleep_time=$(( 45 + $RANDOM / 3277 ))
+	log_line Sleeping $sleep_time seconds.
+	sleep $sleep_time
+	loop_index=$(( $loop_index - 1 ))
+    done
 done
