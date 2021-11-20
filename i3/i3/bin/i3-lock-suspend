@@ -60,5 +60,8 @@ if [ "X$suspend_requested" = Xsuspend -a \
     # the query needs to happen after I've unlocked the screen.  Let's
     # try a short pause.
     (sleep 3; notify-send "Awoken from suspend.")
-    (sleep 5; notify-send "$(i3-power-status)")
+    (sleep 10; notify-send "10 sec:  $(i3-power-status)")
+    (sleep 30; notify-send "30 sec:  $(i3-power-status)")
+    (sleep 60; notify-send "60 sec:  $(i3-power-status)")
+    (sleep 120; notify-send "120 sec: $(i3-power-status)")
 fi

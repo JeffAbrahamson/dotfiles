@@ -28,7 +28,7 @@ sync-to-here() {
 # from the fileserver, or remote filesystems.
 declare -a machine_exclusions_
 machine_exclusions_=( .cache .macromedia Videos brunhilde fs common data Documents Downloads templates Music work venv .vagrant.d 'VirtualBox\\ VMs' )
-if [ $HOSTNAME = birdsong -o $HOSTNAME = starshine ]; then
+if [ $HOSTNAME = birdsong -o $HOSTNAME = starshine -o "X$HOSTNAME" = Xmorning ]; then
    machine_exclusions_[${#machine_exclusions_[*]}]=Pictures
 fi
 machine_exclusions_pattern_=
@@ -89,6 +89,12 @@ sync-images-23() {
     else
 	echo Missing volume.
     fi
+}
+
+sync-morning() {
+    if [ ! -d /backup/morning ]; then echo "Wrong host or /backup/ not mounted?"; return; fi
+    echo "Syncing home..."
+    time rsync -a --delete --exclude dconf --exclude .dbus --exclude .gvfs $HOME/ /backup/morning/
 }
 
 sync-starshine() {

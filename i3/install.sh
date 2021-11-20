@@ -8,7 +8,7 @@ maybe_mkdir $dest
 maybe_mkdir $(dirname $dest)
 (cd i3/ && copy_to config $dest)
 maybe_mkdir $HOME/.config/dunst
-if [ "X$HOSTNAME" == "Xbirdsong" ]; then
+if [ "X$HOSTNAME" == "Xbirdsong" -o "X$HOSTNAME" = "Xmorning" ]; then
     (cd i3/ && sed -e 's/{% fontsize %}/10/;' < dunstrc > $HOME/.config/dunst/dunstrc)
 elif [ "X$HOSTNAME" == "Xstarshine" ]; then
     (cd i3/ && sed -e 's/{% fontsize %}/18/;' < dunstrc > $HOME/.config/dunst/dunstrc)

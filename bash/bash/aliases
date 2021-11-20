@@ -322,7 +322,7 @@ secu() { libreoffice $HOME/data/secu.ods & }
 # term() { terminator -b -m & }
 recipes() { case "X$HOSTNAME" in
     Xsiegfried|Xbirdsong) file=$HOME/src/jma/recipes/pdf/recipes-nexus9.pdf;;
-    Xnantes|Xstarshine) file=$HOME/src/jma/recipes/pdf/recipes-laptop.pdf;;
+    Xnantes|Xstarshine|Xmorning) file=$HOME/src/jma/recipes/pdf/recipes-laptop.pdf;;
     esac
     evince $file &
 }

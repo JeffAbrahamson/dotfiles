@@ -17,7 +17,7 @@ def get_data(ssid):
     """Assemble wifi data into a pandas DataFrame.
     """
     data_dir_base = os.getenv('HOME') + '/data/hosts/'
-    hosts = ['starshine', 'birdsong', 'nantes']
+    hosts = ['morning', 'starshine', 'birdsong', 'nantes']
     # Eventually use all the hosts.  For now, just use starshine.
     # It's probably the only one that matters.
     data_dir = data_dir_base + hosts[0] + '/speedtest-'

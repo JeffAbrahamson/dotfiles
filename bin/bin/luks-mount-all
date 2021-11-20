@@ -66,3 +66,5 @@ luks_mount cb67c4e8-9c87-41b1-93ad-3704be60f7f0 /birdsong-backup
 
 # starshine
 luks_mount 2a6760f7-d0ad-4adc-8a22-e7c9168d37fc /home2
+
+# morning
