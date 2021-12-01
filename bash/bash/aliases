@@ -436,6 +436,8 @@ u2ps() {
 
 # Shortcut for activating my virtual environments.
 alias activate=". $HOME/.dotfiles/bash/activate.sh"
+
+# gnucash
 alias gc-activate=". $HOME/bin/gc-activate.sh"
 gc-use() {
     gc-activate
@@ -456,6 +458,11 @@ gc-use() {
 }
 # Search for accounts in default gnucash file.
 gcg() { grep $* "$_gc__cache/$_gc__default_index" | sort; }
+
+gc-al() { gc_account_list.py $*; }
+gc-a() { gc_account.py $*; }
+gc-cdr() { gc_compte_de_resultats.py $*; }
+gc-bilan() { gc_bilan.py $*; }
 
 ###########################################################################
 # docker
