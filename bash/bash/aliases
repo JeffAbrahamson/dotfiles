@@ -155,15 +155,31 @@ ssh-list-all-keys() {
     # As of 9/2016, I should see no 1024 bit keys, and RSA 2048 bit keys are ok but limit.
     # RSA 3072/4096 is good.  ECDSA is not so good.
     # Ed25519 is currently preferred.
-    for keyfile in ~/.ssh/id_*; do ssh-keygen -l -f "${keyfile}"; done | uniq;
+    for keyfile in ~/.ssh/id_*; do ssh-keygen -l -f "${keyfile}"; done | sort -u;
 }
 # That same blog (g3rt.nl) recommends generating keys thus:
 #   ssh-keygen -o -a 100 -t ed25519
 # https://blog.g3rt.nl/upgrade-your-ssh-keys.
 ssh-tabula-rasa() { unset SSH_AGENT_PID; unset SSH_AUTH_SOCK; exec ssh-agent bash; }
-ssh-github() { ssh-add ~/.ssh/id_rsa.github; }
+ssh-github() {
+    if [ -r ~/.ssh/id_ed25519.github ]; then
+	ssh-add ~/.ssh/id_ed25519.github
+    elif [ -r ~/.ssh/id_rsa.github ]; then
+	ssh-add ~/.ssh/id_rsa.github;
+    else
+	echo "Github key not found."
+    fi
+}
 ssh-p27() { ssh-add ~/.ssh/id_ed25519.p27; }
-ssh-jelly() { ssh-add ~/.ssh/id_rsa.jellybooks; }
+ssh-jelly() {
+    if [ -r ~/.ssh/id_ed25519.jellybooks ]; then
+	ssh-add ~/.ssh/id_ed25519.jellybooks
+    elif [ -r ~/.ssh/id_rsa.github ]; then
+	ssh-add ~/.ssh/id_rsa.jellybooks;
+    else
+	echo "Jellybooks key not found."
+    fi
+}
 
 ssh-setup() {
     srd-here-e ssh
