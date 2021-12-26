@@ -25,6 +25,7 @@ floating_modifier $mod
 
 #bindsym $mod+Control+L exec i3lock --dpms --inactivity-timeout 10 --color=220022
 bindsym $mod+Control+L exec i3-lock-suspend
+bindsym $mod+Control+M exec i3-lock-suspend sleep
 bindsym $mod+Control+P exec i3-lock-suspend suspend
 
 bindsym XF86AudioLowerVolume exec amixer -D pulse set Master 5%-

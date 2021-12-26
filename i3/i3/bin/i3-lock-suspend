@@ -3,7 +3,12 @@
 PATH=/usr/bin:/bin:$HOME/bin
 
 # Argument $1 should be absent to request simple screen lock.
-# If present, it should be the word "suspend" to trigger pm-suspend.
+#
+# If present, starshine (which doesn´t support suspend-to-disk) will
+# assume it is the word "suspend" and will trigger pm-suspend to
+# suspend to RAM.
+#
+# Morning will interpret ¨sleep" and ¨suspend".
 suspend_requested=$1
 
 # On laptops where it makes sense to be able to suspend, suspend if on
@@ -31,7 +36,7 @@ for battery in $batteries; do
     fi
 done
 
-log_message "i3-lock-suspend locking."
+log_message "i3-lock-suspend locking  [$suspend_requested]"
 # Now I lay me down to sleep,
 # Pray the Lord my soul to keep.
 xautolock -locknow
@@ -39,17 +44,63 @@ xautolock -locknow
 # I pray the Disk my soul to take.
 sync
 
+# On starshine I used pm-suspend.
+# On morning, I interact directly with /sys/power/state
+# Some documentation pointers:
+#   https://www.kernel.org/doc/html/v4.15/admin-guide/pm/sleep-states.html
+#   https://www.kernel.org/doc/Documentation/power/states.txt
+#
+# The state file provides strings that represent what stats are supported.
+#   cat /sys/power/state
+# Writing one of those strings back to the state file causes a transition
+# to that state.  The file
+#   /sys/power/mem_sleep
+# on read present the types of suspend that may be associated with the "mem"
+# state.  Writing sets that state.
+#
+# Some further useful but general information on sysfs is here:
+#   https://www.thegeekdiary.com/understanding-the-sysfs-file-system-in-linux/
+#
+# On morning, mem_sleep = s2idle.  This means that writing ¨freeze" or "mem" to
+# state should be the same thing.
+suspended=0
 if [ "X$suspend_requested" = Xsuspend -a \
      "X$HOSTNAME" = Xstarshine -a \
      "X$power_source" = Xbattery ]; then
     if [ ! -e $no_suspend_file ]; then
-	log_message "i3-lock-suspend suspending."
+	log_message "i3-lock-suspend suspending (starshine)."
 	# In order for this to work, I'll need a line in a file in /etc/sudoers.d/
 	# something like this:
 	#
 	#   jeff starshine = (root) NOPASSWD: /usr/sbin/pm-suspend
 	sudo /usr/sbin/pm-suspend
     fi
+    suspended=1
+elif [ "X$HOSTNAME" = Xmorning -a "X$power_source" = Xbattery ]; then
+    # In order for this to work, I'll need a line in a file in /etc/sudoers.d/
+    # something like this:
+    #
+    #   jeff morning = (root) NOPASSWD: /usr/bin/tee /sys/power/state
+    if [ "X$suspend_requested" = Xsleep ]; then
+	log_message "i3-lock-suspend - suspend-to-idle (morning)."
+	echo -n mem | sudo /usr/bin/tee /sys/power/state
+	suspended=1
+	# I've some evidence that the suspend is not quick and that
+	# execution continues for a bit after.  Try to avoid starting
+	# wake-up procedures until the suspend is completed.
+	sleep 3
+    elif [ "X$suspend_requested" = Xsuspend ]; then
+	log_message "i3-lock-suspend - suspend to disk (morning)."
+	echo -n disk | sudo /usr/bin/tee /sys/power/state
+	suspended=1
+	# I've some evidence that the suspend is not quick and that
+	# execution continues for a bit after.  Try to avoid starting
+	# wake-up procedures until the suspend is completed.
+	sleep 3
+    fi
+fi
+if [ $suspended == 1 ]; then
+    log_message "Awakening from suspend."
     # Things to do on wake-up.
     #
     # On starshine, wifi is sometimes disabled on wake.  It seems to
@@ -65,3 +116,4 @@ if [ "X$suspend_requested" = Xsuspend -a \
     (sleep 60; notify-send "60 sec:  $(i3-power-status)")
     (sleep 120; notify-send "120 sec: $(i3-power-status)")
 fi
+log_message "Done."
