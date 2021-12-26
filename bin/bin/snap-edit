@@ -1,9 +1,0 @@
-#!/bin/bash
-
-PATH=/usr/bin:/bin
-
-snap() {
-    tmp=$(mktemp /tmp/fooXXXXXXXXX.png);
-    scrot -s $tmp && gimp $tmp && rm $tmp;
-}
-snap
