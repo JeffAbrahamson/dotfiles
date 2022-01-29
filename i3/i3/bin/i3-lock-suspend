@@ -74,6 +74,8 @@ if [ "X$suspend_requested" = Xsuspend -a \
 	#
 	#   jeff starshine = (root) NOPASSWD: /usr/sbin/pm-suspend
 	sudo /usr/sbin/pm-suspend
+    else
+	log_message "Suspend file present, not suspending."
     fi
     suspended=1
 elif [ "X$HOSTNAME" = Xmorning -a "X$power_source" = Xbattery ]; then
@@ -97,8 +99,11 @@ elif [ "X$HOSTNAME" = Xmorning -a "X$power_source" = Xbattery ]; then
 	# execution continues for a bit after.  Try to avoid starting
 	# wake-up procedures until the suspend is completed.
 	sleep 3
+    else
+	log_message "i3-lock-suspend - xlock only (morning)"
     fi
 fi
+log_message "Considering wake-up actions."
 if [ $suspended == 1 ]; then
     log_message "Awakening from suspend."
     # Things to do on wake-up.
