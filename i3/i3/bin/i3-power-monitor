@@ -73,6 +73,7 @@ main()
 	rp_pid=$(pidof ratpoison)
 	while true; do
 	    check_status
+	    $HOME/bin/i3-power-status > $HOME/.power-status # For i3status bar.
 	    sleep 60
 	    if [ ! -e /proc/$rp_pid ]; then
 		return
