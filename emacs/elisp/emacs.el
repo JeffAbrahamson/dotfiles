@@ -16,6 +16,9 @@
   ;;(set-default-font ("9x15"))
   (setq inhibit-startup-message t)
   (setq use-gtags nil)
+  (setq-default show-trailing-whitespace t)
+  (setq default-tab-width 4)
+  ; (setq tab-width 4)
 
   (if (file-exists-p jma-elisp-base)
       (progn
@@ -41,7 +44,7 @@
 	(load-file (concat jma-elisp-base "protobuf-mode.el"))
 	(load-file (concat jma-elisp-base "google-c-style.el"))
 	(load-file (concat jma-elisp-base "clang-format.el"))
-	(load-file (concat jma-elisp-base "puppet-mode.el"))
+	; (load-file (concat jma-elisp-base "puppet-mode.el"))
 	(load-file (concat jma-elisp-base "highlight-indentation.el"))
 
 	;; cf. https://github.com/spotify/dockerfile-mode

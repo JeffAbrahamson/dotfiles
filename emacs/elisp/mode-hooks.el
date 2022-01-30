@@ -9,7 +9,12 @@
 (add-to-list 'auto-mode-alist '("\\.h\\'" . c++-mode))
 (add-to-list 'auto-mode-alist '("\\.html\\'" . web-mode))
 (add-to-list 'auto-mode-alist '("mutt-[a-z0-9]+-[0-9]+-[0-9]+-[0-9]+" . post-mode))
+;; YAML mode
+;; https://raw.githubusercontent.com/yoshiki/yaml-mode/master/yaml-mode.el
+; (require 'yaml-mode)
 (add-to-list 'auto-mode-alist '("\\.sls\\'" . yaml-mode))
+(add-to-list 'auto-mode-alist '("\\.yml\\'" . yaml-mode))
+(add-to-list 'auto-mode-alist '("\\.yaml\\'" . yaml-mode))
 
 (add-hook 'c-mode-common-hook 'google-set-c-style)
 (add-hook 'c-mode-common-hook
@@ -116,6 +121,9 @@
 ;; 		 'py-beginning-of-def-or-class)
 ;; 	    (setq outline-regexp "def\\|class ")))
 
+;; I think this only runs when launching python interpretter, not when
+;; init'ing a buffer with python code (in python-mode).  So that's not
+;; what I mean.
 (add-hook 'python-mode-hook
 	  (lambda ()
 	    ;;(local-set-key "\"" 'electric-pair)
@@ -126,6 +134,23 @@
 
 	    (local-set-key [C-m] 'newline-and-indent)
 	    ))
+
+(when (load "flymake" t)
+  (defun flymake-flake8-init ()
+    (let* ((temp-file (flymake-init-create-temp-buffer-copy
+                       'flymake-create-temp-inplace))
+           (local-file (file-relative-name
+                        temp-file
+                        (file-name-directory buffer-file-name))))
+      (list "flake8" (list local-file))))
+  (add-to-list 'flymake-allowed-file-name-masks
+               '("\\.py\\'" flymake-flake8-init))
+)
+(add-hook 'find-file-hook 'flymake-find-file-hook)
+;; display flymake messages for cursor line in minibuffer
+;(require 'flymake-cursor)
+
+(setq auto-mode-alist (append '(("\\.py" . python-outline)) auto-mode-alist))
 
 (defun electric-pair ()
   "Insert character pair without sournding spaces"
