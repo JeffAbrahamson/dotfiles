@@ -14,31 +14,52 @@ if [ "X$2" = Xdaemon ]; then
 elif [ "X$2" = Xonce ]; then
     loop=0
 else
-    echo "Usage: i3-power-monitor threshold (daemon|once)"
+    echo "Usage: i3-power-monitor threshold (daemon|once) [verbose]"
     exit 1
 fi
+if [ "X$3" = "Xverbose" ]; then
+    logging=1
+else
+    logging=
+fi
+
+logfile=$HOME/.i3/i3-power-monitor.log
+log_message() {
+    if [ "X$logging" = X1 ]; then
+	echo "$(date)   $*" >> $logfile;
+    fi
+}
+log_cat() {
+    if [ "X$logging" = X1 ]; then
+	log_message "Long message:"
+	sed -e 's/^/  /;' >> $logfile;
+    fi
+}
 
 check_status()
 {
     batteries=$(upower -e | grep battery)
     if [ "X$batteries" = X ]; then
 	# If no batteries now, don't expect any batteries later.
+	log_message "No battery, I have no role here."
 	exit 0
     fi
     # Normally I have only one battery, but watch out for multiple
     # entries some day.
     for battery in $batteries; do
 	delay_message=""
+	upower -i $battery | log_cat
 	state=$(upower -i $battery | grep state | awk -F: '{print $2}' | tr -d ' \t')
+	log_message $state
 	if [ "X$state" = Xdischarging ]; then
 	    delay_minutes=$(upower -i $battery | grep "time to empty" | grep minutes | awk -F: '{print $2}' | \
-		sed -e 's/^\s\+//; s/ minutes//; s/\.[0-9]\+//;')
+		sed -e 's/^\s\+//; s/ minutes//; s/[\.,][0-9]\+//;')
 	    if [ "X$delay_minutes" = X ]; then
 		delay_hours=$(upower -i $battery | grep "time to empty" | grep hours | awk -F: '{print $2}' | \
-				     sed -e 's/^\s\+//; s/ hours//; s/\.[0-9]\+//;')
+				     sed -e 's/^\s\+//; s/ hours//; s/[\.,][0-9]\+//;')
 		if [ "X$delay_hours" = X ]; then
 		    delay_days=$(upower -i $battery | grep "time to empty" | grep days | awk -F: '{print $2}' | \
-					sed -e 's/^\s\+//; s/ days//; s/\.[0-9]\+//;')
+					sed -e 's/^\s\+//; s/ days//; s/[\.,][0-9]\+//;')
 		    if [ "X$delay_days" = X ]; then
 			delay_minutes=0
 			delay_message="(State uncertain.)"
@@ -50,6 +71,7 @@ check_status()
 		fi
 	    fi
 	    percent=$(upower -i $battery | grep percent | awk -F: '{print $2}' | tr -d ' \t%')
+	    log_message "$delay_minutes minutes  =  $percent %"
 	    if [ $delay_minutes -lt $threshold ]; then
 		if [  $delay_minutes -lt $(($threshold / 2)) ]; then
 		    # If it's getting more critical, be more verbose.
@@ -66,16 +88,15 @@ check_status()
 main()
 {
     if [ $loop = 1 ]; then
-        ## When ratpoison exits, this script should quit as well.  But
-        ## ratpoison's exec seems to do a nice job of leaving us as a
-        ## daemon.  So watch for ratpoison exit and quit when no
-        ## longer needed.
-	rp_pid=$(pidof ratpoison)
+        ## When i3 exits, this script should quit as well.  But i3's
+        ## exec seems to do a nice job of leaving us as a daemon.  So
+        ## watch for i3 exit and quit when no longer needed.
+	i3_pid=$(pidof i3)
 	while true; do
 	    check_status
 	    $HOME/bin/i3-power-status > $HOME/.power-status # For i3status bar.
 	    sleep 60
-	    if [ ! -e /proc/$rp_pid ]; then
+	    if [ ! -e /proc/$i3_pid ]; then
 		return
 	    fi
 	done
