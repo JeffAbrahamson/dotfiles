@@ -37,6 +37,7 @@ for battery in $batteries; do
 done
 
 log_message "i3-lock-suspend locking  [$suspend_requested]"
+log_message "    power source $power_source ($HOSTNAME)"
 # Now I lay me down to sleep,
 # Pray the Lord my soul to keep.
 xautolock -locknow
@@ -102,6 +103,8 @@ elif [ "X$HOSTNAME" = Xmorning -a "X$power_source" = Xbattery ]; then
     else
 	log_message "i3-lock-suspend - xlock only (morning)"
     fi
+else
+    log_message "No sleep/suspend options programmed for this host."
 fi
 log_message "Considering wake-up actions."
 if [ $suspended == 1 ]; then
@@ -116,9 +119,6 @@ if [ $suspended == 1 ]; then
     # the query needs to happen after I've unlocked the screen.  Let's
     # try a short pause.
     (sleep 3; notify-send "Awoken from suspend.")
-    (sleep 10; notify-send "10 sec:  $(i3-power-status)")
-    (sleep 30; notify-send "30 sec:  $(i3-power-status)")
-    (sleep 60; notify-send "60 sec:  $(i3-power-status)")
-    (sleep 120; notify-send "120 sec: $(i3-power-status)")
+    (sleep 3; notify-send "10 sec:  $(i3-power-status)")
 fi
 log_message "Done."
