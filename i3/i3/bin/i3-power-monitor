@@ -80,7 +80,7 @@ check_status()
 		    notify-send -u critical -t 3000 -- "$(echo "Battery low: $delay_minutes minutes remaining."; echo "$delay_message")"
 		fi
 	    fi
-	fi		    
+	fi
     done
 }
 
