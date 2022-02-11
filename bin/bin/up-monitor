@@ -33,6 +33,23 @@ icmp_ping() {
     record_value $up "$host" "up"
 }
 
+# Provide an uptime summary for i3 status.
+ping-summary-for-i3() {
+    i3_ping_file_base="$HOME/.uptime-status"
+    ups=
+    for up_host in 8.8.8.8 8.8.4.4 1.1.1.1; do
+	up_log="$log_dir/${host}-up"
+	up=$(tail -1 "$up_log" | awk '{print $2}')
+	ups="${ups}${up}"
+    done
+    for n in 3 2 1 0; do
+	/bin/mv -f ${i3_ping_file_base}.${n} ${i3_ping_file_base}.$((n+1))
+    done
+    echo "${ups}" > "${i3_ping_file_base}.0"
+    for n in 0 1 2 3; do
+	cat "${i3_ping_file_base}.${n}"
+    done | tr '\n' ' ' > "${i3_ping_file_base}"
+}
 
 http_ping() {
     outfile=/tmp/up-monitor_http_ping_$$.out
@@ -54,6 +71,7 @@ http_ping() {
 icmp_ping  8.8.8.8
 icmp_ping  8.8.4.4
 icmp_ping  1.1.1.1
+ping-summary-for-i3
 
 http_ping http://www.purple.com/
 http_ping https://www.p27.eu/
