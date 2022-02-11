@@ -362,9 +362,9 @@ notegr() { grep $1 $HOME/data/notes/$1; }
 git-log-graph() { git log --graph --oneline --all $*; }
 git-log-terse() { git log --pretty=format:"%ad%x09%an%x09%s" --date=short $*; }
 git-log-table() { git log --pretty=format:'%C(yellow)%h|%Cred%ad|%Cblue%an|%Cgreen%d %Creset%s' --date=short $*; }
+alias glt=git-log-table
+
 # git config --global alias.lg "log --color --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit"
-# git lg
-# git lg -p
 
 # From https://stackoverflow.com/a/3452888/833300
 pip-update-all() {
