@@ -150,7 +150,8 @@
 ;; display flymake messages for cursor line in minibuffer
 ;(require 'flymake-cursor)
 
-(setq auto-mode-alist (append '(("\\.py" . python-outline)) auto-mode-alist))
+;; python-outline no longer present at emacs 27.1 apparently.
+;(setq auto-mode-alist (append '(("\\.py" . python-outline)) auto-mode-alist))
 
 (defun electric-pair ()
   "Insert character pair without sournding spaces"
