@@ -319,6 +319,10 @@ tsd-chocolat() { tsd-group chocolat $*; }
 tsd-farine() { tsd-group farine $*; }
 tsd-riz() { tsd-group "riz-" $*; }
 
+gvz() { grep -v ' 0 '; }
+tsd-gvt() { grep -v $(date '+%F'); }
+tsd-gt() { grep $(date '+%F'); }
+
 tsd-balance() {
     for f in $(tsd -L | grep "balance-"); do
 	last_reading=$(tsd $f | tail -1 | awk '{print $2}')
