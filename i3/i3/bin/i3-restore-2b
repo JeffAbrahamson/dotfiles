@@ -3,11 +3,16 @@
 i3-msg "append_layout $HOME/.i3/workspace-2.json"
 emacs&
 urxvt&
+urxvt&
+urxvt&
 
+urxvt&
+urxvt&
+urxvt&
 urxvt&
 urxvt&
 
 xload&
-urxvt&
 
-urxvt&
+# Plus a remote xload for which we'll need ssh credentials.
+
