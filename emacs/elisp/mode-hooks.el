@@ -147,6 +147,7 @@
                '("\\.py\\'" flymake-flake8-init))
 )
 (add-hook 'find-file-hook 'flymake-find-file-hook)
+(setq python-check-command "/usr/bin/flake8")
 ;; display flymake messages for cursor line in minibuffer
 ;(require 'flymake-cursor)
 
