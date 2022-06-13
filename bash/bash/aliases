@@ -463,6 +463,8 @@ u2ps() {
     rm $tmpfile
 }
 
+dy() { dig +noall +answer +additional "$1" @dns.toys; }
+
 ###########################################################################
 # python
 
