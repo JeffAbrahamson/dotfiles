@@ -319,6 +319,11 @@ tsd-chocolat() { tsd-group chocolat $*; }
 tsd-farine() { tsd-group farine $*; }
 tsd-riz() { tsd-group "riz-" $*; }
 
+# This would be better as a short python script that reads the
+# appropriate files, retains only the last (default 30) days, sorts on
+# date, then filename, and outputs.
+tsd-bicycle() { (cd $HOME/tsd; grep $(date "+%Y-%m") $(ls bicycle-* | grep -v ~); ) }
+
 gvz() { grep -v ' 0 '; }
 tsd-gvt() { grep -v $(date '+%F'); }
 tsd-gt() { grep $(date '+%F'); }
