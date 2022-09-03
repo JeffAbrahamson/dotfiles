@@ -324,7 +324,7 @@ tsd-riz() { tsd-group "riz-" $*; }
 # date, then filename, and outputs.
 tsd-bicycle() { (cd $HOME/tsd; grep $(date "+%Y-%m") $(ls bicycle-* | grep -v ~); ) }
 
-gvz() { grep -v ' 0 '; }
+tsd-gvz() { grep -v ' 0 '; }
 tsd-gvt() { grep -v $(date '+%F'); }
 tsd-gt() { grep $(date '+%F'); }
 
