@@ -121,4 +121,5 @@ if [ $suspended == 1 ]; then
     (sleep 3; notify-send "Awoken from suspend.")
     (sleep 3; notify-send "10 sec:  $(i3-power-status)")
 fi
+nmcli radio wifi on
 log_message "Done."
