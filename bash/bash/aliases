@@ -542,6 +542,33 @@ xal() { xal-disable; banner '' xautolock off " "; read -p 'Press any key to re-e
 alias evince="evince 2>/dev/null"
 
 ###########################################################################
+# Tmux functions.
+
+tm-list() { tmux list-sessions; }
+
+# For historical reasons, I started with the second window on my left
+# monitor.  The naming lives on.
+#
+# New tmux sessions (after reboot):
+tmn-l1() { tmux new-session -t L2 -s L1; }
+tmn-l2() { tmux new-session -s L2; }
+tmn-r1() { tmux new-session -t L2 -s R1; }
+tmn-r2() { tmux new-session -t L2 -s R2; }
+
+# Attach to existing sessions:
+tma-l1() { tmux attach-session -t L1; }
+tma-l2() { tmux attach-session -t L2; }
+tma-r1() { tmux attach-session -t R1; }
+tma-r2() { tmux attach-session -t R2; }
+
+
+# I need to sort out having an ssh-agent started automatically.
+# I need to sort out getting a login shell.
+
+# https://stackoverflow.com/questions/48997929/how-do-i-create-a-tmux-session-with-multiple-windows-already-opened
+
+
+###########################################################################
 # Quick directory access for favourite spots.
 jbks() { cd $HOME/work/startup/jellybooks/; }
 tn() { cd $HOME/work/startup/transport-nantes/; }
