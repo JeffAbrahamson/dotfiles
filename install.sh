@@ -13,7 +13,7 @@ cd $(pwd)/$(dirname $0)
 (echo screen; cd screen && ./install.sh)
 (echo postgresql; cd postgresql && ./install.sh)
 (echo tmux; cd tmux && ./install.sh)
-(echo templates; cd templates && ./install.sh)
+#(echo templates; cd templates && ./install.sh)
 (echo X11; cd X11 && ./install.sh)
 if [ "X$HOSTNAME" = Xstarshine ]; then
     (echo touchegg; cd touchegg && ./install.sh)
