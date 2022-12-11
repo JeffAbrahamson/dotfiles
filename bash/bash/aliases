@@ -445,6 +445,15 @@ fs-mount() {
     fi
 }
 fs-umount() { (cd; fusermount -u fs) }
+export VCT="$HOME/work/startup/vectice"
+vct-mount() {
+    if [ $(ls "$VCT/vct" | wc -l) -gt 1 ]; then
+        echo "vct is already mounted."
+    else
+        (cd "$VCT/vct"; sshfs jeff@ja:/home/jeff vct)
+    fi
+}
+vct-umount() { (cd; fusermount -u "$VCT/vct") }
 
 # Serve the current directory on port 8000.
 http() { python -m SimpleHTTPServer; }
@@ -570,16 +579,17 @@ tma-r2() { tmux attach-session -t R2; }
 
 ###########################################################################
 # Quick directory access for favourite spots.
-jbks() { cd $HOME/work/startup/jellybooks/; }
-tn() { cd $HOME/work/startup/transport-nantes/; }
-tns() { cd $HOME/src/jma/transport-nantes/tn_web/; }
+jbks() { cd "$HOME/work/startup/jellybooks/"; }
+tn() { cd "$HOME/work/startup/transport-nantes/"; }
+tns() { cd "$HOME/src/jma/transport-nantes/tn_web/"; }
+vct() { cd "$VCT"; }
 
 ###########################################################################
 # Jellybooks personal.
 
-jb-a() { cd $HOME/src/jellybooks/analytics; }
-jb-i() { cd $HOME/src/jellybooks/infrastructure; }
-jb-p() { cd $HOME/src/jellybooks/production; }
+jb-a() { cd "$HOME/src/jellybooks/analytics"; }
+jb-i() { cd "$HOME/src/jellybooks/infrastructure"; }
+jb-p() { cd "$HOME/src/jellybooks/production"; }
 nux() {
     n=$1;
     if [ $n -gt 0 ]; then
@@ -591,7 +601,7 @@ nux() {
     unset n;
 }
 jb-sprint() {
-    pushd $HOME/work/startup/jellybooks/sprints/
+    pushd "$HOME/work/startup/jellybooks/sprints/"
     today_="$(date +%Y-%m-%d)"
     if [ ! -d "${today_}" ]; then
 	mkdir "${today_}"
