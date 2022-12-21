@@ -115,47 +115,14 @@
 ;(add-to-list 'auto-mode-alist '("\\.py\\'" . python-mode))
 ;(add-to-list 'interpreter-mode-alist '("python" . python-mode))
 
-;; (add-hook 'python-mode-hook
-;; 	  (lambda ()
-;; 	    (set (make-variable-buffer-local 'beginning-of-defun-function)
-;; 		 'py-beginning-of-def-or-class)
-;; 	    (setq outline-regexp "def\\|class ")))
-
-;; I think this only runs when launching python interpretter, not when
-;; init'ing a buffer with python code (in python-mode).  So that's not
-;; what I mean.
 (add-hook 'python-mode-hook
 	  (lambda ()
-	    ;;(local-set-key "\"" 'electric-pair)
-	    ;;(local-set-key "\'" 'electric-pair)
-	    ;;(local-set-key "(" 'electric-pair)
-	    ;;(local-set-key "[" 'electric-pair)
-	    ;;(local-set-key "{" 'electric-pair)
-
-	    (local-set-key [C-m] 'newline-and-indent)
+	    (blacken-mode)
+	    (local-set-key (kbd "RET") 'newline-and-indent)
 	    ))
 
-(when (load "flymake" t)
-  (defun flymake-flake8-init ()
-    (let* ((temp-file (flymake-init-create-temp-buffer-copy
-                       'flymake-create-temp-inplace))
-           (local-file (file-relative-name
-                        temp-file
-                        (file-name-directory buffer-file-name))))
-      (list "flake8" (list local-file))))
-  (add-to-list 'flymake-allowed-file-name-masks
-               '("\\.py\\'" flymake-flake8-init))
-)
-(add-hook 'find-file-hook 'flymake-find-file-hook)
-(setq python-check-command "/usr/bin/flake8")
-;; display flymake messages for cursor line in minibuffer
-;(require 'flymake-cursor)
-
-;; python-outline no longer present at emacs 27.1 apparently.
-;(setq auto-mode-alist (append '(("\\.py" . python-outline)) auto-mode-alist))
-
 (defun electric-pair ()
-  "Insert character pair without sournding spaces"
+  "Insert character pair without sournding spaces."
   (interactive)
   (let (parens-require-spaces)
     (insert-pair)))

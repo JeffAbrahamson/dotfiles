@@ -1,3 +1,43 @@
+;; MELPA package support
+;; Add the Melpa archive to the list of available repositories.
+(require 'package)
+(add-to-list 'package-archives
+             '("melpa" . "http://melpa.org/packages/") t)
+
+(defvar jma-packages
+  '(material-theme
+    elpy
+    flycheck
+    blacken
+    )
+  )
+;(setq package-load-list (append package-load-list jma-packages))
+
+;; The elpy package does some setup that I once got confused.  I was
+;; able to trigger redoing the setup with
+;; M-x elpy-rpc-reinstall-virtualenv .
+
+(add-hook 'after-init-hook 'jma-after-init-hook)
+(defun jma-after-init-hook ()
+  (load-theme 'material-light t)
+  (elpy-enable)
+  ;; Enable Flycheck
+  (when (require 'flycheck nil t)
+    (setq elpy-modules (delq 'elpy-module-flymake elpy-modules))
+    (add-hook 'elpy-mode-hook 'flycheck-mode))
+  )
+
+(package-initialize)
+(when (not package-archive-contents)
+  (package-refresh-contents))
+
+;; Scans the list in jma-packages
+;; If the package listed is not already installed, install it
+(mapc #'(lambda (package)
+          (unless (package-installed-p package)
+            (package-install package)))
+      jma-packages)
+
 (let ((jma-elisp-base (concat (getenv "HOME") "/.dotfiles/elisp/")))
   ;; This should be the first block of this file.
   ;; The file site-begin.el should not be included with
@@ -44,7 +84,6 @@
 	(load-file (concat jma-elisp-base "protobuf-mode.el"))
 	(load-file (concat jma-elisp-base "google-c-style.el"))
 	(load-file (concat jma-elisp-base "clang-format.el"))
-	; (load-file (concat jma-elisp-base "puppet-mode.el"))
 	(load-file (concat jma-elisp-base "highlight-indentation.el"))
 
 	;; cf. https://github.com/spotify/dockerfile-mode
