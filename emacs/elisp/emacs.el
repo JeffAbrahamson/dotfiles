@@ -10,8 +10,9 @@
     blacken
     material-theme
     elpy
-    ein	    ;; cf. https://github.com/millejoh/emacs-ipython-notebook
+    ein	         ;; cf. https://github.com/millejoh/emacs-ipython-notebook
     flycheck
+    magit        ;; git support.
     math-preview ;; For use with ein.  https://gitlab.com/matsievskiysv/math-preview
     )
   )
@@ -29,6 +30,7 @@
   (when (require 'flycheck nil t)
     (setq elpy-modules (delq 'elpy-module-flymake elpy-modules))
     (add-hook 'elpy-mode-hook 'flycheck-mode))
+  (message "After-init completed.")
   )
 
 (package-initialize)
@@ -39,8 +41,12 @@
 ;; If the package listed is not already installed, install it
 (mapc #'(lambda (package)
           (unless (package-installed-p package)
-            (package-install package)))
+	    (message (concat "Installing " package))
+            (package-install package)
+	    (message (concat "Completed install of " package))
+	    ))
       jma-packages)
+(message "Package installation completed.")
 
 ;; My initialisation ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (let ((jma-elisp-base (concat (getenv "HOME") "/.dotfiles/elisp/")))
