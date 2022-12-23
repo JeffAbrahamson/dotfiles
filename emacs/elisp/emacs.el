@@ -1,3 +1,4 @@
+;; Package support. ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; MELPA package support
 ;; Add the Melpa archive to the list of available repositories.
 (require 'package)
@@ -5,10 +6,13 @@
              '("melpa" . "http://melpa.org/packages/") t)
 
 (defvar jma-packages
-  '(material-theme
-    elpy
-    flycheck
+  '(
     blacken
+    material-theme
+    elpy
+    ein	    ;; cf. https://github.com/millejoh/emacs-ipython-notebook
+    flycheck
+    math-preview ;; For use with ein.  https://gitlab.com/matsievskiysv/math-preview
     )
   )
 ;(setq package-load-list (append package-load-list jma-packages))
@@ -38,6 +42,7 @@
             (package-install package)))
       jma-packages)
 
+;; My initialisation ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (let ((jma-elisp-base (concat (getenv "HOME") "/.dotfiles/elisp/")))
   ;; This should be the first block of this file.
   ;; The file site-begin.el should not be included with
