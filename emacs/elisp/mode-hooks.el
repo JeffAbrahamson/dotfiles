@@ -16,6 +16,8 @@
 (add-to-list 'auto-mode-alist '("\\.yml\\'" . yaml-mode))
 (add-to-list 'auto-mode-alist '("\\.yaml\\'" . yaml-mode))
 
+;; C/C++ ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (add-hook 'c-mode-common-hook 'google-set-c-style)
 (add-hook 'c-mode-common-hook
 	  (function (lambda()
@@ -68,6 +70,8 @@
 		   (define-key gtags-mode-map [control-mouse-2] 'gtags-find-tag-by-event)))
 	     )))
 
+;; elisp ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 ;; (setq emacs-lisp-mode-hook
 ;;       (lambda ()
 ;; 	(setup-programmer-keys)))
@@ -75,6 +79,20 @@
 	  (function
 	   (lambda()
 	     (setup-programmer-keys))))
+
+;; python ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;(autoload 'python-mode "python-mode" "Python Mode." t)
+;(add-to-list 'auto-mode-alist '("\\.py\\'" . python-mode))
+;(add-to-list 'interpreter-mode-alist '("python" . python-mode))
+
+(add-hook 'python-mode-hook
+	  (lambda ()
+	    (blacken-mode)
+	    (local-set-key (kbd "RET") 'newline-and-indent)
+	    ))
+
+;; text ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; ;; (setq text-mode-hook 'turn-on-auto-fill)
 ;; (setq text-mode-hook
@@ -88,6 +106,8 @@
 	     (progn
 	       (text-mode-hook-identify)
 	       (flyspell-mode)))))
+
+;; other ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (setq after-make-frame-functions
       (lambda (frame)
@@ -110,16 +130,6 @@
 	  (function
 	   (lambda ()
 	     (search-forward "\n\n" (point-max) t))))
-
-;(autoload 'python-mode "python-mode" "Python Mode." t)
-;(add-to-list 'auto-mode-alist '("\\.py\\'" . python-mode))
-;(add-to-list 'interpreter-mode-alist '("python" . python-mode))
-
-(add-hook 'python-mode-hook
-	  (lambda ()
-	    (blacken-mode)
-	    (local-set-key (kbd "RET") 'newline-and-indent)
-	    ))
 
 (defun electric-pair ()
   "Insert character pair without sournding spaces."
