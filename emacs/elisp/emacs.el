@@ -32,6 +32,8 @@
     (setq elpy-modules (delq 'elpy-module-flymake elpy-modules))
     (add-hook 'elpy-mode-hook 'flycheck-mode)
     (global-flycheck-mode 1))
+  (custom-set-variables
+   '(blacken-line-length 79))
   (message "After-init completed.")
   )
 
