@@ -7,11 +7,12 @@
 
 (defvar jma-packages
   '(
+    auctex
     blacken
     material-theme
     elpy
     ein	         ;; cf. https://github.com/millejoh/emacs-ipython-notebook
-    flycheck
+    flycheck	 ;; Notably, instead of flymake.
     magit        ;; git support.
     math-preview ;; For use with ein.  https://gitlab.com/matsievskiysv/math-preview
     )
@@ -29,7 +30,8 @@
   ;; Enable Flycheck
   (when (require 'flycheck nil t)
     (setq elpy-modules (delq 'elpy-module-flymake elpy-modules))
-    (add-hook 'elpy-mode-hook 'flycheck-mode))
+    (add-hook 'elpy-mode-hook 'flycheck-mode)
+    (global-flycheck-mode 1))
   (message "After-init completed.")
   )
 
@@ -41,9 +43,9 @@
 ;; If the package listed is not already installed, install it
 (mapc #'(lambda (package)
           (unless (package-installed-p package)
-	    (message (concat "Installing " package))
+	    (message (concat "Installing " (symbol-name package)))
             (package-install package)
-	    (message (concat "Completed install of " package))
+	    (message (concat "Completed install of " (symbol-name package)))
 	    ))
       jma-packages)
 (message "Package installation completed.")
