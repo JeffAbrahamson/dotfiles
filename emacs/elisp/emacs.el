@@ -15,6 +15,7 @@
     flycheck	 ;; Notably, instead of flymake.
     magit        ;; git support.
     math-preview ;; For use with ein.  https://gitlab.com/matsievskiysv/math-preview
+    yaml-mode
     )
   )
 ;(setq package-load-list (append package-load-list jma-packages))
