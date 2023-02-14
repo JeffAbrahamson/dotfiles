@@ -21,7 +21,7 @@ PATH=$PATH:$HOME/bin/:$HOME/bin-elf/
 export EDITOR=emacs
 #export EMACSLOADPATH="$HOME/elisp"
 #export BROWSER=/usr/bin/w3m
-export PRINTER="プリンタ"
+export PRINTER="epson-wf-2965"
 
 export LESS="rEMX"
 
