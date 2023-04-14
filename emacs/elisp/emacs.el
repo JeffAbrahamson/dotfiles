@@ -42,6 +42,7 @@
 (when (not package-archive-contents)
   (package-refresh-contents))
 
+;; Load MELPA packages.
 ;; Scans the list in jma-packages
 ;; If the package listed is not already installed, install it
 (mapc #'(lambda (package)
@@ -76,6 +77,7 @@
   (setq default-tab-width 4)
   ; (setq tab-width 4)
 
+  ; I should use expand-file-name here instead of concat.
   (if (file-exists-p jma-elisp-base)
       (progn
 	(load-file (concat jma-elisp-base "useful.el"))
@@ -101,6 +103,8 @@
 	(load-file (concat jma-elisp-base "google-c-style.el"))
 	(load-file (concat jma-elisp-base "clang-format.el"))
 	(load-file (concat jma-elisp-base "highlight-indentation.el"))
+	(load-file (concat jma-elisp-base "copilot.el"))
+	(load-file (concat jma-elisp-base "copilot-bindings.el"))
 
 	;; cf. https://github.com/spotify/dockerfile-mode
 	(load-file (concat jma-elisp-base "dockerfile-mode.el"))
