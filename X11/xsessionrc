@@ -36,6 +36,10 @@ if [ "X$DESKTOP_SESSION" = Xi3 ]; then
        synclient TapButton1=0
        touchegg &
     fi
+    if [ "X$HOSTNAME" = Xmorning ]; then
+       # In Ubuntu 22.10 pulse audio doesn't start for some reason.
+       systemctl --user restart pulseaudio
+    fi
     if [ -d $HOME/.desktop-images ]; then
        (cd $HOME/.desktop-images; ls *jpg *png | shuf | head -1 | xargs feh --bg-scale)
     fi
