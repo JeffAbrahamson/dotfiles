@@ -10,6 +10,7 @@
     auctex
     blacken
     material-theme
+    editorconfig
     elpy
     ein	         ;; cf. https://github.com/millejoh/emacs-ipython-notebook
     flycheck	 ;; Notably, instead of flymake.
