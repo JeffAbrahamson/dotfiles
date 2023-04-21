@@ -326,6 +326,7 @@ tsd-bicycle() { (cd $HOME/tsd; grep $(date "+%Y-%m") $(ls bicycle-* | grep -v ~)
 
 tsd-gvz() { grep -v ' 0 '; }
 tsd-gvt() { grep -v $(date '+%F'); }
+tsd-gv() { tsd-gvz | tsd-gvt; }
 tsd-gt() { grep $(date '+%F'); }
 
 tsd-balance() {
