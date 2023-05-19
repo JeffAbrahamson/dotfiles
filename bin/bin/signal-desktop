@@ -6,4 +6,4 @@ touch /tmp/signal-desktop.log
 touch /tmp/signal-desktop.err
 chmod 600  /tmp/signal-desktop.log  /tmp/signal-desktop.err
 
-/opt/Signal/signal-desktop > /tmp/signal-desktop.log 2> /tmp/signal-desktop.err
+/snap/bin/signal-desktop > /tmp/signal-desktop.log 2> /tmp/signal-desktop.err
