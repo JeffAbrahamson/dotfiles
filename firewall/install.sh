@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [ "X$HOSTNAME" != Xbirdsong -a "X$HOSTNAME" != Xstarshine -a "X$HOSTNAME" != Xmorning ]; then
+if [ "X$HOSTNAME" != Xbirdsong -a "X$HOSTNAME" != Xstarshine -a "X$HOSTNAME" != Xmorning  -a "X$HOSTNAME" != Xvogel ]; then
     echo "Not setting ufw firewall rules on this host."
     exit 0
 fi
@@ -16,11 +16,6 @@ sudo ufw allow ssh/tcp
 sudo ufw limit ssh
 sudo ufw enable
 if [ "X$$HOSTNAME" = "Xsiegfried" ]; then
-    ## AFP no longer works with Stéphane's iMac (12/2020)
-    ## and he's not willing to help fix it (taking the
-    ## time to try things and explore what might work).
-    ## So deactivating, 1/2021.
-    # sudo ufw allow afpovertcp/tcp    # 548/tcp
     ## For pi-hole:
     sudo ufw allow 80/tcp
     sudo ufw allow 53/udp    # DNS
