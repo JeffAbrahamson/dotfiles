@@ -5,7 +5,7 @@
 # it will still be visible after restart/crash.
 log_to_file "$HOME/.i3/${LOGNAME:-root}-lid-monitor.log"
 
-PATH=/usr/bin:/bin
+PATH=/usr/bin:/bin:$HOME/bin
 renice -n 19 $$
 
 check_lid()
