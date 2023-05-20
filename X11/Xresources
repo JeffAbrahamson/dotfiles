@@ -4,9 +4,12 @@ urxvt.cursorColor: blue
 urxvt.foreground: black
 urxvt.background: white
 urxvt.reverseVideo: false
-urxvt.fadeColor: 000000
+urxvt.fadeColor: orange
 urxvt.fading: 10
-urxvt.font: 9x15
+! urxvt.font: 9x15
+! urxvt.font: xft:LiberationMono:size=11
+! urxvt.font: xft:DejaVu Sans Mono:size=11
+urxvt.font: xft:FreeMono:size=11
 urxvt.iso14755: false
 urxvt.iso14755_52: false
 urxvt.perl-ext: default,matcher,confirm-paste,-searchable-scrollback
@@ -38,3 +41,6 @@ xscreensaver.dpmsSuspend: 0:15:00
 xscreensaver.dpmsOff: 0:15:0
 
 ! Xcursor*size: 96
+
+! After changes, execute
+!    xrdb ~/.Xresources
