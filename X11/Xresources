@@ -5,7 +5,7 @@ urxvt.foreground: black
 urxvt.background: white
 urxvt.reverseVideo: false
 urxvt.fadeColor: orange
-urxvt.fading: 10
+urxvt.fading: 5
 ! urxvt.font: 9x15
 ! urxvt.font: xft:LiberationMono:size=11
 ! urxvt.font: xft:DejaVu Sans Mono:size=11
