@@ -1,0 +1,35 @@
+#!/bin/bash
+
+# Handy shortcuts for launching firefox.
+request="$1"
+case "$request" in
+    jeff)
+	profile=jeff
+    ;;
+    social)
+	profile=social
+    ;;
+    tn-jeff)
+	profile=tn-jeff
+    ;;
+    p27-jeff)
+	profile=p27-jeff
+    ;;
+    go-jeff)
+	profile=go-jeff
+    ;;
+    marianne)
+	profile=marianne
+    ;;
+    jbks)
+	profile=jellybooks
+    ;;
+    test)
+	profile=test
+    ;;
+    *)
+	notify-send "No such firefox profile: '$request'."
+esac
+if [ "X$profile" != "X" ]; then
+    firefox -P "$profile" &
+fi
