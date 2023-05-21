@@ -4,12 +4,19 @@
 
 copy_to xsessionrc $HOME/.xsessionrc
 if [ "X$HOSTNAME" = Xstarshine ]; then
-    # On a HiDPI display, set dpi high.
-    # And use a font with urxvt that works better at HiDPI.
-    sed -e 's/Xft.dpi:        96/Xft.dpi:        192/; s/urxvt.font: 9x15/urxvt.font: xft:DejaVuSansMono:size=10/;' < Xresources > $HOME/.Xresources
+    dpi=192
+    font="xft:DejaVuSansMono:size=10"
+elif [ "X$HOSTNAME" = Xvogel ]; then
+    dpi=144
+    font="xft:FreeMono:size=11"
 else
-    copy_to Xresources $HOME/.Xresources
+    dpi=96
+    font="9x15"
 fi
+cat Xresources | sed -e "s/{% dpi %}/$dpi/; s/{% font %}/$font/;" > $HOME/.Xresources
+
 if type -p xrdb >/dev/null; then
     xrdb $HOME/.Xresources
+else
+    echo "xrdb is absent, any Xresources changes will be delayed to next X start."
 fi

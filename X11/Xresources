@@ -9,7 +9,8 @@ urxvt.fading: 5
 ! urxvt.font: 9x15
 ! urxvt.font: xft:LiberationMono:size=11
 ! urxvt.font: xft:DejaVu Sans Mono:size=11
-urxvt.font: xft:FreeMono:size=11
+! urxvt.font: xft:FreeMono:size=11
+urxvt.font: {% font %}
 urxvt.iso14755: false
 urxvt.iso14755_52: false
 urxvt.perl-ext: default,matcher,confirm-paste,-searchable-scrollback
@@ -20,7 +21,7 @@ urxvt.urlLauncher: x-www-browser
 
 emacs23.font: 9x15
 
-Xft.dpi:        96
+Xft.dpi:        {% dpi %}
 Xft.autohint:   false
 Xft.lcdfilter:  lcddefault
 Xft.hintstyle:  hintfull
