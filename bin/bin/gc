@@ -30,4 +30,6 @@ echo Opening $filename.
 
 # Cf. https://bugs.launchpad.net/ubuntu/+source/gnucash/+bug/1802994
 unset GTK_IM_MODULE
+# I'd like to use a period for the decimal separator.
+export LC_NUMERIC=en_UK.UTF-8
 gnucash "$filename" &
