@@ -3,22 +3,22 @@
 # Handy shortcuts for launching firefox.
 request="$1"
 case "$request" in
-    jeff)
+    ja)
 	profile=jeff
     ;;
     social)
 	profile=social
     ;;
-    tn-jeff)
+    tn)
 	profile=tn-jeff
     ;;
-    p27-jeff)
+    p27)
 	profile=p27-jeff
     ;;
-    go-jeff)
+    go)
 	profile=go-jeff
     ;;
-    marianne)
+    mar)
 	profile=marianne
     ;;
     jbks)
