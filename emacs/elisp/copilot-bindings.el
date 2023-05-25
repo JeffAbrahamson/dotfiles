@@ -34,8 +34,9 @@
   (if (copilot--overlay-visible)
       (progn
         (copilot-accept-completion)
-        (open-line 1)
-        (next-line))
+        ;;(open-line 1)
+        ;;(next-line)
+	)
     (copilot-complete)))
 
 (defun jma/copilot-tab ()
@@ -70,8 +71,8 @@ If not in copilot overlay, move forward ARG lines, or one line if no ARG."
 ;; (define-key copilot-mode-map (kbd "M-<left>") #'copilot-previous-completion)
 (define-key copilot-mode-map (kbd "M-f") #'jma/copilot-accept-completion-by-word)
 (define-key copilot-mode-map (kbd "C-n") #'jma/copilot-accept-completion-by-line)
-;; (define-key global-map (kbd "M-C-<return>") #'jma/copilot-complete-or-accept)
-(define-key copilot-completion-map (kbd "<tab>") #'jma/copilot-complete-or-accept)
+(define-key global-map (kbd "M-<return>") #'jma/copilot-complete-or-accept)
+;(define-key copilot-completion-map (kbd "<tab>") #'jma/copilot-complete-or-accept)
 ;; (define-key global-map (kbd "<tab>") #'jma/copilot-tab)
 
 (defun jma/copilot-quit ()
