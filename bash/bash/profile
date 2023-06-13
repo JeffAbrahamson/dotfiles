@@ -14,8 +14,7 @@ fi
 # for ssh logins, install and configure the libpam-umask package.
 #umask 022
 
-#PATH=$PATH:$HOME/bin/:$HOME/common/Base/bin
-PATH=$PATH:$HOME/bin/:$HOME/bin-elf/
+PATH=$PATH:$HOME/bin/:$HOME/bin-elf/:$HOME/.local/bin/
 #export CDPATH=.:~/work/Drexel/mst-image:~/work/Drexel/mst-image/cvs/jeff
 
 export EDITOR=emacs
