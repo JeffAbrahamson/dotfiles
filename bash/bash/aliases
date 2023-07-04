@@ -589,6 +589,7 @@ vct() { cd "$VCT"; }
 # Jellybooks personal.
 
 jb-a() { cd "$HOME/src/jellybooks/analytics"; }
+jb-b() { cd "$HOME/src/jellybooks/book_pass"; }
 jb-i() { cd "$HOME/src/jellybooks/infrastructure"; }
 jb-p() { cd "$HOME/src/jellybooks/production"; }
 nux() {
