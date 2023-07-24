@@ -115,7 +115,23 @@ flag should be valid grep flags (typically '-i') or else the empty string."
 		       "}  // namespace analytics\n"))
 	      (beginning-of-line -2))))
     (message "Buffer is not empty.")))
-  
+
+
+(defun py-jellybooks-py-init ()
+  "Insert header for use with Jellybooks python code."
+  (interactive)
+  ;; I think I should be able to do this with a lexical-let on
+  ;; gpl-for-me and then calling c-header-init, but I'm not getting it
+  ;; to work.  So instead I copy and paste.
+  (if (= (point-min) (point-max))
+      (insert (concat
+	       "\"\"\"Copyright " (format-time-string "%Y") "  Jellybooks"
+	       "\n\n\"\"\"\n\n"
+	       "import logging\n\n"
+	       "logger = logging.getLogger(\"django\")\n\n"
+	       ))
+    (message "Buffer is not empty.")
+    ))
 
 
 (defun gpl-for-me (prog-name)
