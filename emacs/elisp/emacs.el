@@ -49,7 +49,12 @@
 ;; Load MELPA packages.
 ;; Scans the list in jma-packages
 ;; If the package listed is not already installed, install it
+(message "Checking for package installation.")
 (mapc #'(lambda (package)
+	  (message
+	   (concat "  Checking " (symbol-name package) "..." (symbol-name
+							      (package-installed-p package)
+							      )))
           (unless (package-installed-p package)
 	    (message (concat "Installing " (symbol-name package)))
             (package-install package)
