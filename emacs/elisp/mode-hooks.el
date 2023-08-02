@@ -90,8 +90,10 @@
 (add-hook 'python-mode-hook
 	  (lambda ()
 	    (blacken-mode)
+	    (importmagic-mode)
 	    (local-set-key (kbd "RET") 'newline-and-indent)
 	    (python-isort-on-save-mode)
+	    (local-set-key (kbd "C-c F") 'importmagic-fix-symbol-at-point)
 	    ))
 
 ;; text ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
