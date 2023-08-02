@@ -39,6 +39,8 @@ if [ "X$DESKTOP_SESSION" = Xi3 ]; then
     if [ "X$HOSTNAME" = Xvogel ]; then
        # If I have a 4K display, use it.
        xrandr --dpi 144
+       (sleep 1; i3-msg "workspace 1; exec i3-restore-2") &
+       (sleep 2; i3-msg "workspace 2; exec i3-restore-2b") &
     fi
     if [ "X$HOSTNAME" = Xmorning ]; then
        # In Ubuntu 22.10 pulse audio doesn't start for some reason.
