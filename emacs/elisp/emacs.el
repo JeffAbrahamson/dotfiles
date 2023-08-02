@@ -5,17 +5,20 @@
 (add-to-list 'package-archives
              '("melpa" . "http://melpa.org/packages/") t)
 
+;; Reminder: M-x package-list-packages
 (defvar jma-packages
   '(
     auctex
-    blacken
+    blacken      ;; Alternative to py-autopep8.
     material-theme
     editorconfig
     elpy
     ein	         ;; cf. https://github.com/millejoh/emacs-ipython-notebook
+    importmagic  ;; For use with elpy.
     flycheck	 ;; Notably, instead of flymake.
     magit        ;; git support.
     math-preview ;; For use with ein.  https://gitlab.com/matsievskiysv/math-preview
+    python-isort ;; For use with elpy.
     yaml-mode
     )
   )

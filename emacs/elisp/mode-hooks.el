@@ -86,10 +86,12 @@
 ;(add-to-list 'auto-mode-alist '("\\.py\\'" . python-mode))
 ;(add-to-list 'interpreter-mode-alist '("python" . python-mode))
 
+(require 'python-isort)
 (add-hook 'python-mode-hook
 	  (lambda ()
 	    (blacken-mode)
 	    (local-set-key (kbd "RET") 'newline-and-indent)
+	    (python-isort-on-save-mode)
 	    ))
 
 ;; text ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
