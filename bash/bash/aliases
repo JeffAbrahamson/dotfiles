@@ -347,11 +347,13 @@ secu() { libreoffice $HOME/data/secu.ods & }
 # trader() { libreoffice $HOME/work/finance/UK-taxes/2016-2017/sole-trader/sole-trader-2016-2017.ods & }
 # term() { terminator -b -m & }
 recipes() { case "X$HOSTNAME" in
-    Xsiegfried|Xbirdsong) file=$HOME/src/jma/recipes/pdf/recipes-nexus9.pdf;;
-    Xnantes|Xstarshine|Xmorning) file=$HOME/src/jma/recipes/pdf/recipes-laptop.pdf;;
+    Xvertical|Xsiegfried|Xbirdsong|Xvogel) file=$HOME/src/jma/recipes/pdf/recipes-nexus9.pdf;;
+    Xhorizontal|Xnantes|Xstarshine|Xmorning) file=$HOME/src/jma/recipes/pdf/recipes-laptop.pdf;;
     esac
     evince $file &
 }
+recipesV() { HOSTNAME=vertical recipes; }
+recipesH() { HOSTNAME=horizontal recipes; }
 
 pm() { ogg=$(/bin/ls *ogg */*ogg 2>/dev/null); mp3=$(/bin/ls *mp3 */*mp3 2>/dev/null); if [ "x$ogg" != x ]; then ogg123 $ogg; fi; if [ "x$mp3" != x ]; then mpg123 $mp3; fi; unset mp3; unset ogg; }
 script() { SCRIPT_NAME="$1" /usr/bin/script "$@"; }
