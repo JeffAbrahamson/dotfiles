@@ -322,7 +322,16 @@ tsd-riz() { tsd-group "riz-" $*; }
 # This would be better as a short python script that reads the
 # appropriate files, retains only the last (default 30) days, sorts on
 # date, then filename, and outputs.
-tsd-bicycle() { (cd $HOME/tsd; grep $(date "+%Y-%m") $(ls bicycle-* | grep -v ~); ) }
+tsd-bicycle() {
+    if [ "X$1" = X ]; then
+	for b in $(tsd -L | grep bicycle-); do tsd-y-sum $b; done | \
+	    awk '{year[$1] += $2} END {for (y in year) printf("%s %6.1f\n", y, year[y]);}' | \
+	    sort -n;
+    else
+	for b in $(tsd -L | grep bicycle-); do echo $b; tsd-y-sum $b; done;
+    fi;
+}
+tsd-bicycle-recent() { (cd $HOME/tsd; grep $(date "+%Y-%m") $(ls bicycle-* | grep -v ~); ) }
 
 tsd-gvz() { grep -v ' 0 '; }
 tsd-gvt() { grep -v $(date '+%F'); }
