@@ -1,7 +1,12 @@
 #!/bin/bash
 
 i3-msg "append_layout $HOME/.i3/workspace-2.json"
-emacs&
+emacs --eval='(progn
+		(switch-to-buffer "fr.txt")
+		(set-input-method "latin-9-prefix")
+		(flyspell-mode 1)
+		(ispell-change-dictionary "francais")
+		(auto-fill-mode 0))' &
 urxvt&
 urxvt&
 urxvt&
