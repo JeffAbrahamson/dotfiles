@@ -80,6 +80,17 @@
 	   (lambda()
 	     (setup-programmer-keys))))
 
+;; SQL ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun jma-sql-mode-setup ()
+  (sqlformat-on-save-mode)
+  (define-key (kbd "C-M-q") 'sqlformat-region))
+
+(add-hook 'sql-mode-hook 'jma-sql-mode-setup)
+(with-eval-after-load 'sqlformat
+  (define-key sql-mode-map (kbd "C-M-q") 'sqlformat-region))
+
+
 ;; python ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;(autoload 'python-mode "python-mode" "Python Mode." t)

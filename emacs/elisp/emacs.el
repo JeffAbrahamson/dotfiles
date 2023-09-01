@@ -20,6 +20,7 @@
     math-preview ;; For use with ein.  https://gitlab.com/matsievskiysv/math-preview
     python-isort ;; For use with elpy.
     yaml-mode
+    sqlformat    ;; Requires sqlformat or pgformatter to be installed.
     )
   )
 ;(setq package-load-list (append package-load-list jma-packages))
@@ -39,6 +40,8 @@
     (global-flycheck-mode 1))
   (custom-set-variables
    '(blacken-line-length 79))
+  (setq sqlformat-command 'pgformatter)
+  (setq sqlformat-args '("-s2" "-g"))
   (message "After-init completed.")
   )
 
