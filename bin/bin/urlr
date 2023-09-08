@@ -7,18 +7,40 @@ Repeatedly HEAD the URL until it no longer redirects.
 Print the final destination.
 """
 
+import argparse
+
 import requests
-import sys
 
-def resolve_url(url):
-    """Resolve a URL to its final form.
-    """
+
+def resolve_url(url, timeout, verbose):
+    """Resolve a URL to its final form."""
     while True:
-        r = requests.head(url)
-        if "Location" not in r.headers:
+        if verbose:
             print(url)
-            return 0
-        url = r.headers["Location"]
+        try:
+            req = requests.head(url, timeout=timeout)
+        except requests.exceptions.Timeout:
+            print(f"Timeout requesting {url}")
+            return
+        if "Location" not in req.headers:
+            print(url)
+            return
+        url = req.headers["Location"]
 
-url = sys.argv[1]
-resolve_url(url)
+
+def main():
+    """Do what we do."""
+    parser = argparse.ArgumentParser()
+    parser.add_argument("url", help="URL to resolve")
+    parser.add_argument(
+        "-t", "--timeout", type=int, default=2, help="timeout in seconds"
+    )
+    parser.add_argument(
+        "-v", "--verbose", action="store_true", help="verbose output"
+    )
+    args = parser.parse_args()
+    resolve_url(args.url, args.timeout, args.verbose)
+
+
+if __name__ == "__main__":
+    main()
