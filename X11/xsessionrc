@@ -49,4 +49,5 @@ if [ "X$DESKTOP_SESSION" = Xi3 ]; then
     if [ -d $HOME/.desktop-images ]; then
        (cd $HOME/.desktop-images; ls *jpg *png | shuf | head -1 | xargs feh --bg-scale)
     fi
+    (sleep 600; cd "$HOME/data/hosts/$(hostname -s)/"; dpkg -l > "$(hostname -s).dpkg"; pip list > "$(hostname -s).pip")
 fi
