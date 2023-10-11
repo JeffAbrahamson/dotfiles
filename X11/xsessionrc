@@ -1,4 +1,7 @@
+echo "Running xsessionrc, DESKTOP_SESSION=${DESKTOP_SESSION}." 1>&2
+
 if [ "X$DESKTOP_SESSION" = Xi3 ]; then
+    echo "Starting i3 session, HOSTNAME=${HOSTNAME}." 1>&2
     # It seems dunst is started automatically.  This is good, since
     # calling notify-send when dunst is not running will also start
     # dunst.
