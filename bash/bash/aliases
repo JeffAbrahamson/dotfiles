@@ -364,7 +364,17 @@ recipes() { case "X$HOSTNAME" in
 recipesV() { HOSTNAME=vertical recipes; }
 recipesH() { HOSTNAME=horizontal recipes; }
 
-pm() { ogg=$(/bin/ls *ogg */*ogg 2>/dev/null); mp3=$(/bin/ls *mp3 */*mp3 2>/dev/null); if [ "x$ogg" != x ]; then ogg123 $ogg; fi; if [ "x$mp3" != x ]; then mpg123 $mp3; fi; unset mp3; unset ogg; }
+pm() {
+    ogg=$(/bin/ls *ogg */*ogg 2>/dev/null);
+    mp3=$(/bin/ls *mp3 */*mp3 2>/dev/null);
+    if [ "x$ogg" != x ]; then
+	ogg123 $ogg; fi;
+    if [ "x$mp3" != x ]; then
+	mpg123 $mp3;
+    fi;
+    unset mp3;
+    unset ogg;
+}
 script() { SCRIPT_NAME="$1" /usr/bin/script "$@"; }
 fr() {
     if [ $# -gt 0 ]; then
