@@ -1,0 +1,38 @@
+#!/bin/bash
+
+. $HOME/bin/p27.sh
+log_to_file i3-package-list
+
+PATH=$HOME/bin:/usr/bin:/bin:/usr/local/bin
+renice -n 19 $$
+
+rotate() {
+    file="$1"
+    versions=( $(seq 10 -1 1) )
+    for this_version in "${versions[@]}"; do
+	if [ -f "${file}.${this_version}" ]; then
+	    mv "${file}.${this_version}" "${file}.$((this_version+1))"
+	fi
+    done
+    mv "$file" "${file}.1"
+}
+
+log_line "Starting..."
+sleep_wait=153			# Arbitrary, just not right away.
+log_line "Initial sleep for $sleep_wait seconds..."
+sleep "$sleep_wait"
+
+data_dir="$HOME/data/hosts/$(hostname -s)"
+dpkg_file="$data_dir/$(hostname -s).dpkg"
+pip_file="$data_dir/$(hostname -s).pip"
+
+cd "$data_dir"
+log_line "Saving package list to $dpkg_file..."
+rotate "$dpkg_file"
+dpkg -l > "$dpkg_file"
+
+log_line "Saving pip list to $pip_file..."
+rotate "$pip_file"
+pip list > "$pip_file"
+
+log_line "Done."
