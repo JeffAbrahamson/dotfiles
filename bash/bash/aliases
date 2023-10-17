@@ -324,11 +324,21 @@ tsd-riz() { tsd-group "riz-" $*; }
 # date, then filename, and outputs.
 tsd-bicycle() {
     if [ "X$1" = X ]; then
-	for b in $(tsd -L | grep bicycle-); do tsd-y-sum $b; done | \
+	for b in $(tsd -L | grep bicycle-); do
+	    tsd-y-sum $b;
+	done | \
 	    awk '{year[$1] += $2} END {for (y in year) printf("%s %6.1f\n", y, year[y]);}' | \
 	    sort -n;
-    else
-	for b in $(tsd -L | grep bicycle-); do echo $b; tsd-y-sum $b; done;
+    elif [ "X$1" = Xy ]; then
+	for b in $(tsd -L | grep bicycle-); do
+	    echo $b;
+	    tsd-y-sum $b;
+	done;
+    elif [ "X$1" = Xs ]; then
+	for b in $(tsd -L | grep bicycle-); do
+	    sum=$(tsd-y-sum $b | awk '{ sum += $2; } END {print sum;}')
+	    printf "%-25s %6.0f\n" $b $sum;
+	done;
     fi;
 }
 tsd-bicycle-recent() { (cd $HOME/tsd; grep $(date "+%Y-%m") $(ls bicycle-* | grep -v ~); ) }
