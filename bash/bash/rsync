@@ -42,6 +42,7 @@ sync-machine() {
 sync-fileserver() { sync-data; time rsync -a fileserver:data/ $HOME/data/hosts/fileserver/; sync-data; }
 sync-data() { time unison -auto data; date; }
 sync-fast() { time unison -auto fast; date; }
+sync-music() { time unison -auto music; date; }
 sync-full() { time unison -auto full; date; }
 sync-images() {
     time unison -auto images;
