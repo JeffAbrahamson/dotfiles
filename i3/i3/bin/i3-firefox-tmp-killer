@@ -1,0 +1,24 @@
+#!/bin/bash
+
+. $HOME/bin/p27.sh
+log_to_file i3-env-stats.log
+
+PATH=$HOME/bin:/usr/bin:/bin
+renice -n 19 $$
+
+log_line "Starting..."
+i3_pid=$(pidof i3)
+tmp="$HOME/Downloads/firefox.tmp"
+sleep 300
+while true; do
+    if [ ! -e /proc/$i3_pid ]; then
+	log_line "i3 has exited, so shall I."
+	exit 0
+    fi
+    if [ -f "$tmp" ]; then
+	log_line "Found firefox.tmp, removing."
+	rm -rf "$tmp";
+    fi;
+    sleep_time=$(( 45 + $RANDOM / 3277 ))
+    sleep $sleep_time
+done

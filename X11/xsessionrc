@@ -53,4 +53,5 @@ if [ "X$DESKTOP_SESSION" = Xi3 ]; then
        (cd $HOME/.desktop-images; ls *jpg *png | shuf | head -1 | xargs feh --bg-scale)
     fi
     i3-package-list &
+    i3-firefox-tmp-killer &
 fi
