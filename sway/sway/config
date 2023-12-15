@@ -37,9 +37,19 @@ input type:touchpad {
 # bindgesture swipe:right workspace prev
 # bindgesture swipe:left workspace next
 
+# I want the fn modifier to cause F-keys to access the function-ish
+# things like sound and screen brightness, not the emacs-ish things.
 input 1:1:AT_Translated_Set_2_keyboard {
     xkb_options "fnmode:2"
 }
+
+# Lock screen after 300 seconds of inactivity, then turn off displays
+# after another 300 seconds, and turn screens back on when resumed. It
+# will also lock screen before computer goes to sleep.
+exec swayidle -w \
+         timeout 300 'swaylock -f -c 000000' \
+         timeout 600 'swaymsg "output * dpms off"' resume 'swaymsg "output * dpms on"' \
+         before-sleep 'swaylock -f -c 000000'
 
 #bindsym $mod+Control+L exec i3lock --dpms --inactivity-timeout 10 --color=220022
 bindsym $mod+Control+L exec i3-lock-suspend
@@ -70,7 +80,7 @@ bindsym $mod+Control+Up     move up
 bindsym $mod+Control+Right  move right
 
 mode "i3" {
-    # Start a terminal
+    # Start a terminal.  Cf. https://launchpad.net/sakura
     bindsym c	     exec sakura;mode "default"
     bindsym Shift+c  exec i3-restore-2;mode "default"
 
