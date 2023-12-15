@@ -1,0 +1,19 @@
+cat /sys/class/power_supply/BAT0/status 
+
+--------
+
+https://github.com/electrickite/batsignal
+
+--------
+
+https://sr.ht/~kennylevinsen/poweralertd/
+
+--------
+
+
+--------
+
+https://www.reddit.com/r/swaywm/comments/py326p/lowbattery_desktop_notification/
+
+--------
+
