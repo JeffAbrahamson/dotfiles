@@ -1,0 +1,174 @@
+~/.config/sway/config
+
+bar {
+    position top
+    # Keep in mind that the current directory of this config file is $HOME
+    status_command while ~/.config/sway/status.sh; do sleep 1; done
+
+    colors {
+        # Text color of status bar
+        statusline #ffffff
+        # Background of status bar
+        background #323232
+    }
+    font pango:DejaVu Sans Mono 10
+}
+
+with status.sh 
+
+# The Sway configuration file in ~/.config/sway/config calls this script.
+# You should see changes to the status bar after saving this script.
+# If not, do "killall swaybar" and $mod+Shift+c to reload the configuration.
+
+# Produces "21 days", for example
+uptime_formatted=$(uptime | cut -d ',' -f1  | cut -d ' ' -f4,5)
+
+# The abbreviated weekday (e.g., "Sat"), followed by the ISO-formatted date
+# like 2018-10-06 and the time (e.g., 14:01)
+date_formatted=$(date "+%a %F %H:%M")
+
+# Get the Linux version but remove the "-1-ARCH" part
+linux_version=$(uname -r | cut -d '-' -f1)
+
+# Returns the battery status: "Full", "Discharging", or "Charging".
+battery_status=$(cat /sys/class/power_supply/BAT0/status)
+
+# Emojis and characters for the status bar
+# 💎 💻 💡 🔌 ⚡ 📁 \|
+echo $uptime_formatted ↑ $linux_version 🐧 $battery_status 🔋 $date_formatted
+
+
+--------
+
+Content of status.sh which ~/.config/sway/config calls:
+
+# The Sway configuration file in ~/.config/sway/config calls this script.
+# You should see changes to the status bar after saving this script.
+# If not, do "killall swaybar" and $mod+Shift+c to reload the configuration.
+
+# The abbreviated weekday (e.g., "Sat"), followed by the ISO-formatted date
+# like 2018-10-06 and the time (e.g., 14:01). Check `man date` on how to format
+# time and date.
+date_formatted=$(date "+%a %F %H:%M")
+
+# "upower --enumerate | grep 'BAT'" gets the battery name (e.g.,
+# "/org/freedesktop/UPower/devices/battery_BAT0") from all power devices.
+# "upower --show-info" prints battery information from which we get
+# the state (such as "charging" or "fully-charged") and the battery's
+# charge percentage. With awk, we cut away the column containing
+# identifiers. i3 and sway convert the newline between battery state and
+# the charge percentage automatically to a space, producing a result like
+# "charging 59%" or "fully-charged 100%".
+battery_info=$(upower --show-info $(upower --enumerate |\
+grep 'BAT') |\
+egrep "state|percentage" |\
+awk '{print $2}')
+
+# "amixer -M" gets the mapped volume for evaluating the percentage which
+# is more natural to the human ear according to "man amixer".
+# Column number 4 contains the current volume percentage in brackets, e.g.,
+# "[36%]". Column number 6 is "[off]" or "[on]" depending on whether sound
+# is muted or not.
+# "tr -d []" removes brackets around the volume.
+# Adapted from https://bbs.archlinux.org/viewtopic.php?id=89648
+audio_volume=$(amixer -M get Master |\
+awk '/Mono.+/ {print $6=="[off]" ?\
+$4" 🔇": \
+$4" 🔉"}' |\
+tr -d [])
+
+# Additional emojis and characters for the status bar:
+# Electricity: ⚡ ↯ ⭍ 🔌
+# Audio: 🔈 🔊 🎧 🎶 🎵 🎤
+# Separators: \| ❘ ❙ ❚
+# Misc: 🐧 💎 💻 💡 ⭐ 📁 ↑ ↓ ✉ ✅ ❎
+echo $audio_volume $battery_info 🔋 $date_formatted
+
+
+Here's the status bar part of ~/.config/sway/config:
+
+bar {
+    position top
+
+    # Keep in mind that the current directory of this config file is $HOME
+    status_command while ~/.config/sway/status.sh; do sleep 1; done
+
+    # https://i3wm.org/docs/userguide.html#_colors
+    colors {
+        # Text color of status bar
+        statusline #f8b500
+
+        # Background color of status bar
+        background #5e227f
+    }
+}
+
+--------
+
+from datetime import datetime
+from psutil import disk_usage, sensors_battery
+from psutil._common import bytes2human
+from socket import gethostname, gethostbyname
+from subprocess import check_output
+from sys import stdout
+from time import sleep
+
+def write(data):
+    stdout.write('%s\n' % data)
+    stdout.flush()
+
+def refresh():
+    disk = bytes2human(disk_usage('/').free)
+    ip = gethostbyname(gethostname())
+    try:
+        ssid = check_output("iwgetid -r", shell=True).strip().decode("utf-8")
+        ssid = "(%s)" % ssid
+    except Exception:
+        ssid = "None"
+    battery = int(sensors_battery().percent)
+    status = "Charging" if sensors_battery().power_plugged else "Discharging"
+    date = datetime.now().strftime('%h %d %A %H:%M')
+    format = "Space: %s | Internet: %s %s | Battery: %s%% %s | Date: %s"
+    write(format % (disk, ip, ssid, battery, status, date))
+
+while True:
+    refresh()
+    sleep(1)
+
+
+--------
+
+man sway-bar
+
+--------
+
+--------
+
+https://www.reddit.com/r/swaywm/comments/b8uxxa/my_sway_and_swaybar_configurations/
+
+--------
+
+https://github.com/vivien/i3blocks
+https://man.archlinux.org/man/i3blocks.1.en
+https://www.youtube.com/watch?v=Jil4nqMw6ak
+https://github.com/topics/i3blocks
+
+--------
+
+https://github.com/NobodyXu/swaystatus
+
+--------
+
+https://github.com/jonatasrs/swaystatus/blob/main/README.md
+(python swaystatus)
+https://git.sr.ht/~jmcantrell/swaystatus
+
+(C++ swaystatus, supposedly very efficient)
+https://github.com/jonatasrs/swaystatus.git  (fork of)
+https://github.com/NobodyXu/swaystatus.git   (author)
+
+(sway itself, includes swaybar)
+https://github.com/swaywm/sway
+https://github.com/swaywm/sway/blob/master/swaybar/swaybar-protocol.7.scd
+
+--------

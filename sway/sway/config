@@ -1,0 +1,247 @@
+# i3 config file (v4)
+#
+# Please see http://i3wm.org/docs/userguide.html for a complete reference!
+
+set $mod Mod1
+set $exit_mode Do you really want to exit?
+
+# Font for window titles. Will also be used by the bar unless a different font
+# is used in the bar {} block below.
+# This font is widely installed, provides lots of unicode glyphs, right-to-left
+# text rendering and scalability on retina/hidpi displays (thanks to pango).
+# font pango:DejaVu Sans Mono 8
+font pango:DejaVu Sans Mono 8
+# Before i3 v4.8, we used to recommend this one as the default:
+# font -misc-fixed-medium-r-normal--13-120-75-75-C-70-iso10646-1
+# The font above is very space-efficient, that is, it looks good, sharp and
+# clear in small sizes. However, its unicode glyph coverage is limited, the old
+# X core fonts rendering does not support right-to-left and this being a bitmap
+# font, it doesn’t scale on retina/hidpi displays.
+
+focus_on_window_activation urgent
+
+# Use Mouse+$mod to drag floating windows to their wanted position
+floating_modifier $mod
+
+include /etc/sway/config-vars.d/*
+
+# Pick a random image from my desktop image files.
+# The '/*' is necessary to force a full path on output.
+output * bg $(/bin/ls /home/jeff/.desktop-images/* | shuf | head -1) fill
+
+# Cf. https://wiki.archlinux.org/title/Sway (3.5: Input Devices)
+input type:touchpad {
+    tap enabled
+    natural_scroll enabled
+}
+
+# From sway 1.8 ff.
+# bindgesture swipe:right workspace prev
+# bindgesture swipe:left workspace next
+
+# I want the fn modifier to cause F-keys to access the function-ish
+# things like sound and screen brightness, not the emacs-ish things.
+#
+# Note that this is still togglable with the "lock" key to the right
+# of F12.  The following only sets the default behaviour at sway start
+# (not even reload).
+input 1:1:AT_Translated_Set_2_keyboard {
+    xkb_options "fnmode:2"
+}
+
+# Lock screen after 300 seconds of inactivity, then turn off displays
+# after another 300 seconds, and turn screens back on when resumed. It
+# will also lock screen before computer goes to sleep.
+exec swayidle -w \
+         timeout 300 'swaylock -f -c 000000' \
+         timeout 600 'swaymsg "output * dpms off"' resume 'swaymsg "output * dpms on"' \
+         before-sleep 'swaylock -f -c 000000' \
+	 timeout 1800 'systemctl suspend'
+# exec swayidle -w timeout 1800 'systemctl suspend'
+
+#bindsym $mod+Control+L exec i3lock --dpms --inactivity-timeout 10 --color=220022
+bindsym $mod+Control+L exec sway-lock-suspend
+bindsym $mod+Control+M exec sway-lock-suspend sleep
+bindsym $mod+Control+P exec sway-lock-suspend suspend
+
+bindsym XF86AudioLowerVolume exec amixer -D pulse set Master 5%-
+bindsym XF86AudioRaiseVolume exec amixer -D pulse set Master 5%+
+bindsym XF86AudioMute exec amixer -D pulse set Master toggle
+
+# This is only meaningful on starshine, and even there light seems no
+# longer to work.
+bindsym XF86MonBrightnessUp exec "light -A 5"
+bindsym XF86MonBrightnessDown exec "light -U 5"
+
+bindsym $mod+Tab mode "sway"
+
+# Change focus.
+bindsym $mod+Shift+Left   focus left
+bindsym $mod+Shift+Down   focus down
+bindsym $mod+Shift+Up     focus up
+bindsym $mod+Shift+Right  focus right
+
+# Move focused window.
+bindsym $mod+Control+Left   move left
+bindsym $mod+Control+Down   move down
+bindsym $mod+Control+Up     move up
+bindsym $mod+Control+Right  move right
+
+mode "sway" {
+    # Start a terminal.  Cf. https://launchpad.net/sakura
+    bindsym c	     exec sakura;mode "default"
+    bindsym Shift+c  exec sway-restore-2;mode "default"
+
+    # ## To deprecate as of 1 July 2019 if I'm satisified with the
+    # ## direct bindings above.
+    # # Change focus.
+    # bindsym Left   focus left;  mode "focus"
+    # bindsym Down   focus down;  mode "focus"
+    # bindsym Up     focus up;    mode "focus"
+    # bindsym Right  focus right; mode "focus"
+
+    # # Move focused window.
+    # bindsym Control+Left   move left;  mode "focus"
+    # bindsym Control+Down   move down;  mode "focus"
+    # bindsym Control+Up     move up;    mode "focus"
+    # bindsym Control+Right  move right; mode "focus"
+
+    # Split in horizontal orientation.
+    bindsym h  split h; mode "default"
+
+    # Split in vertical orientation.
+    bindsym v  split v; mode "default"
+
+    # Enter fullscreen mode for the focused container.
+    bindsym f  fullscreen; mode "default"
+
+    # Change container layout (stacked, tabbed, toggle split).
+    bindsym s  layout stacking; mode "default"
+    bindsym w  layout tabbed; mode "default"
+    bindsym e  layout toggle split; mode "default"
+
+    # Toggle tiling / floating.
+    bindsym Shift+space  floating toggle; mode "default"
+
+    # Change focus between tiling / floating windows.
+    bindsym space focus  mode_toggle; mode "default"
+
+    # Focus the parent container.
+    bindsym a  focus parent; mode "default"
+
+    # Focus the child container.
+    bindsym d  focus child
+
+    # Resize a window.
+    bindsym r  mode "resize"
+
+    bindsym o  "workspace back_and_forth"
+
+    # Workspace mode.
+    bindsym Shift+w  mode "workspace"
+
+    # Switch to workspace.
+    bindsym 1  workspace 1; mode "default"
+    bindsym 2  workspace 2; mode "default"
+    bindsym 3  workspace 3; mode "default"
+    bindsym 4  workspace 4; mode "default"
+    bindsym 5  workspace 5; mode "default"
+    bindsym 6  workspace 6; mode "default"
+    bindsym 7  workspace 7; mode "default"
+    bindsym 8  workspace 8; mode "default"
+    bindsym 9  workspace 9; mode "default"
+    bindsym 0  workspace 10; mode "default"
+
+    # Move focused container to workspace.
+    bindsym Control+1  move container to workspace 1; mode "default"
+    bindsym Control+2  move container to workspace 2; mode "default"
+    bindsym Control+3  move container to workspace 3; mode "default"
+    bindsym Control+4  move container to workspace 4; mode "default"
+    bindsym Control+5  move container to workspace 5; mode "default"
+    bindsym Control+6  move container to workspace 6; mode "default"
+    bindsym Control+7  move container to workspace 7; mode "default"
+    bindsym Control+8  move container to workspace 8; mode "default"
+    bindsym Control+9  move container to workspace 9; mode "default"
+    bindsym Control+0  move container to workspace 10; mode "default"
+
+    # Start dmenu (a program launcher)
+    bindsym Shift+1  exec dmenu_run -fn "pango:DejaVu Sans Mono 9"; mode "default"
+    # There also is the (new) i3-dmenu-desktop which only displays applications
+    # Shipping a .desktop file. It is a wrapper around dmenu, so you need that
+    # installed.
+    # bindsym !  exec --no-startup-id i3-dmenu-desktop
+
+
+    # kill focused window
+    bindsym Shift+k  kill; mode "default"
+
+    # To reload the configuration file: sway-msg reload
+
+    # Exit sway.
+    bindsym Control+Shift+Q mode "$exit_mode"
+
+    bindsym Escape     mode "default"
+    bindsym Return     mode "default"
+    bindsym Control+g  mode "default"
+}
+
+mode "workspace" {
+    # Switch to workspace.
+
+    # This depends on my having set up odd workspaces on the left
+    # monitor and even workspaces on the right monitor.  Kludges
+    # around an otherwise good feature in sway.
+    bindsym a  workspace 1; workspace 2;  mode "default"
+    bindsym b  workspace 3; workspace 4;  mode "default"
+    bindsym c  workspace 5; workspace 6;  mode "default"
+    bindsym d  workspace 7; workspace 8;  mode "default"
+    bindsym e  workspace 9; workspace 10; mode "default"
+    bindsym p  workspace b; mode "default"
+    bindsym Shift+p  workspace a; workspace b; mode "default"
+
+    # back to normal: Enter or Escape
+    bindsym Escape     mode "default"
+    bindsym Return     mode "default"
+    bindsym Control+g  mode "default"
+}
+
+# Resize window (you can also use the mouse for that).
+mode "resize" {
+    # These bindings trigger as soon as you enter the resize mode
+
+    # same bindings, but for the arrow keys
+    bindsym Left   resize shrink width 10 px or 10 ppt
+    bindsym Down   resize grow height 10 px or 10 ppt
+    bindsym Up     resize shrink height 10 px or 10 ppt
+    bindsym Right  resize grow width 10 px or 10 ppt
+
+    # If I forget where I am, do the right thing.
+    bindsym $mod+Tab mode "sway"
+
+    # Get me out of here.
+    bindsym Return     mode "default"
+    bindsym Escape     mode "default"
+    bindsym Control+g  mode "default"
+}
+
+mode "$exit_mode" {
+    bindsym y          exit
+    bindsym Control+g  mode default
+    bindsym n          mode default
+    bindsym Escape     mode default
+}
+
+# Start swaybar to display a workspace bar (plus the system information i3status
+# finds out, if available)
+bar {
+    status_command i3status
+
+    colors {
+        statusline #ffffff
+        background #323232
+        inactive_workspace #323232 #323232 #7c7c7c
+    }
+}
+workspace_layout tabbed
+
+include /etc/sway/config.d/*

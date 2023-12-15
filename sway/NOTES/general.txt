@@ -1,0 +1,12 @@
+https://github.com/natpen/awesome-wayland
+https://arewewaylandyet.com/
+
+
+swaylock & systemctl suspend
+
+systemd-analyze cat-config systemd/logind.conf
+
+/etc/systemd/logind.conf.d/00_lid-close-suspend
+
+
+https://wayland-book.com/introduction.html

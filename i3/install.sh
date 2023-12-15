@@ -21,6 +21,8 @@ elif [ "X$HOSTNAME" == "Xvogel" ]; then
     (cd i3/ && sed -e 's/{% fontsize %}/16/;' < dunstrc > $HOME/.config/dunst/dunstrc)
 elif [ "X$HOSTNAME" == "Xstarshine" ]; then
     (cd i3/ && sed -e 's/{% fontsize %}/18/;' < dunstrc > $HOME/.config/dunst/dunstrc)
+elif [ "X$HOSTNAME" == "Xtau-ceti" ]; then
+    (cd i3/ && sed -e 's/{% fontsize %}/11/;' < dunstrc > $HOME/.config/dunst/dunstrc)
 else
     echo "Unrecognized host, not copying dunstrc."
 fi

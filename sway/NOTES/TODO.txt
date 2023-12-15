@@ -1,0 +1,5 @@
+* greeter
+* dunst / notifications don't dismiss
+* screenshot integration in snp
+* power status in status bar
+* input switching (super-space)

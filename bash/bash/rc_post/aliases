@@ -629,8 +629,16 @@ jb-p() { cd "$HOME/src/jellybooks/production"; }
 nux() {
     n=$1;
     if [ $n -gt 0 ]; then
+	if [ "$XDG_SESSION_TYPE" = "x11" ]; then
+	    terminal=urxvt;
+	elif [ "$XDG_SESSION_TYPE" = "wayland" ]; then
+	    terminal=sakura;
+	else
+	    echo "Unknown session type $XDG_SESSION_TYPE";
+	    terminal=urxvt;
+	fi
         while [ $n -gt 0 ]; do
-            (urxvt &)
+            ($terminal &)
             n=$(($n - 1))
         done
     fi

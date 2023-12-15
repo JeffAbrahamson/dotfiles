@@ -1,0 +1,9 @@
+https://github-wiki-see.page/m/swaywm/sway/wiki/Useful-add-ons-for-sway
+
+https://github.com/swaywm/sway/wiki
+https://github.com/swaywm/sway/wiki/Useful-add-ons-for-sway
+
+https://wiki.archlinux.org/title/Sway
+
+swaymsg -t get_outputs
+swaymsg -t get_inputs

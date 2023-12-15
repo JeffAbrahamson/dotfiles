@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [ "X$HOSTNAME" != Xbirdsong -a "X$HOSTNAME" != Xstarshine -a "X$HOSTNAME" != Xmorning  -a "X$HOSTNAME" != Xvogel ]; then
+if [ "X$HOSTNAME" != Xbirdsong -a "X$HOSTNAME" != Xstarshine -a "X$HOSTNAME" != Xmorning  -a "X$HOSTNAME" != Xvogel -a "X$HOSTNAME" != Xtau-ceti ]; then
     echo "Not setting ufw firewall rules on this host."
     exit 0
 fi
