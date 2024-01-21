@@ -147,3 +147,28 @@ man sway-bar
 https://www.reddit.com/r/swaywm/comments/b8uxxa/my_sway_and_swaybar_configurations/
 
 --------
+
+https://github.com/vivien/i3blocks
+https://man.archlinux.org/man/i3blocks.1.en
+https://www.youtube.com/watch?v=Jil4nqMw6ak
+https://github.com/topics/i3blocks
+
+--------
+
+https://github.com/NobodyXu/swaystatus
+
+--------
+
+https://github.com/jonatasrs/swaystatus/blob/main/README.md
+(python swaystatus)
+https://git.sr.ht/~jmcantrell/swaystatus
+
+(C++ swaystatus, supposedly very efficient)
+https://github.com/jonatasrs/swaystatus.git  (fork of)
+https://github.com/NobodyXu/swaystatus.git   (author)
+
+(sway itself, includes swaybar)
+https://github.com/swaywm/sway
+https://github.com/swaywm/sway/blob/master/swaybar/swaybar-protocol.7.scd
+
+--------

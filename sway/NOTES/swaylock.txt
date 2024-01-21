@@ -1,0 +1,10 @@
+# Warn before lock.  Maybe fade out.
+
+https://www.reddit.com/r/swaywm/comments/18mv98d/sway_wm_how_to_be_warned_before_inactivity/
+https://gist.github.com/johanwiden/900723175c1717a72442f00b49b5060c
+https://github.com/mortie/swaylock-effects
+
+
+https://www.reddit.com/r/swaywm/comments/mlrm0e/only_lock_screen_when_lid_closed/
+xss-lock
+https://wiki.archlinux.org/title/Power_management#Power_management_with_systemd

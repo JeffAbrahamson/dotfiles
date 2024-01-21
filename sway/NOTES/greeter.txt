@@ -1,0 +1,6 @@
+https://wiki.archlinux.org/title/Display_manager
+
+https://wiki.archlinux.org/title/Greetd
+
+https://git.sr.ht/~kennylevinsen/greetd
+https://man.sr.ht/~kennylevinsen/greetd/

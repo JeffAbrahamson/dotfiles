@@ -1,0 +1,22 @@
+## This is just an example of setting and using variables
+## in the sway config file.  It's not necessarily what I want.
+###############################################################
+
+# A lock command used in several places
+set $lock_script $HOME/.config/paul/lock.sh swaylock
+
+# A sleep command used in several places.
+# We leave a bit of time for locking to happen before putting the system to sleep
+set $sleep $lock_script && sleep 3 && systemctl suspend
+
+# Triggers a short notification
+set $notify dunstify --timeout 1500
+
+# Set your laptop screen name
+set $laptop_screen 'eDP-1'
+
+# Clamshell mode or lock & sleep
+# This is a if/else statement: [ outputs_count == 1 ] && true || false
+bindswitch --reload --locked lid:on exec '[ $(swaymsg -t get_outputs | grep name | wc -l) == 1 ] && ($sleep) || ($notify "Clamshell mode" "Laptop screen off" && swaymsg output $laptop_screen disable)'
+
+bindswitch --reload --locked lid:off output $laptop_screen enable

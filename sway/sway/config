@@ -25,7 +25,9 @@ floating_modifier $mod
 
 include /etc/sway/config-vars.d/*
 
-output * bg /home/jeff/.desktop-images/20180428-154933-1264-small.jpg fill
+# Pick a random image from my desktop image files.
+# The '/*' is necessary to force a full path on output.
+output * bg $(/bin/ls /home/jeff/.desktop-images/* | shuf | head -1) fill
 
 # Cf. https://wiki.archlinux.org/title/Sway (3.5: Input Devices)
 input type:touchpad {
@@ -33,12 +35,16 @@ input type:touchpad {
     natural_scroll enabled
 }
 
-# From sway 1.8.
+# From sway 1.8 ff.
 # bindgesture swipe:right workspace prev
 # bindgesture swipe:left workspace next
 
 # I want the fn modifier to cause F-keys to access the function-ish
 # things like sound and screen brightness, not the emacs-ish things.
+#
+# Note that this is still togglable with the "lock" key to the right
+# of F12.  The following only sets the default behaviour at sway start
+# (not even reload).
 input 1:1:AT_Translated_Set_2_keyboard {
     xkb_options "fnmode:2"
 }
@@ -49,12 +55,14 @@ input 1:1:AT_Translated_Set_2_keyboard {
 exec swayidle -w \
          timeout 300 'swaylock -f -c 000000' \
          timeout 600 'swaymsg "output * dpms off"' resume 'swaymsg "output * dpms on"' \
-         before-sleep 'swaylock -f -c 000000'
+         before-sleep 'swaylock -f -c 000000' \
+	 timeout 1800 'systemctl suspend'
+# exec swayidle -w timeout 1800 'systemctl suspend'
 
 #bindsym $mod+Control+L exec i3lock --dpms --inactivity-timeout 10 --color=220022
-bindsym $mod+Control+L exec i3-lock-suspend
-bindsym $mod+Control+M exec i3-lock-suspend sleep
-bindsym $mod+Control+P exec i3-lock-suspend suspend
+bindsym $mod+Control+L exec sway-lock-suspend
+bindsym $mod+Control+M exec sway-lock-suspend sleep
+bindsym $mod+Control+P exec sway-lock-suspend suspend
 
 bindsym XF86AudioLowerVolume exec amixer -D pulse set Master 5%-
 bindsym XF86AudioRaiseVolume exec amixer -D pulse set Master 5%+
@@ -65,7 +73,7 @@ bindsym XF86AudioMute exec amixer -D pulse set Master toggle
 bindsym XF86MonBrightnessUp exec "light -A 5"
 bindsym XF86MonBrightnessDown exec "light -U 5"
 
-bindsym $mod+Tab mode "i3"
+bindsym $mod+Tab mode "sway"
 
 # Change focus.
 bindsym $mod+Shift+Left   focus left
@@ -79,10 +87,10 @@ bindsym $mod+Control+Down   move down
 bindsym $mod+Control+Up     move up
 bindsym $mod+Control+Right  move right
 
-mode "i3" {
+mode "sway" {
     # Start a terminal.  Cf. https://launchpad.net/sakura
     bindsym c	     exec sakura;mode "default"
-    bindsym Shift+c  exec i3-restore-2;mode "default"
+    bindsym Shift+c  exec sway-restore-2;mode "default"
 
     # ## To deprecate as of 1 July 2019 if I'm satisified with the
     # ## direct bindings above.
@@ -167,12 +175,9 @@ mode "i3" {
     # kill focused window
     bindsym Shift+k  kill; mode "default"
 
-    # To reload the configuration file: i3-msg reload
+    # To reload the configuration file: sway-msg reload
 
-    # To restart i3 inplace (preserves layout/session, can be
-    # used to upgrade i3): i3-msg restart
-
-    # Exit i3 (log out of X session).
+    # Exit sway.
     bindsym Control+Shift+Q mode "$exit_mode"
 
     bindsym Escape     mode "default"
@@ -185,7 +190,7 @@ mode "workspace" {
 
     # This depends on my having set up odd workspaces on the left
     # monitor and even workspaces on the right monitor.  Kludges
-    # around an otherwise good feature in i3.
+    # around an otherwise good feature in sway.
     bindsym a  workspace 1; workspace 2;  mode "default"
     bindsym b  workspace 3; workspace 4;  mode "default"
     bindsym c  workspace 5; workspace 6;  mode "default"
@@ -211,7 +216,7 @@ mode "resize" {
     bindsym Right  resize grow width 10 px or 10 ppt
 
     # If I forget where I am, do the right thing.
-    bindsym $mod+Tab mode "i3"
+    bindsym $mod+Tab mode "sway"
 
     # Get me out of here.
     bindsym Return     mode "default"
@@ -226,10 +231,16 @@ mode "$exit_mode" {
     bindsym Escape     mode default
 }
 
-# Start i3bar to display a workspace bar (plus the system information i3status
+# Start swaybar to display a workspace bar (plus the system information i3status
 # finds out, if available)
 bar {
-        status_command i3status
+    status_command i3status
+
+    colors {
+        statusline #ffffff
+        background #323232
+        inactive_workspace #323232 #323232 #7c7c7c
+    }
 }
 workspace_layout tabbed
 

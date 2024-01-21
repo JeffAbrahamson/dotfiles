@@ -1,0 +1,5 @@
+https://github.com/alebastr/sway-systemd
+https://github.com/xdbob/sway-services/
+
+https://www.reddit.com/r/swaywm/comments/180ly44/how_to_change_power_button_behavior/
+

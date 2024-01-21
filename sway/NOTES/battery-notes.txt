@@ -17,3 +17,12 @@ https://www.reddit.com/r/swaywm/comments/py326p/lowbattery_desktop_notification/
 
 --------
 
+upower -i /org/freedesktop/UPower/devices/battery_BAT0 | grep -E 'time|percentage|capacity|energy'
+
+--------
+
+https://www.reddit.com/r/swaywm/comments/m3sbge/how_do_i_get_battery_percentage_in_sway_config/
+
+https://www.reddit.com/r/swaywm/comments/8qhmv9/how_to_display_battery_life_in_swaybar/
+
+--------

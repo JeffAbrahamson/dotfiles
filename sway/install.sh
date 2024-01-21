@@ -4,8 +4,8 @@
 
 dest=$HOME/.config/sway
 maybe_mkdir $dest
-maybe_mkdir $(dirname $dest)
 (cd sway/ && copy_to config $dest)
+
 swaylock_dest="$HOME/.swaylock"
 maybe_mkdir "$swaylock_dest"
 (cd sway/ && copy_to swaylock_config "$swaylock_dest/config")
