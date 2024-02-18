@@ -7,13 +7,11 @@
 
 ## This should be the first block of this file after the
 ## interactivity check.
-# For local customization, at beginning of bashrc
-# This file should not be included with this distribution, as
-# the whole point is to let the user customize as he sees fit.
-if [ -f $HOME/.dotfiles/bash/site_begin ]; then
-	. $HOME/.dotfiles/bash/site_begin
-fi
-## This is the end of this beginning block.
+for file in $HOME/.dotfiles/bash/rc_pre/*; do
+	if [ -f $file -a ! -f $file~ ]; then
+	. $file
+	fi
+done
 
 # don't put duplicate lines in the history. See bash(1) for more options
 # don't overwrite GNU Midnight Commander's setting of `ignorespace'.
@@ -92,15 +90,6 @@ if [ "X$BASH_PROFILE" != "XLOADED" -a -f $HOME/.bash_profile ]; then
     . $HOME/.bash_profile
 fi
 
-# Alias definitions.
-# You may want to put all your additions into a separate file like
-# $HOME/.bash_aliases, instead of adding them here directly.
-# See /usr/share/doc/bash-doc/examples in the bash-doc package.
-
-if [ -f $HOME/.dotfiles/bash/aliases ]; then
-    . $HOME/.dotfiles/bash/aliases
-fi
-
 # enable programmable completion features (you don't need to enable
 # this, if it's already enabled in /etc/bash.bashrc and /etc/profile
 # sources /etc/bash.bashrc).
@@ -108,13 +97,6 @@ if [ -f /etc/bash_completion ] && ! shopt -oq posix; then
     . /etc/bash_completion
 fi
 
-###########################################################################
-
-if [ -f $HOME/.dotfiles/bash/tsd ]; then
-    . $HOME/.dotfiles/bash/tsd
-fi
-
-###########################################################################
 # Completions for gtd
 _gtd()
 {
@@ -164,29 +146,11 @@ _note()
 }
 complete -F _note note
 
-if [ -f $HOME/.dotfiles/bash/git-prompt ]; then
-	. $HOME/.dotfiles/bash/git-prompt
-fi
-if [ -f $HOME/.dotfiles/bash/prompt ]; then
-	. $HOME/.dotfiles/bash/prompt
-fi
-if [ -f $HOME/.dotfiles/bash/pictools ]; then
-	. $HOME/.dotfiles/bash/pictools
-fi
-if [ -f $HOME/.dotfiles/bash/jellybooks ]; then
-	. $HOME/.dotfiles/bash/jellybooks
-fi
-if [ -f $HOME/.dotfiles/bash/una ]; then
-	. $HOME/.dotfiles/bash/una
-fi
-
 shopt -s cdspell
 
 ## This should be the last block of this file
-# For local customization, at end of bashrc
-# This file should not be included with this distribution, as
-# the whole point is to let the user customize as he sees fit.
-if [ -f $HOME/.dotfiles/bash/site_end ]; then
-	. $HOME/.dotfiles/bash/site_end
-fi
-## This file should end here
+for file in $HOME/.dotfiles/bash/rc_post/*; do
+	if [ -f $file -a ! -f $file~ ]; then
+	. $file
+	fi
+done

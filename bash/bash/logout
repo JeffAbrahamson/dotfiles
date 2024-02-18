@@ -1,26 +1,15 @@
 # ~/.bash_logout: executed by bash(1) when login shell exits.
 
-## This should be the first block of this file after the
-## interactivity check.
-# For local customization, at beginning of bash_logout
-# This file should not be included with this distribution, as
-# the whole point is to let the user customize as he sees fit.
-if [ -f $HOME/.dotfiles/bash/site_logout_begin ]; then
-	. $HOME/.dotfiles/bash/site_logout_begin
-fi
-## This is the end of this beginning block.
-
-# when leaving the console clear the screen to increase privacy
+# When leaving the console clear the screen to increase privacy.
 
 if [ "$SHLVL" = 1 ]; then
     [ -x /usr/bin/clear_console ] && /usr/bin/clear_console -q
 fi
 
 ## This should be the last block of this file
-# For local customization, at end of bash_logout
-# This file should not be included with this distribution, as
-# the whole point is to let the user customize as he sees fit.
-if [ -f $HOME/.dotfiles/bash/site_logout_end ]; then
-	. $HOME/.dotfiles/bash/site_logout_end
-fi
+for file in $HOME/.dotfiles/bash/logout_post/*; do
+	if [ -f $file -a ! -f $file~ ]; then
+	. $file
+	fi
+done
 ## This file should end here

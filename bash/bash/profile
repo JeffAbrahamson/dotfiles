@@ -2,37 +2,32 @@
 
 ## This should be the first block of this file after the
 ## interactivity check.
-# For local customization, at beginning of bash_profile
-# This file should not be included with this distribution, as
-# the whole point is to let the user customize as he sees fit.
-if [ -f $HOME/.dotfiles/bash/site_profile_begin ]; then
-	. $HOME/.dotfiles/bash/site_profile_begin
-fi
-## This is the end of this beginning block.
+for file in $HOME/.dotfiles/bash/profile_pre/*; do
+	if [ -f $file -a ! -f $file~ ]; then
+	. $file
+	fi
+done
 
 # the default umask is set in /etc/profile; for setting the umask
 # for ssh logins, install and configure the libpam-umask package.
 #umask 022
 
 PATH=$PATH:$HOME/bin/:$HOME/bin-elf/:$HOME/.local/bin/
-#export CDPATH=.:~/work/Drexel/mst-image:~/work/Drexel/mst-image/cvs/jeff
+# export CDPATH=.:~/work/Drexel/mst-image:~/work/Drexel/mst-image/cvs/jeff
 
 export EDITOR=emacs
-#export EMACSLOADPATH="$HOME/elisp"
-#export BROWSER=/usr/bin/w3m
+# export EMACSLOADPATH="$HOME/elisp"
+# export BROWSER=/usr/bin/w3m
 export PRINTER="epson-wf-2965"
 
 export LESS="rEMX"
 
 export PYTHONPATH=$HOME/local/python
 
-export CS_PAPER_DIR=$HOME/mst/work/Research/papers/
+# export CS_PAPER_DIR=$HOME/mst/work/Research/papers/
 export TSD_DIR=$HOME/common/data/tsd/
 export JELLYBOOKS_PRODUCTION_BASE=$HOME/src/jellybooks/production
 export JELLYBOOKS_BASH_ALIASES=$HOME/.dotfiles/bash/jellybooks
-
-export cflash='/media/jeff/EOS_DIGITAL/DCIM/[0-9]*CANON'
-
 
 # My native language
 export LANG=en_GB.UTF-8
@@ -43,11 +38,9 @@ export LC_NUMERIC=en_GB.UTF_8
 # For SLang (for mutt)
 export COLORFGBG="black;lightgray"
 
-export tux=jeffa@tux.cs.drexel.edu
-
 export BASH_PROFILE="LOADED"
 
-# if running bash
+# If running bash
 if [ -n "$BASH_VERSION" ]; then
     if [ "X$BASHRC" != "XLOADED" -a -f $HOME/.bashrc ]; then
 	. $HOME/.bashrc
@@ -55,33 +48,14 @@ if [ -n "$BASH_VERSION" ]; then
     fi
 fi
 
-# In an attempt to disable the gnome-keyring-daemon, I typed this:
-#    gconftool-2 --set -t bool /apps/gnome-keyring/daemon-components/ssh false
-#
-# According to --get, there was no value previously set.
-#    gconftool-2 --get /apps/gnome-keyring/daemon-components/ssh
-#
-# I subsequently unset it.
-#    gconftool-2 --unset /apps/gnome-keyring/daemon-components/ssh
-#
-# 8 Jan 2012
-
-if [ "X$HOSTNAME" = Xstarshine ]; then
-    # HiDPI display.
-    export QT_DEVICE_PIXEL_RATIO=2
-    # GDK_SCALE seems unnecessary now.
-    #export GDK_SCALE=2
-fi
-
 # To avoid dbind errors about not being able to register with the
 # accessibility bus (a gnome thing, I believe), I set this:
 export NO_AT_BRIDGE=1
 
 ## This should be the last block of this file
-# For local customization, at end of bash_profile
-# This file should not be included with this distribution, as
-# the whole point is to let the user customize as he sees fit.
-if [ -f $HOME/.dotfiles/bash/site_profile_end ]; then
-	. $HOME/.dotfiles/bash/site_profile_end
-fi
+for file in $HOME/.dotfiles/bash/profile_post/*; do
+	if [ -f $file -a ! -f $file~ ]; then
+	. $file
+	fi
+done
 ## This file should end here
