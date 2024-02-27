@@ -224,7 +224,7 @@ todo() {
     (cd $HOME/data/TODO/; grep $_tag *.txt | perl -pwe "s/$_tag$//;")
     unset _tag
 }
-todo-print() { todo 3 | head -68 | u2ps; }
+todo-print() { todo 3 | head -68 | cat -n | u2ps; }
 
 # Show my ideal schedule for the day.  The argument is schedule
 # version, which corresponds to a prefix tag on the relevant lines of
