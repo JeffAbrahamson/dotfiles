@@ -8,9 +8,9 @@
 ## This should be the first block of this file after the
 ## interactivity check.
 for file in $HOME/.dotfiles/bash/rc_pre/*; do
-	if [ -f $file -a ! -f $file~ ]; then
+    if [[ -f $file && ! $file =~ .*~ ]]; then
 	. $file
-	fi
+    fi
 done
 
 # don't put duplicate lines in the history. See bash(1) for more options
@@ -150,7 +150,7 @@ shopt -s cdspell
 
 ## This should be the last block of this file
 for file in $HOME/.dotfiles/bash/rc_post/*; do
-	if [ -f $file -a ! -f $file~ ]; then
+    if [[ -f $file && ! $file =~ .*~ ]]; then
 	. $file
-	fi
+    fi
 done

@@ -8,8 +8,8 @@ fi
 
 ## This should be the last block of this file
 for file in $HOME/.dotfiles/bash/logout_post/*; do
-	if [ -f $file -a ! -f $file~ ]; then
+    if [[ -f $file && ! $file =~ .*~ ]]; then
 	. $file
-	fi
+    fi
 done
 ## This file should end here
