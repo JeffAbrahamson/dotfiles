@@ -252,10 +252,10 @@ internet() {
 }
 # Restart wifi, gently, then with gusto.
 # This might better belong in the power manager after-sleep/suspend functions.
-wifi() { nmcli radio wifi on; }
-WIFI() { sudo /bin/systemctl restart network-manager.service; }
-# Learn about available connections.
-ls_wifi() { nmcli device wifi list; }
+wifi-on() { nmcli radio wifi on; }
+WIFI-restart() { sudo /bin/systemctl restart network-manager.service; }
+wifi-ls() { nmcli device wifi list; }
+wifi-connect() { nmcli device wifi connect "$1"; }
 
 bandwidth() {
     # Argument, if present, is number of lines of tail at the end.
