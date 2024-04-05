@@ -615,6 +615,7 @@ tma-r2() { tmux attach-session -t R2; }
 jbks() { cd "$HOME/work/startup/jellybooks/"; }
 tn() { cd "$HOME/work/startup/transport-nantes/"; }
 tns() { cd "$HOME/src/jma/transport-nantes/tn_web/"; }
+pav() { cd "$HOME/work/associations/Place_au_Velo/"; }
 vct() { cd "$VCT"; }
 
 ###########################################################################
