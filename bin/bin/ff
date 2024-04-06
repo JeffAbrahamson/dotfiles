@@ -21,6 +21,9 @@ case "$request" in
     mar)
 	profile=marianne
     ;;
+    pav)
+	profile=place-au-velo
+    ;;
     jbks)
 	profile=jellybooks
     ;;
