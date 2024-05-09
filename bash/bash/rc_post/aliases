@@ -369,6 +369,7 @@ secu() { libreoffice $HOME/data/secu.ods & }
 recipes() { case "X$HOSTNAME" in
     Xvertical|Xsiegfried|Xbirdsong|Xvogel) file=$HOME/src/jma/recipes/pdf/recipes-nexus9.pdf;;
     Xhorizontal|Xnantes|Xstarshine|Xmorning) file=$HOME/src/jma/recipes/pdf/recipes-laptop.pdf;;
+    *) echo "Missing host case in recipes."; file=$HOME/src/jma/recipes/pdf/recipes-laptop.pdf;;
     esac
     evince $file &
 }
