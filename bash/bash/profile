@@ -18,7 +18,14 @@ PATH=$PATH:$HOME/bin/:$HOME/bin-elf/:$HOME/.local/bin/
 export EDITOR=emacs
 # export EMACSLOADPATH="$HOME/elisp"
 # export BROWSER=/usr/bin/w3m
-export PRINTER="epson-wf-2965"
+
+# export PRINTER="epson-wf-2965"
+# export PRINTER="hp-garage"
+#
+## Prefer using lpoptions -d <printer-name> to set my default printer,
+## stored at `$HOME/.cups/lpoptions`.
+##
+## To set a system-wide default, I'd use `sudo lpadmin -d hp-garage`.
 
 export LESS="rEMX"
 
