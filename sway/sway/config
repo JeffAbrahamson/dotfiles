@@ -25,6 +25,10 @@ floating_modifier $mod
 
 include /etc/sway/config-vars.d/*
 
+# Run my personal daemons.
+exec --no-startup-id i3-env-stats
+exec --no-startup-id i3-power-monitor 30 daemon
+
 # Pick a random image from my desktop image files.
 # The '/*' is necessary to force a full path on output.
 output * bg $(/bin/ls /home/jeff/.desktop-images/* | shuf | head -1) fill
@@ -236,6 +240,7 @@ mode "$exit_mode" {
 bar {
     status_command i3status
 
+    font pango:DejaVu Sans Mono 9
     colors {
         statusline #ffffff
         background #323232
