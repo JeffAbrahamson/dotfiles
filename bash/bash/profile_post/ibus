@@ -1,0 +1,6 @@
+# Set environment variables for IBus
+export GTK_IM_MODULE=ibus
+export XMODIFIERS=@im=ibus
+export QT_IM_MODULE=ibus
+# If I have trouble with ibus actually running, this is how to do it:
+# ibus-daemon -drx
