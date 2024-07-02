@@ -4,6 +4,11 @@ PATH=/usr/bin:/bin
 
 snap() {
     tmp=$(mktemp /tmp/fooXXXXXXXXX.png);
-    scrot -s --overwrite $tmp && eog $tmp && rm $tmp;
+    # If I'm using i3 and/or X, use scrot.  If I'm using Wayland, use grim.
+    if [ -n "$WAYLAND_DISPLAY" ]; then
+	grim -g "$(slurp)" $tmp && eog $tmp && rm $tmp
+    else
+	scrot -s --overwrite $tmp && eog $tmp && rm $tmp;
+    fi
 }
 snap
