@@ -255,6 +255,7 @@ internet() {
 wifi-on() { nmcli radio wifi on; }
 WIFI-restart() { sudo /bin/systemctl restart network-manager.service; }
 wifi-ls() { nmcli device wifi list; }
+wifi-ssids() { nmcli --fields SSID device wifi list | tail +2; }
 wifi-connect() {
     if [ "X$2" = X ]; then
 	nmcli device wifi connect "$1";
@@ -262,6 +263,9 @@ wifi-connect() {
 	nmcli device wifi connect "$1" password "$2";
     fi
 }
+# Bash completion rule on the first argument.
+complete -W "$(wifi-ssids)" wifi-connect
+
 
 bandwidth() {
     # Argument, if present, is number of lines of tail at the end.
