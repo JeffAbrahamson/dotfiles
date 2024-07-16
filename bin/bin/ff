@@ -18,6 +18,9 @@ case "$request" in
     go)
 	profile=go-jeff
     ;;
+    gog)
+	profile=go-group
+    ;;
     mar)
 	profile=marianne
     ;;
