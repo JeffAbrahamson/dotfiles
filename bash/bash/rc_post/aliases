@@ -633,7 +633,7 @@ tn() { cd "$HOME/work/startup/transport-nantes/"; }
 tns() { cd "$HOME/src/jma/transport-nantes/tn_web/"; }
 pav() { cd "$HOME/work/associations/place_au_velo/"; }
 pavadm() { cd "$HOME/work/associations/place_au_velo/administrateur/"; }
-pavqr() { qrencode -l L -s 5 --foreground 004996 -o "$1" "$2"; }
+pavqr() { qrencode -l L -s 5 --foreground 004996 -o "${2:-/tmp/pavqr.png}" "$1"; }
 vct() { cd "$VCT"; }
 
 ###########################################################################
