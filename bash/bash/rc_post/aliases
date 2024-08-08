@@ -263,9 +263,14 @@ wifi-connect() {
 	nmcli device wifi connect "$1" password "$2";
     fi
 }
-# Bash completion rule on the first argument.
-complete -W "$(wifi-ssids)" wifi-connect
+# Bash completion rule on the first argument:
+# Dynamic bash completion function for wifi-connect.
+_wifi_connect_completions() {
+    COMPREPLY=($(compgen -W "$(wifi-ssids)" -- "${COMP_WORDS[COMP_CWORD]}"))
+}
 
+# Register the dynamic completion function.
+complete -F _wifi_connect_completions wifi-connect
 
 bandwidth() {
     # Argument, if present, is number of lines of tail at the end.
@@ -349,7 +354,7 @@ tsd-bicycle() {
 	for b in $(tsd -L | grep bicycle-); do
 	    sum=$(tsd-y-sum $b | awk '{ sum += $2; } END {print sum;}')
 	    printf "%-25s %6.0f\n" $b $sum;
-	done;
+	done | sort -k 2 -g -r;
     fi;
 }
 tsd-bicycle-recent() { (cd $HOME/tsd; grep $(date "+%Y-%m") $(ls bicycle-* | grep -v ~); ) }
