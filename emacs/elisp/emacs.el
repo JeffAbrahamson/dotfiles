@@ -28,6 +28,9 @@
 ;; The elpy package does some setup that I once got confused.  I was
 ;; able to trigger redoing the setup with
 ;; M-x elpy-rpc-reinstall-virtualenv .
+;;
+;; I can refresh packages manually with M-x package-refresh-contents .
+;; I can list packages with M-x package-list-packages .
 
 (add-hook 'after-init-hook 'jma-after-init-hook)
 (defun jma-after-init-hook ()
