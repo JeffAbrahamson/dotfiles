@@ -19,3 +19,5 @@ if [ "X$HOSTNAME" = Xstarshine ]; then
     (echo touchegg; cd touchegg && ./install.sh)
 fi
 (echo mutt; cd mutt && ./install.sh)
+
+./cleanup.sh
