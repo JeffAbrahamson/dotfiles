@@ -8,6 +8,7 @@
 ;; Reminder: M-x package-list-packages
 (defvar jma-packages
   '(
+    apheleia     ;; Better than black.  https://github.com/radian-software/apheleia
     auctex
     blacken      ;; Alternative to py-autopep8.
     material-theme
