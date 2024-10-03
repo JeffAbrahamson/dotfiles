@@ -2,8 +2,18 @@
 #
 # Please see http://i3wm.org/docs/userguide.html for a complete reference!
 
+### Variables
+#
 set $mod Mod1
 set $exit_mode Do you really want to exit?
+
+# Note: pass the final command to swaymsg so that the resulting window can be opened
+# on the original workspace that the command was run on.
+set $menu dmenu_path | wmenu -f "pango:DejaVu Sans Mono 12" | xargs swaymsg exec --
+
+# Reveal which windows are using xwayland.  This is only for my own
+# awareness, I'm not aware of any real or actionable issues.
+for_window [shell="xwayland"] title_format "[XWayland] %title"
 
 # Font for window titles. Will also be used by the bar unless a different font
 # is used in the bar {} block below.
@@ -168,13 +178,7 @@ mode "sway" {
     bindsym Control+9  move container to workspace 9; mode "default"
     bindsym Control+0  move container to workspace 10; mode "default"
 
-    # Start dmenu (a program launcher)
-    bindsym Shift+1  exec dmenu_run -fn "pango:DejaVu Sans Mono 9"; mode "default"
-    # There also is the (new) i3-dmenu-desktop which only displays applications
-    # Shipping a .desktop file. It is a wrapper around dmenu, so you need that
-    # installed.
-    # bindsym !  exec --no-startup-id i3-dmenu-desktop
-
+    bindsym Shift+1  exec $menu; mode "default"
 
     # kill focused window
     bindsym Shift+k  kill; mode "default"
