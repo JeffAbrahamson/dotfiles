@@ -28,7 +28,7 @@ sync-to-here() {
 # from the fileserver, or remote filesystems.
 declare -a machine_exclusions_
 machine_exclusions_=( .cache .macromedia Videos brunhilde fs common data Documents Downloads templates Music work venv .vagrant.d 'VirtualBox\\ VMs' )
-if [ $HOSTNAME = birdsong -o $HOSTNAME = starshine -o "X$HOSTNAME" = Xmorning ]; then
+if [ $HOSTNAME = birdsong -o $HOSTNAME = tau-ceti -o "X$HOSTNAME" = Xmorning ]; then
    machine_exclusions_[${#machine_exclusions_[*]}]=Pictures
 fi
 machine_exclusions_pattern_=
