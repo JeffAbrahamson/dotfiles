@@ -1,0 +1,5 @@
+# Cf. https://github.com/MichaelAquilina/flake8-spellcheck
+
+[flake8]
+dictionaries=en_US,python,technical,pandas,django
+spellcheck-allowlist = num
