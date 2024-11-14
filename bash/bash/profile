@@ -38,6 +38,7 @@ export JELLYBOOKS_BASH_ALIASES=$HOME/.dotfiles/bash/jellybooks
 
 # My native language
 export LANG=en_GB.UTF-8
+export LANGUAGE=en_GB.UTF-8
 # It's really annoying to have numbers print with commas for the
 # deciml point: many programs don't understand.
 export LC_NUMERIC=en_GB.UTF_8
