@@ -6,18 +6,21 @@ cd $(pwd)/$(dirname $0)
 (echo bin; cd bin   && ./install.sh)
 (echo emacs; cd emacs && ./install.sh)
 (echo i3; cd i3 && ./install.sh)
-#(echo irsii; cd irssi && ./install.sh)
-#(echo notion; cd notion && ./install.sh)
-#(echo ratpoison; cd ratpoison && ./install.sh)
 (echo readline; cd readline && ./install.sh)
 (echo screen; cd screen && ./install.sh)
 (echo postgresql; cd postgresql && ./install.sh)
 (echo tmux; cd tmux && ./install.sh)
-#(echo templates; cd templates && ./install.sh)
+(echo python; cd python && ./install.sh)
 (echo X11; cd X11 && ./install.sh)
-if [ "X$HOSTNAME" = Xstarshine ]; then
-    (echo touchegg; cd touchegg && ./install.sh)
-fi
-(echo mutt; cd mutt && ./install.sh)
+
+# Things I no longer use but might some day.
+#
+# (echo irsii; cd irssi && ./install.sh)
+# (echo notion; cd notion && ./install.sh)
+# (echo ratpoison; cd ratpoison && ./install.sh)
+# if [ "X$HOSTNAME" = Xstarshine ]; then
+#     (echo touchegg; cd touchegg && ./install.sh)
+# fi
+# (echo mutt; cd mutt && ./install.sh)
 
 ./cleanup.sh
