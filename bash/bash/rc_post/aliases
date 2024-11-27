@@ -636,6 +636,7 @@ pavadm() { cd "$HOME/work/associations/place_au_velo/administrateur/"; }
 pavqr() { qrencode -l L -s 5 --foreground 004996 -o "${2:-/tmp/pavqr.png}" "$1"; }
 pav-todo() { cat "$HOME/work/associations/place_au_velo/administrateur/TODO.txt"; }
 pav-todo-print() { pav-todo | cat -n | u2ps; }
+# pav-todo-print() { pav-todo | head -67 | cat -n | u2ps; }
 vct() { cd "$VCT"; }
 
 ###########################################################################
