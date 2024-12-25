@@ -490,7 +490,8 @@ fs-mount() {
     if [ $(ls $HOME/fs | wc -l) -gt 1 ]; then
         echo fs is already mounted.
     else
-        (cd; sshfs jeff@fileserver:/d2/jeff fs)
+	_ssh_fs_mount_options='-o Ciphers=aes128-ctr -o Compression=no -o ServerAliveCountMax=2 -o ServerAliveInterval=15'
+        (cd; sshfs ${_ssh_fs_mount_options} jeff@fileserver:/d2/jeff fs)
     fi
 }
 fs-umount() { (cd; fusermount -u fs) }
