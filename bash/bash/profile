@@ -41,7 +41,7 @@ export LANG=en_GB.UTF-8
 export LANGUAGE=en_GB.UTF-8
 # It's really annoying to have numbers print with commas for the
 # deciml point: many programs don't understand.
-export LC_NUMERIC=en_GB.UTF_8
+export LC_NUMERIC=en_GB.UTF-8
 
 # For SLang (for mutt)
 export COLORFGBG="black;lightgray"
