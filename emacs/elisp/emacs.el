@@ -11,6 +11,7 @@
     apheleia     ;; Better than black.  https://github.com/radian-software/apheleia
     auctex
     blacken      ;; Alternative to py-autopep8.
+    dockerfile-mode
     material-theme
     editorconfig
     elpy
@@ -118,12 +119,13 @@
 	(load-file (concat jma-elisp-base "protobuf-mode.el"))
 	(load-file (concat jma-elisp-base "google-c-style.el"))
 	(load-file (concat jma-elisp-base "clang-format.el"))
+	(setq clang-format-style-option "Google")
 	(load-file (concat jma-elisp-base "highlight-indentation.el"))
 	;; (load-file (concat jma-elisp-base "copilot.el"))
 	;; (load-file (concat jma-elisp-base "copilot-bindings.el"))
 
 	;; cf. https://github.com/spotify/dockerfile-mode
-	(load-file (concat jma-elisp-base "dockerfile-mode.el"))
+	;; (load-file (concat jma-elisp-base "dockerfile-mode.el"))
 	(add-to-list 'auto-mode-alist '("Dockerfile\\'" . dockerfile-mode))
 	))
 
