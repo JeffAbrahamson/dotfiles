@@ -11,6 +11,8 @@
     apheleia     ;; Better than black.  https://github.com/radian-software/apheleia
     auctex
     blacken      ;; Alternative to py-autopep8.
+    docker
+    docker-compose-mode
     dockerfile-mode
     material-theme
     editorconfig
@@ -47,6 +49,9 @@
    '(blacken-line-length 79))
   (setq sqlformat-command 'pgformatter)
   (setq sqlformat-args '("-s2" "-g"))
+  (use-package docker
+    :ensure t
+    :bind ("C-c d" . docker))
   (message "After-init completed.")
   )
 
