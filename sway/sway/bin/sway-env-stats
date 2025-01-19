@@ -1,0 +1,100 @@
+#!/bin/bash
+
+# At beginning of life, this is simply a copy of i3-env-stats (with
+# s/i3/sway/g).  I've made the copy so that it can evolve without my
+# having to think about backwards compatibility with i3, in case I'm
+# ever again running i3.
+
+. $HOME/bin/p27.sh
+log_to_file sway-env-stats.log
+
+PATH=$HOME/bin:/usr/bin:/bin
+renice -n 19 $$
+
+# Functions to monitor disk usage.
+# This is a bit hard-coded.  It's also largely copied from disk-usage.sh.
+
+# Return size in megabytes for partition containing $1.
+get_size()
+{
+    df -BM "$1" | grep --fixed-strings "$1" | awk '{print $3}' | tr -d M
+}
+
+# Return space remaining in megabytes for partition $1.
+get_remaining()
+{
+    df -BM "$1" | grep --fixed-strings "$1" | awk '{print $4}' | tr -d M
+}
+
+# Write time and size in megabytes of partition containing $1 to datafile $2.
+record_size()
+{
+    now=$(date +%s)
+    size=$(get_size "$1")
+    remaining=$(get_remaining "$1")
+    echo $now $size >> "$2"
+    echo $now $remaining >> "$2"-remaining
+}
+
+# Record space used and space remaining for partition containing
+record_size_for()
+{
+    dir="$1"
+    series="$2"
+    series_base="$3"
+    if [ -d "$dir" ]; then
+	if [ $( ls "$dir" | wc -l ) -gt 0 ] ; then
+	    record_size "$dir" "$series_base$series"
+	fi
+    fi
+}
+
+record_disk_usage() {
+    series_base="$1"
+    # I think what I care about and what is ext4 is precisely identical.
+    disks=$(cat /proc/mounts | awk '/ext4/ {print $1}')
+    for disk in $disks; do
+	mount_dir=$(df --output=target $mount_point | tail -1)
+	record_size_for "$mount_dir" "$(basename $disk)" "$series_base"
+    done
+}
+
+log_line "Starting..."
+sway_pid=$(pidof sway)
+SERIES_BASE=$HOME/data/hosts/$(hostname -s)/disk-
+record_frequency_minutes=11
+# time_delta=$(( $record_frequency_minutes * 60 ))
+log_line "SWAY pid = $sway_pid"
+log_line "Log frequency = $record_frequency_minutes minutes."
+# First recording should not be immediate.  On session start, we may
+# not have a network connection.  In addition, it's annoying for
+# starting daemons immediately to monopolise resources.
+sleep 300
+while true; do
+    ## When SWAY exits, this script should quit as well.  I'm not sure
+    ## if I need this or not.  So watch for sway exit and quit when
+    ## no longer needed.
+    if [ ! -e /proc/$sway_pid ]; then
+	exit 0
+    fi
+    log_line Recording
+    record_disk_usage $SERIES_BASE
+    speedtest
+    # I'd like to monitor connectivity more frequently than I run
+    # speedtest, as it's a lighter test.  So rather than sleeping for
+    #     $(( $record_frequency_minutes * 60 + $RANDOM / 3277 ))
+    # I loop and call up-monitor about once a minute.  The end result
+    # is sleeping about $record_frequency_minutes between calls to
+    # speedtest.
+    loop_index=$record_frequency_minutes
+    while [[ $loop_index -gt 0 ]]; do
+	up-monitor
+	# Sleep a bit less than a minute : 45 seconds plus 0-9 seconds
+	# more to avoid any synchronisation issues.  RANDOM is an
+	# integer in [0, 32767].
+	sleep_time=$(( 45 + $RANDOM / 3277 ))
+	log_line Sleeping $sleep_time seconds.
+	sleep $sleep_time
+	loop_index=$(( $loop_index - 1 ))
+    done
+done

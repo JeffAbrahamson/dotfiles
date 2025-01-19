@@ -15,8 +15,8 @@ maybe_mkdir $dest
 (
     (
 	cd sway/bin
-	# for f in *; do
-	#     copy_to $f $dest
-	# done
+	for f in *; do
+	    copy_to $f $dest
+	done
     )
 )

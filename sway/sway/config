@@ -36,8 +36,8 @@ floating_modifier $mod
 include /etc/sway/config-vars.d/*
 
 # Run my personal daemons.
-exec --no-startup-id i3-env-stats
-exec --no-startup-id i3-power-monitor 30 daemon
+exec --no-startup-id sway-env-stats
+exec --no-startup-id sway-power-monitor 30 daemon
 
 # Pick a random image from my desktop image files.
 # The '/*' is necessary to force a full path on output.
