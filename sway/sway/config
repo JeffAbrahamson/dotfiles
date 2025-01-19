@@ -102,8 +102,8 @@ bindsym $mod+Control+Up     move up
 bindsym $mod+Control+Right  move right
 
 mode "sway" {
-    # Start a terminal.  Cf. https://launchpad.net/sakura
-    bindsym c	     exec sakura;mode "default"
+    # Start a terminal.
+    bindsym c	     exec kitty;mode "default"
     bindsym Shift+c  exec sway-restore-2;mode "default"
 
     # ## To deprecate as of 1 July 2019 if I'm satisified with the
