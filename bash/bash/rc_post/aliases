@@ -653,10 +653,10 @@ nux() {
 	if [ "$XDG_SESSION_TYPE" = "x11" ]; then
 	    terminal=urxvt;
 	elif [ "$XDG_SESSION_TYPE" = "wayland" ]; then
-	    terminal=sakura;
+	    terminal=kitty;
 	else
 	    echo "Unknown session type $XDG_SESSION_TYPE";
-	    terminal=urxvt;
+	    terminal=kitty;
 	fi
         while [ $n -gt 0 ]; do
             ($terminal &)

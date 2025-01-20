@@ -20,7 +20,8 @@ for_window [shell="xwayland"] title_format "[XWayland] %title"
 # This font is widely installed, provides lots of unicode glyphs, right-to-left
 # text rendering and scalability on retina/hidpi displays (thanks to pango).
 # font pango:DejaVu Sans Mono 8
-font pango:DejaVu Sans Mono 8
+font pango:DejaVu Sans Mono {% window_title_font_size %}
+
 # Before i3 v4.8, we used to recommend this one as the default:
 # font -misc-fixed-medium-r-normal--13-120-75-75-C-70-iso10646-1
 # The font above is very space-efficient, that is, it looks good, sharp and
@@ -63,19 +64,9 @@ input 1:1:AT_Translated_Set_2_keyboard {
     xkb_options "fnmode:2"
 }
 
-# Lock screen after 300 seconds of inactivity, then turn off displays
-# after another 300 seconds, and turn screens back on when resumed. It
-# will also lock screen before computer goes to sleep.
-exec swayidle -w \
-         timeout 300 'swaylock -f -c 000000' \
-         timeout 600 'swaymsg "output * dpms off"' resume 'swaymsg "output * dpms on"' \
-         before-sleep 'swaylock -f -c 000000' \
-	 timeout 1800 'systemctl suspend'
-# exec swayidle -w timeout 1800 'systemctl suspend'
-
 #bindsym $mod+Control+L exec i3lock --dpms --inactivity-timeout 10 --color=220022
-bindsym $mod+Control+L exec sway-lock-suspend
-bindsym $mod+Control+M exec sway-lock-suspend sleep
+bindsym $mod+Control+L exec swaylock
+bindsym $mod+Control+M exec sway-idle -w timeout 300 ''swaymsg "output * dpms off"' resume 'swaymsg "output * dpms on"' timeout 1800 'systemctl suspend'
 bindsym $mod+Control+P exec sway-lock-suspend suspend
 
 bindsym XF86AudioLowerVolume exec amixer -D pulse set Master 5%-
@@ -244,7 +235,7 @@ mode "$exit_mode" {
 bar {
     status_command i3status
 
-    font pango:DejaVu Sans Mono 9
+    font pango:DejaVu Sans Mono {% bar_font_size %}
     colors {
         statusline #ffffff
         background #323232

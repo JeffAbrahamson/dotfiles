@@ -1,0 +1,30 @@
+# Lock screen after 300 seconds of inactivity, then turn off displays
+# after another 300 seconds, and turn screens back on when resumed. It
+# will also lock screen before computer goes to sleep.
+#
+# Don't suspend, because I'm often doing interesting things on
+# desktop when the screen is off.
+exec swayidle -w \
+         timeout 300 'swaylock -f -c 000000' \
+         timeout 600 'swaymsg "output * dpms off"' resume 'swaymsg "output * dpms on"' \
+         before-sleep 'swaylock -f -c 000000'
+# exec swayidle -w timeout 1800 'systemctl suspend'
+
+# To find video outputs, use `swaymsg -t get_outputs`.
+# What I want is assuredly the second field of the "Output" lines.
+# But since get_outputs emits JSON if writing to a pipe, I more
+# useful direct access would be `swaymsg -t get_outputs | grep name`.
+# Or, more elegantly, `swaymsg -t get_outputs | jq '.[].name'`.
+# This works on vogel (2025 ff):
+workspace 1 output HDMI-A-1
+workspace 2 output HDMI-A-2
+workspace 3 output HDMI-A-1
+workspace 4 output HDMI-A-2
+workspace 5 output HDMI-A-1
+workspace 6 output HDMI-A-2
+workspace 7 output HDMI-A-1
+workspace 8 output HDMI-A-2
+workspace 9 output HDMI-A-1
+workspace 10 output HDMI-A-2
+workspace a output HDMI-A-1
+workspace b output HDMI-A-2

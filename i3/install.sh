@@ -8,7 +8,7 @@ if [ -r "$host_specific_config" ]; then
 else
     cat i3/config_base > i3/config
 fi
-
+in
 dest=$HOME/.i3/
 maybe_mkdir $dest
 (cd i3/ && copy_to i3status.conf $HOME/.i3status.conf)
