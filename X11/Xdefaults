@@ -1,0 +1,9 @@
+emacs23.font: 9x15
+
+Xft.dpi:        {% dpi %}
+Xft.autohint:   false
+Xft.lcdfilter:  lcddefault
+Xft.hintstyle:  hintfull
+Xft.hinting:    true
+Xft.antialias:  true
+Xft.rgba:       rgb
