@@ -23,7 +23,7 @@ maybe_mkdir $kitty_dest_dir
 kitty_dest="$kitty_dest_dir/kitty.conf"
 
 if [ "X$HOSTNAME" = "Xvogel" ]; then
-    (sed -e 's/{% font_size %}/12.0/;' < sway/kitty.conf > "$kitty_dest")
+    (sed -e 's/{% font_size %}/13.0/;' < sway/kitty.conf > "$kitty_dest")
     (sed -e 's/{% window_title_font_size %}/10.0/; s/{% bar_font_size %}/12/;' < sway/config > "$sway_config_dest")
 elif [ "X$HOSTNAME" == "Xtau-ceti" ]; then
     echo tau-ceti
