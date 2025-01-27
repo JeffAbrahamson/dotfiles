@@ -64,10 +64,13 @@ input 1:1:AT_Translated_Set_2_keyboard {
     xkb_options "fnmode:2"
 }
 
-#bindsym $mod+Control+L exec i3lock --dpms --inactivity-timeout 10 --color=220022
+# bindsym $mod+Control+L exec i3lock --dpms --inactivity-timeout 10 --color=220022
 bindsym $mod+Control+L exec swaylock
-bindsym $mod+Control+M exec sway-idle -w timeout 300 ''swaymsg "output * dpms off"' resume 'swaymsg "output * dpms on"' timeout 1800 'systemctl suspend'
-bindsym $mod+Control+P exec sway-lock-suspend suspend
+# This will be ignored on hosts that don't support it.
+# E.g., it's only meant for desktop use.
+bindsym $mod+Control+M exec sway-desktop-idle-suspendable
+# bindsym $mod+Control+M exec "swaylock & (sleep .2; swaymsg 'output * dpms off')"
+bindsym $mod+Control+P exec "swaylock & (sleep .2; systemctl suspend)"
 
 bindsym XF86AudioLowerVolume exec amixer -D pulse set Master 5%-
 bindsym XF86AudioRaiseVolume exec amixer -D pulse set Master 5%+

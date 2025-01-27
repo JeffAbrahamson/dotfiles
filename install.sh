@@ -14,7 +14,7 @@ cd $(pwd)/$(dirname $0)
 (echo python; cd python && ./install.sh)
 (echo readline; cd readline && ./install.sh)
 (echo screen; cd screen && ./install.sh)
-(echo sway; cd swy && ./install.sh)
+(echo sway; cd sway && ./install.sh)
 (echo tmux; cd tmux && ./install.sh)
 
 # Things I no longer use but might some day.
