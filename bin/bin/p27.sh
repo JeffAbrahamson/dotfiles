@@ -28,6 +28,8 @@ log_line() {
 }
 
 log_to_file() {
+    # $1 = pathname to log to (in /tmp if relative).
+    # $2 = option, "quiet" means don't issue "Starting" banner.
     init_p27
     # The full pathname to the log file.
     #
@@ -38,9 +40,9 @@ log_to_file() {
     absolute_filename_pattern="^/"
     [[ "$1" =~ $absolute_filename_pattern ]]
     if [ "${BASH_REMATCH[0]}" ]; then
-	log_path="$1"
+        log_path="$1"
     else
-	log_path="/tmp/$1"
+        log_path="/tmp/$1"
     fi
 
     # Save file descriptors so they can be restored to whatever they were
@@ -57,10 +59,11 @@ log_to_file() {
     exec 1>>"$log_path" 2>&1
     # Everything below will go to {{ '{{' }} log_path {{ '}}' }}.
 
-    # And also note that we're starting.
-    for n in {1..4}; do echo; done
-    echo "======================================================================"
-    log_line "Starting"
-    echo
+    # And also note that we're starting if not in quiet mode.
+    if [ "X$2" != "Xquiet" ]; then
+        for n in {1..4}; do echo; done
+        echo "======================================================================"
+        log_line "Starting"
+    fi
 }
 

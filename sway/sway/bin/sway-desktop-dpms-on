@@ -1,0 +1,15 @@
+#!/bin/bash
+
+# Make sure DPMS turns the screens on.  Provide the argument what-next
+# to exec what-next and so choose whether renewed inactivity should
+# mean to suspend.
+
+. $HOME/bin/sway-desktop-utils.sh
+
+only_desktop_host
+swaymsg "output * dpms on"
+log_line "dpms is on"
+if [ "X$1" != X ]; then
+    log_line "Exec'ing what-next."
+    exec $HOME/bin/sway-desktop-idle-what-next
+fi

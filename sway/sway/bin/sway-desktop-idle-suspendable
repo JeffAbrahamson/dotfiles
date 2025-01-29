@@ -1,27 +1,23 @@
 #!/bin/bash
 
-. $HOME/bin/p27.sh
-logfile="$HOME/sway-desktop-idle"
-log_line "sway-desktop-idle-suspendable" >> "$logfile"
+. $HOME/bin/sway-desktop-utils.sh
 
-if [ "X$HOSTNAME" != Xvogel ]; then
-    log_line "Host '$HOSTNAME' not recognised, not invoking swayidle." >> "$logfile"
-    exit 0
-fi
-
-# My intention is to replace any existing swayidle process I'm running.
-pkill -u $LOGNAME swayidle
-log_line "Kill note: $?" >> "$logfile"
+only_desktop_host
+kill_idle_with_status
 
 # Lock screen and suspend.
 #
-# On wake-up, don't repeat once unlocked.  But do repeat if we don't
-# unlock, because a simple nudge of the mouse shouldn't leave us
-# unsuspended forever.
-swaylock -f -c 000000 &
-swayidle -w  \
-	 timeout 10 'swaylock -f -c 000000' \
-	 timeout 15 'swaymsg "output * dpms off"' \
-	 resume 'swaymsg "output * dpms on; $HOME/bin/sway-desktop-idle-what-next"'  \
-	 before-sleep 'swaylock -f -c 000000' \
-	 timeout 18 'systemctl suspend'
+# On wake-up (resume), don't re-suspend once unlocked.  But do repeat
+# if we don't unlock, because a simple nudge of the mouse shouldn't
+# leave us unsuspended forever.
+#
+# Note that the "resume" directive is not noted in the swayidle man
+# page (except in the example usage) but appears in the function
+# parse_timeout() in main.c.
+exec swayidle -w \
+	 timeout 1    "swaylock -f -c 000000"                  \
+	 timeout 10   "$HOME/bin/sway-desktop-dpms-off"        \
+	      resume  "$HOME/bin/sway-desktop-dpms-on"         \
+	 before-sleep "swaylock -f -c 000000"                  \
+	 after-resume "$HOME/bin/sway-desktop-idle-what-next"  \
+	 timeout 15 "systemctl suspend"

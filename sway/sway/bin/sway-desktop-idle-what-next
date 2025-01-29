@@ -1,13 +1,8 @@
 #!/bin/bash
 
-. $HOME/bin/p27.sh
-logfile="$HOME/sway-desktop-idle"
-log_line "sway-desktop-idle-what-next" >> "$logfile"
+. $HOME/bin/sway-desktop-utils.sh
 
-if [ "X$HOSTNAME" != Xvogel ]; then
-    log_line "Host '$HOSTNAME' not recognised, not invoking swayidle." >> "$logfile"
-    exit 0
-fi
+only_desktop_host
 
 # The intent is to call this from the process that has requested
 # swayidle to suspend.  The goal is to distinguish two cases:
@@ -20,23 +15,22 @@ fi
 #
 # The first goal, then, is to kill whatever swayidle I'm running, since I
 # believe it might suspend the system and interfere with unlocking.
-pkill -u $LOGNAME swayidle
-log_line "Kill note: $?" >> "$logfile"
+kill_idle_with_status
 
 # Now decide how to re-invoke swayidle.  Give the user some time to
 # unlock.  If the display remains locked long enough, assume it's all
 # a misunderstanding and go back to suspendable.
 for n in $(seq 10); do
-    log_line "Sleeping 5..." >> "$logfile"
+    log_line "Sleeping 5..."
     sleep 5
     if ! pgrep -u $LOGNAME swaylock; then
 	# Found no swaylock process, so unlocked.
-	log_line "Detected unlocked, invoking active profile." >> "$logfile"
+	log_line "Detected unlocked, invoking active profile."
 	exec $HOME/bin/sway-desktop-idle-active
     fi
 done
-log_line "Still detecting lock, invoking suspendable profile." >> "$logfile"
-log_line "PATH=$PATH" >> "$logfile"
+log_line "Still detecting lock, invoking suspendable profile."
+log_line "PATH=$PATH"
 exec $HOME/bin/sway-desktop-idle-suspendable
 
 # Note that we exec sway-desktop-idle-* scripts, above, so that this

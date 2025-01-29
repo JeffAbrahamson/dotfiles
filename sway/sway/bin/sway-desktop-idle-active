@@ -1,17 +1,9 @@
 #!/bin/bash
 
-. $HOME/bin/p27.sh
-logfile="$HOME/sway-desktop-idle"
-log_line "sway-desktop-idle-active" >> "$logfile"
+. $HOME/bin/sway-desktop-utils.sh
 
-if [ "X$HOSTNAME" != Xvogel ]; then
-    log_line "Host '$HOSTNAME' not recognised, not invoking swayidle." >> "$logfile"
-    exit 0
-fi
-
-# My intention is to replace any existing swayidle process I'm running.
-pkill -u $LOGNAME swayidle
-log_line "Kill note: $?" >> "$logfile"
+only_desktop_host
+kill_idle_with_status
 
 # Lock screen after 300 seconds of inactivity, then turn off displays
 # after another 300 seconds, and turn screens back on when resumed. It
@@ -19,8 +11,13 @@ log_line "Kill note: $?" >> "$logfile"
 #
 # Don't suspend, because I'm often doing interesting things on
 # desktop when the screen is off.
-swayidle -w \
-         timeout 300 'swaylock -f -c 000000' \
-         timeout 600 'swaymsg "output * dpms off"' \
-	 resume 'swaymsg "output * dpms on"' \
+#
+# Note that the "resume" directive is not noted in the swayidle man
+# page (except in the example usage) but appears in the function
+# parse_timeout() in main.c.
+exec swayidle -w \
+         timeout 300  "swaylock -f -c 000000;"           \
+         timeout 600  "$HOME/bin/sway-desktop-dpms-off"  \
+	      resume  "$HOME/bin/sway-desktop-dpms-on"   \
+	 after-resume "$HOME/bin/sway-desktop-dpms-on"   \
          before-sleep 'swaylock -f -c 000000'

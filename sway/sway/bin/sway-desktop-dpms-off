@@ -1,0 +1,7 @@
+#!/bin/bash
+
+. $HOME/bin/sway-desktop-utils.sh
+
+only_desktop_host
+swaymsg "output * dpms off"
+log_line "dpms is off."
