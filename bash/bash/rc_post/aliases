@@ -416,6 +416,9 @@ note() { ec $HOME/data/notes/$1; }
 notegr() { grep $1 $HOME/data/notes/$1; }
 
 # Control my wireless devices.
+bluestat() { bluetoothctl devices Connected; }
+blueinfo() { bluetoothctl info; }
+
 # The bose cylinder speaker.
 bose-pair() { bluetoothctl pair 2C:41:A1:6D:2B:1C; }
 bose-trust() { bluetoothctl trust 2C:41:A1:6D:2B:1C; }
@@ -423,10 +426,15 @@ bose-connect() { bluetoothctl connect 2C:41:A1:6D:2B:1C; }
 bose-disconnect() { bluetoothctl disconnect 2C:41:A1:6D:2B:1C; }
 
 # The yellow beats headset.
-beats-pair() { bluetoothctl pair 70:8C:F2:D6:F4:6A:D6:F4:6A; }
-beats-trust() { bluetoothctl trust 70:8C:F2:D6:F4:6A:D6:F4:6A; }
-beats-connect() { bluetoothctl connect 70:8C:F2:D6:F4:6A:D6:F4:6A; }
-beats-disconnect() { bluetoothctl disconnect 70:8C:F2:D6:F4:6A:D6:F4:6A; }
+y-beats-pair() { bluetoothctl pair 70:8C:F2:D6:F4:6A:D6:F4:6A; }
+y-beats-trust() { bluetoothctl trust 70:8C:F2:D6:F4:6A:D6:F4:6A; }
+y-beats-connect() { bluetoothctl connect 70:8C:F2:D6:F4:6A:D6:F4:6A; }
+y-beats-disconnect() { bluetoothctl disconnect 70:8C:F2:D6:F4:6A:D6:F4:6A; }
+# The black beats headset.
+b-beats-pair() { bluetoothctl pair B0:BE:83:DB:E3:3B; }
+b-beats-trust() { bluetoothctl trust B0:BE:83:DB:E3:3B; }
+b-beats-connect() { bluetoothctl connect B0:BE:83:DB:E3:3B; }
+b-beats-disconnect() { bluetoothctl disconnect B0:BE:83:DB:E3:3B; }
 
 # bluetoothctl info
 # bluetoothctl status
