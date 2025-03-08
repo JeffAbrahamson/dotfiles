@@ -1,1 +1,1 @@
-$include $HOME/.dotfiles/readline/inputrc
+$include ~/.dotfiles/readline/inputrc
