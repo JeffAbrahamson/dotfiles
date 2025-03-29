@@ -143,6 +143,12 @@
   ;; what I'm doing.
   (setq frame-title-format '("" invocation-name "@" system-name " - %b : %f"))
 
+  ;; I was having problems with elpy not having correct python
+  ;; information because of debian policy of not installing ensurepip
+  ;; globally.  This is intended to address that by making sure I
+  ;; always use the elpy python venv.
+  (pyvenv-activate "~/.emacs.d/elpy/rpc-venv")
+
   ;; This should be the last block of this file.
   ;; The file site-end.el should not be included with
   ;; this distribution.  It is for user customization.
