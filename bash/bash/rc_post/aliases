@@ -648,6 +648,8 @@ tma-r2() { tmux attach-session -t R2; }
 ###########################################################################
 # Quick directory access for favourite spots.
 jbks() { cd "$HOME/work/startup/jellybooks/"; }
+jbks-todo() { grep -vE '^#' "$HOME/work/startup/jellybooks/TODO.txt"; }
+jbks-todo-print() { jbks-todo | head -67 | cat -n | u2ps; }
 tn() { cd "$HOME/work/startup/transport-nantes/"; }
 tns() { cd "$HOME/src/jma/transport-nantes/tn_web/"; }
 pav() { cd "$HOME/work/associations/place_au_velo/"; }
