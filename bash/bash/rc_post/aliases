@@ -614,6 +614,20 @@ xal-enable() { xautolock -enable; }
 xal() { xal-disable; banner '' xautolock off " "; read -p 'Press any key to re-enable' -n 1; xal-enable; echo; }
 
 ###########################################################################
+# Wayland / sway
+
+wal-disable() { pgrep swayidle && pkill -USR1 swayidle; }
+wal-enable() { pgrep swayidle && pkill -USR2 swayidle; }
+wal() {
+    wal-disable
+    banner '' swayidle off " "
+    read -p 'Press any key to re-enable' -n 1
+    wal-enable
+    echo
+}
+
+
+###########################################################################
 # Silence glibc asserts.
 
 alias evince="evince 2>/dev/null"
