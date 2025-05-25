@@ -547,6 +547,62 @@ u2ps() {
 
 dy() { dig +noall +answer +additional "$1" @dns.toys; }
 
+# Move the (numerous) statements I get from SQ from my download
+# directory into a naming format I like in my statements directory.
+sq() { local src="$1"
+
+    if [[ ! -f "$src" ]]; then
+        echo "Error: File not found: $src" >&2
+        return 1
+    fi
+
+    local filename
+    filename=$(basename "$src")
+
+    local date="${filename%.pdf}"
+    date="${date##*_}"
+
+    local rest="${filename%.pdf}"
+    rest="${rest%_*}"
+    rest="${rest//_/-}"
+
+    local newname="${date}_${rest}.pdf"
+    newname="${newname,,}"
+
+    set -x
+    mv "$src" "./$newname"
+    { set +x; } 2>/dev/null
+}
+
+pdf-today() {
+    local time_spec="$1"
+    local dir=~/Downloads
+
+    # Default: "today" = since midnight
+    if [[ -z "$time_spec" ]]; then
+        find "$dir" -maxdepth 1 -type f -iname '*.pdf' -newermt "$(date +%F)"
+    elif [[ "$time_spec" =~ ^-[0-9]+[smhd]$ ]]; then
+        # Extract the numeric part and unit
+        local amount="${time_spec:1:-1}"
+        local unit="${time_spec: -1}"
+
+        # Convert to minutes for -mmin (find accepts negative minutes)
+        case "$unit" in
+            m) minutes="$amount" ;;
+            h) minutes=$((amount * 60)) ;;
+            d) minutes=$((amount * 1440)) ;;
+            s) minutes=$(( (amount + 59) / 60 )) ;;  # round up
+            *) echo "Invalid unit: $unit" >&2; return 1 ;;
+        esac
+
+        find "$dir" -maxdepth 1 -type f -iname '*.pdf' -mmin "-$minutes"
+    else
+        echo "Usage: pdf-today [-10m|-2h|-3d] or no argument for today" >&2
+        return 1
+    fi
+}
+
+
 ###########################################################################
 # python
 
