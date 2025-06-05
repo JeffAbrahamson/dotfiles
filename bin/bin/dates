@@ -8,9 +8,27 @@
 
 zone_file=$HOME/.timezones
 
-cat $zone_file | while read line; do
-    TZ=$(echo $line | perl -pwe 's/\s.*$//;')
-    time_there=$(TZ=$TZ date '+%R  %F  %A  %Z %z')
-    label=$(echo $line | perl -pwe 's/^[^\s]+\s+//;')
-    printf "%-15s %s\n" "$label" "$time_there"
-done
+LC_TIME=fr_FR.UTF-8 awk '
+{
+    tz = $1
+    $1 = ""
+    sub(/^[ \t]+/, "", $0)
+    city = $0
+
+    # Command to get formatted components
+    cmd = "TZ=\"" tz "\" date +\"%H:%M|%Y-%m-%d|%A|%Z|%z\""
+    cmd | getline datetime
+    close(cmd)
+
+    # Split fields
+    n = split(datetime, fields, "|")
+    time = fields[1]
+    date = fields[2]
+    day  = fields[3]
+    zone = fields[4]
+    offset = fields[5]
+
+    # Format with aligned columns
+    printf "%-15s %5s  %-10s   %-10s  %4s  %5s\n", city, time, date, day, zone, offset
+}
+' "$zone_file"
