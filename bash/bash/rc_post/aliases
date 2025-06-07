@@ -419,22 +419,28 @@ notegr() { grep $1 $HOME/data/notes/$1; }
 bluestat() { bluetoothctl devices Connected; }
 blueinfo() { bluetoothctl info; }
 
-# The bose cylinder speaker.
-bose-pair() { bluetoothctl pair 2C:41:A1:6D:2B:1C; }
-bose-trust() { bluetoothctl trust 2C:41:A1:6D:2B:1C; }
-bose-connect() { bluetoothctl connect 2C:41:A1:6D:2B:1C; }
-bose-disconnect() { bluetoothctl disconnect 2C:41:A1:6D:2B:1C; }
+# The bose Resolve Soundlink: cylinder speaker.
+bose-resolve-pair() { bluetoothctl pair 2C:41:A1:6D:2B:1C; }
+bose-resolve-trust() { bluetoothctl trust 2C:41:A1:6D:2B:1C; }
+bose-resolve-connect() { bluetoothctl connect 2C:41:A1:6D:2B:1C; }
+bose-resolve-disconnect() { bluetoothctl disconnect 2C:41:A1:6D:2B:1C; }
+
+# Bose QC Ultra.
+bose-blue-pair() { bluetoothctl pair E4:58:BC:2C:02:C8; }
+bose-blue-trust() { bluetoothctl trust E4:58:BC:2C:02:C8; }
+bose-blue-connect() { bluetoothctl connect E4:58:BC:2C:02:C8; }
+bose-blue-disconnect() { bluetoothctl disconnect E4:58:BC:2C:02:C8; }
 
 # The yellow beats headset.
-y-beats-pair() { bluetoothctl pair 70:8C:F2:D6:F4:6A:D6:F4:6A; }
-y-beats-trust() { bluetoothctl trust 70:8C:F2:D6:F4:6A:D6:F4:6A; }
-y-beats-connect() { bluetoothctl connect 70:8C:F2:D6:F4:6A:D6:F4:6A; }
-y-beats-disconnect() { bluetoothctl disconnect 70:8C:F2:D6:F4:6A:D6:F4:6A; }
+bose-yellow-beats-pair() { bluetoothctl pair 70:8C:F2:D6:F4:6A:D6:F4:6A; }
+bose-yellow-beats-trust() { bluetoothctl trust 70:8C:F2:D6:F4:6A:D6:F4:6A; }
+bose-yellow-beats-connect() { bluetoothctl connect 70:8C:F2:D6:F4:6A:D6:F4:6A; }
+bose-yellow-beats-disconnect() { bluetoothctl disconnect 70:8C:F2:D6:F4:6A:D6:F4:6A; }
 # The black beats headset.
-b-beats-pair() { bluetoothctl pair B0:BE:83:DB:E3:3B; }
-b-beats-trust() { bluetoothctl trust B0:BE:83:DB:E3:3B; }
-b-beats-connect() { bluetoothctl connect B0:BE:83:DB:E3:3B; }
-b-beats-disconnect() { bluetoothctl disconnect B0:BE:83:DB:E3:3B; }
+bose-black-beats-pair() { bluetoothctl pair B0:BE:83:DB:E3:3B; }
+bose-black-beats-trust() { bluetoothctl trust B0:BE:83:DB:E3:3B; }
+bose-black-beats-connect() { bluetoothctl connect B0:BE:83:DB:E3:3B; }
+bose-black-beats-disconnect() { bluetoothctl disconnect B0:BE:83:DB:E3:3B; }
 
 # bluetoothctl info
 # bluetoothctl status
@@ -442,6 +448,21 @@ b-beats-disconnect() { bluetoothctl disconnect B0:BE:83:DB:E3:3B; }
 # bluetoothctl scan on
 # bluetoothctl scan off
 # bluetoothctl devices
+
+# And some help with switching audio sink.
+#
+# Cf. also wpctl status
+# Cf. also pactl list sinks
+audio-sinks() { pactl list short sinks; }
+# Cf. also wpctl set-default <sink-id>.
+# The issue is that that id isn't clearly stable over time.
+audio-to-bose-resolve() { pactl set-default-sink bluez_output.2C_41_A1_6D_2B_1C.1; }
+audio-to-bose-blue() { pactl set-default-sink bluez_output.E4_58_BC_2C_02_C8.1; }
+# It's also possible to move an existing sink.
+# For example,
+# pactl move-sink-input <input_index> bluez_output.2C_41_A1_6D_2B_1C.a2dp-sink
+#
+# pavucontrol might provide a GUI for doing these things.
 
 ###########################################################################
 # git
