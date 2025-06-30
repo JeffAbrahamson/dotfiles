@@ -18,3 +18,10 @@ workspace 9 output HDMI-A-1
 workspace 10 output HDMI-A-2
 workspace a output HDMI-A-1
 workspace b output HDMI-A-2
+
+# Based on my current screen configuration.  This comes up correctly
+# at system start, but sometimes gets confused if a monitor is off for
+# a while.  So note here the correct order so that it resets on a
+# `swaymsg reload`.
+output HDMI-A-1 pos 0 0
+output HDMI-A-2 pos 3840 0
