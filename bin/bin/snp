@@ -1,14 +1,64 @@
 #!/bin/bash
 
-PATH=/usr/bin:/bin
+set -euo pipefail
+PATH="/usr/local/bin:/usr/bin:/bin:$PATH"
 
-snap() {
-    tmp=$(mktemp /tmp/fooXXXXXXXXX.png);
-    # If I'm using i3 and/or X, use scrot.  If I'm using Wayland, use grim.
-    if [ -n "$WAYLAND_DISPLAY" ]; then
-	grim -g "$(slurp)" $tmp && eog $tmp && rm $tmp
-    else
-	scrot -s --overwrite $tmp && eog $tmp && rm $tmp;
+case "${1:-region}" in
+    r* ) what=region ;;
+    w* ) what=window ;;
+    c* ) what=contents ;;
+    *  ) what=region ;;
+esac
+
+tmp="$(mktemp --suffix=.png)"
+cleanup() { rm -f -- "$tmp"; }
+trap cleanup EXIT
+
+notify() { command -v notify-send >/dev/null 2>&1 && notify-send "$@"; }
+need()   { command -v "$1" >/dev/null 2>&1 || { notify "Missing tool: $1"; echo "Missing tool: $1" >&2; exit 127; }; }
+
+open_viewer() {
+    if command -v imv >/dev/null 2>&1; then imv "$1"
+    elif command -v imv-wayland >/dev/null 2>&1; then imv-wayland "$1"
+    elif command -v xdg-open >/dev/null 2>&1; then xdg-open "$1" >/dev/null 2>&1 || true
+    else eog "$1"
     fi
 }
+
+snap() {
+    if [ -n "${WAYLAND_DISPLAY-}" ]; then
+	need grim
+	need slurp
+	case "$what" in
+	    region)
+		grim -g "$(slurp)" "$tmp"
+		;;
+	    window)
+		need swaymsg
+		need jq
+		region="$(swaymsg -t get_tree \
+          | jq -r '.. | objects | select(.pid? and .visible?) | .rect | "\(.x),\(.y) \(.width)x\(.height)"' \
+          | slurp -r)" || { notify "Screenshot canceled"; return 130; }
+		grim -g "$region" "$tmp"
+		;;
+	    contents)
+		need swaymsg
+		need jq
+		region="$(swaymsg -t get_tree \
+          | jq -r '.. | objects | select(.pid? and .visible? and .window_rect?) | "\(.rect.x + .window_rect.x),\(.rect.y + .window_rect.y) \(.window_rect.width)x\(.window_rect.height)"' \
+          | slurp -r)" || { notify "Screenshot canceled"; return 130; }
+		grim -g "$region" "$tmp"
+		;;
+	    *)
+		notify "snp: unrecognised option \"$what\""; exit 1 ;;
+	esac
+	open_viewer "$tmp"
+    else
+	# X11 (historical)
+	need scrot
+	scrot -s --overwrite "$tmp"
+	open_viewer "$tmp"
+    fi
+}
+
 snap
