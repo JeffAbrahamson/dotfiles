@@ -39,6 +39,15 @@ else
     (sed -e 's/{% window_title_font_size %}/8.0/; s/{% bar_font_size %}/9/;' < sway/config > "$sway_config_dest")
 fi
 
+maybe_mkdir $HOME/.config/mako
+if [ "X$HOSTNAME" == "Xvogel" ]; then
+    (cd sway/ && sed -e 's/{% fontsize %}/16/;' < mako-config > $HOME/.config/mako/config)
+elif [ "X$HOSTNAME" == "Xtau-ceti" ]; then
+    (cd sway/ && sed -e 's/{% fontsize %}/11/;' < mako-config > $HOME/.config/mako/config)
+else
+    echo "Unrecognized host, not copying mako-config."
+fi
+
 dest=$HOME/bin/
 maybe_mkdir $dest
 (

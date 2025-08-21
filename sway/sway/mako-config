@@ -1,0 +1,47 @@
+# === Global (no [global] header in mako) ===
+font=pango:DejaVu Sans Mono {% fontsize %}
+anchor=top-right
+max-visible=5
+sort=-time
+
+# Layout / sizing
+margin=10,10,10,10
+padding=8
+border-size=2
+border-radius=6
+width=360
+height=200
+
+# Behaviour
+# markup=1                 # allow Pango markup like <b>…</b>
+# default-timeout=10000    # fallback timeout when client doesn't set one
+# ignore-timeout=false     # respect app-provided timeouts
+max-history=20
+
+# Base colors (will be overridden by urgency/app styles below if matched)
+background-color=#222222EE
+text-color=#EEEEEE
+border-color=#444444
+progress-color=#999999
+
+# === Urgency-specific ===
+[urgency=low]
+default-timeout=10000
+background-color=#CC4488
+text-color=#FFFFFF
+
+[urgency=normal]
+default-timeout=20000
+background-color=#CC4488
+text-color=#FFFFFF
+
+[urgency=critical]
+#ignore-timeout=true      # sticky until dismissed (like dunst timeout=0)
+background-color=#801515
+text-color=#D46A6A
+
+# === App-specific ===
+[app-name=firefox]
+default-timeout=10000
+background-color=#99FF33
+text-color=#000000
