@@ -18,6 +18,10 @@ swaylock_dest_dir="$HOME/.swaylock"
 maybe_mkdir "$swaylock_dest_dir"
 (cd sway/ && copy_to swaylock_config "$swaylock_dest_dir/config")
 
+systemd_make_dir="$HOME/.config/systemd/user"
+maybe_mkdir "${systemd_make_dir}"
+(cd sway/ && copy_to systemd-mako-service "${systemd_make_dir}/mako.service")
+
 kitty_dest_dir=$HOME/.config/kitty
 maybe_mkdir $kitty_dest_dir
 kitty_dest="$kitty_dest_dir/kitty.conf"

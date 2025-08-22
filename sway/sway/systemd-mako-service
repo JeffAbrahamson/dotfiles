@@ -1,0 +1,8 @@
+[Unit]
+Description=Mako notification daemon
+
+[Service]
+ExecStart=/usr/bin/mako
+
+[Install]
+WantedBy=default.target
