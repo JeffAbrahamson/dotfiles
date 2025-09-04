@@ -12,7 +12,11 @@ done
 # for ssh logins, install and configure the libpam-umask package.
 #umask 022
 
-PATH=$PATH:$HOME/bin/:$HOME/bin-elf/:$HOME/.local/bin/
+PATH=$PATH:$HOME/bin/:$HOME/bin-elf/:$HOME/.local/bin/:$HOME/.npm-global/bin/
+if [ ! -d "$HOME/.npm-global/" ]; then
+    mkdir -p "$HOME/.npm-global"
+    npm config set prefix "$HOME/.npm-global"
+fi
 # export CDPATH=.:~/work/Drexel/mst-image:~/work/Drexel/mst-image/cvs/jeff
 
 export EDITOR=emacs
