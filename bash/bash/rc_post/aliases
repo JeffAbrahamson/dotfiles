@@ -623,6 +623,11 @@ pdf-today() {
     fi
 }
 
+# Usage: cat <something> | csv-head.  Or csv-head < <something>.
+#
+# Note that some other possibilities are mlr and csvtool (available
+# via apt-get).
+csv-head() { python3 -c "import csv,sys;print('\n'.join(next(csv.reader(sys.stdin))))"; }
 
 ###########################################################################
 # python
