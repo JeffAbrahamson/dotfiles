@@ -483,39 +483,6 @@ pip-update-all() {
 	xargs -n1 pip install -U;
 }
 
-
-###########################################################################
-# gtd
-
-## Training functions.
-# Say what I am doing now.
-gtdw() { if [ "X$1" = X ]; then
-    echo "What?"; else
-    echo $(date +%s) "$1" >> $HOME/data/gtd/gtd_$(hostname); fi; }
-# Output the set of things I've ever said I'm doing.  Ontology.
-gtdq() { cat $HOME/data/gtd/gtd_* | awk '{print $2}' | sort -u; }
-# Output the last thing I said I'm doing.
-gtdnow() { tail -1 $HOME/data/gtd/gtd_$(hostname); }
-
-## History
-gtdlast() {
-    _this_session=$(cd ~/data/gtd; ls -t $(hostname)__* | \
-                        head -1 | \
-                        sed -e "s/^$(hostname)__//");
-    echo This session began at $_this_session.
-    _prev_session=$(cd ~/data/gtd; ls -t $(hostname)__* | \
-                        head -2 | tail -1)
-    echo "  Last event from previous session:"
-    _prev_last_event=$(tail -1 $HOME/data/gtd/$_prev_session)
-    echo $_prev_last_event
-    _prev_last_time=$(echo $_prev_last_event | awk '{print $1}')
-    echo "  $(date -d @$_prev_last_time -R)"
-    unset _this_session
-    unset _prev_session
-    unset _prev_last_event
-    unset _prev_last_time
-}
-
 ###########################################################################
 # Utilities
 
