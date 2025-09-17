@@ -1,9 +1,42 @@
 ;; Package support. ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; MELPA package support
 ;; Add the Melpa archive to the list of available repositories.
-(require 'package)
-(add-to-list 'package-archives
-             '("melpa" . "http://melpa.org/packages/") t)
+
+(defmacro jma-with-error-handling (description &rest body)
+  "Execute BODY and report any errors using DESCRIPTION.
+Return the result of BODY on success, or nil if an error occurs."
+  (declare (indent 1) (debug t))
+  `(condition-case err
+       (progn ,@body)
+     (error
+      (message "Failed to %s: %s" ,description (error-message-string err))
+      nil)))
+
+(defun jma-safe-load-file (file)
+  "Load FILE and report any errors.
+Return non-nil when the file loads successfully."
+  (if (file-readable-p file)
+      (jma-with-error-handling (format "load file %s" file)
+        (load-file file))
+    (message "Skipping load of %s: file is not readable." file)
+    nil))
+
+(defun jma-safe-load (file &optional noerror nomessage nosuffix must-suffix)
+  "Call `load' for FILE and report any errors.
+Return non-nil when the load succeeds."
+  (jma-with-error-handling (format "load %s" file)
+    (load file noerror nomessage nosuffix must-suffix)))
+
+(defun jma-safe-require (feature &optional filename)
+  "Require FEATURE (optionally from FILENAME) while handling errors."
+  (jma-with-error-handling (format "require %s" feature)
+    (require feature filename)))
+
+(let ((package-system-available (jma-safe-require 'package)))
+  (if package-system-available
+      (add-to-list 'package-archives
+                   '("melpa" . "http://melpa.org/packages/") t)
+    (message "Skipping package archive configuration; package.el unavailable.")))
 
 ;; Reminder: M-x package-list-packages
 (defvar jma-packages
@@ -38,51 +71,63 @@
 
 (add-hook 'after-init-hook 'jma-after-init-hook)
 (defun jma-after-init-hook ()
-  (load-theme 'material-light t)
-  (elpy-enable)
+  (jma-with-error-handling "load material-light theme"
+    (load-theme 'material-light t))
+  (jma-with-error-handling "enable elpy"
+    (elpy-enable))
   ;; Enable Flycheck
-  (when (require 'flycheck nil t)
+  (when (jma-safe-require 'flycheck)
     (setq elpy-modules (delq 'elpy-module-flymake elpy-modules))
     (add-hook 'elpy-mode-hook 'flycheck-mode)
-    (global-flycheck-mode 1))
+    (jma-with-error-handling "enable global flycheck mode"
+      (global-flycheck-mode 1)))
   (custom-set-variables
    '(blacken-line-length 79))
   (setq sqlformat-command 'pgformatter)
   (setq sqlformat-args '("-s2" "-g"))
-  (use-package docker
-    :ensure t
-    :bind ("C-c d" . docker))
+  (jma-with-error-handling "configure docker via use-package"
+    (use-package docker
+      :ensure t
+      :bind ("C-c d" . docker)))
   (message "After-init completed.")
   )
 
-(package-initialize)
-(when (not package-archive-contents)
-  (package-refresh-contents))
+(when (featurep 'package)
+  (jma-with-error-handling "initialize package system"
+    (package-initialize))
+  (when (not package-archive-contents)
+    (jma-with-error-handling "refresh package archive contents"
+      (package-refresh-contents))))
 
 ;; Load MELPA packages.
 ;; Scans the list in jma-packages
 ;; If the package listed is not already installed, install it
-(message "Checking for package installation.")
-(mapc #'(lambda (package)
-	  (message
-	   (concat "  Checking " (symbol-name package) "..." (symbol-name
-							      (package-installed-p package)
-							      )))
-          (unless (package-installed-p package)
-	    (message (concat "Installing " (symbol-name package)))
-            (package-install package)
-	    (message (concat "Completed install of " (symbol-name package)))
-	    ))
-      jma-packages)
-(message "Package installation completed.")
+(if (featurep 'package)
+    (progn
+      (message "Checking for package installation.")
+      (mapc #'(lambda (package)
+                (let ((installed (package-installed-p package)))
+                  (message "  Checking %s...%s"
+                           (symbol-name package)
+                           (if installed "installed" "not installed"))
+                  (unless installed
+                    (message "Installing %s" (symbol-name package))
+                    (when (jma-with-error-handling (format "install package %s" package)
+                            (package-install package))
+                      (message "Completed install of %s" (symbol-name package))))))
+            jma-packages)
+      (message "Package installation completed."))
+  (message "Skipping package installation; package.el unavailable."))
 
 ;; My initialisation ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (let ((jma-elisp-base (concat (getenv "HOME") "/.dotfiles/elisp/")))
   ;; This should be the first block of this file.
   ;; The file site-begin.el should not be included with
   ;; this distribution.  It is for user customization.
-  (if (file-readable-p (concat jma-elisp-base "site-begin.el"))
-      (load-file (concat jma-elisp-base "site-begin.el")))
+  (let ((site-begin (concat jma-elisp-base "site-begin.el")))
+    (if (file-readable-p site-begin)
+        (jma-safe-load-file site-begin)
+      (message "Skipping site-begin.el; file is not readable.")))
   ;; End of first block
 
   (put 'eval-expression 'disabled nil)
@@ -90,7 +135,7 @@
   (global-font-lock-mode 1)
   (auto-compression-mode 1)
   (tool-bar-mode 0)
-  (require 'iso-cvt)
+  (jma-safe-require 'iso-cvt)
 
   ;;(set-default-font ("9x15"))
   (setq inhibit-startup-message t)
@@ -102,8 +147,8 @@
   ; I should use expand-file-name here instead of concat.
   (if (file-exists-p jma-elisp-base)
       (progn
-	(load-file (concat jma-elisp-base "useful.el"))
-	(load-file (concat jma-elisp-base "mode-hooks.el"))
+        (jma-safe-load-file (concat jma-elisp-base "useful.el"))
+        (jma-safe-load-file (concat jma-elisp-base "mode-hooks.el"))
 	;; Post mode seems to have been abandonned in 2014 or so.
 	;; It was written for emacs 20.
 	;; Its use of old-style backticks causes emacs 27 to fail at
@@ -114,18 +159,18 @@
 	;; The mutt-alias package uses cl, which is deprecated.
 	;; Since I'm not using mutt-alias, don't load this for now.
 	;;;; (load-file (concat jma-elisp-base "mutt-alias.el"))
-	(load-file (concat jma-elisp-base "dict.el"))
-	(load-file (concat jma-elisp-base "evan.el"))
-	(load-file (concat jma-elisp-base "jma.el"))
-	(load-file (concat jma-elisp-base "misc.el"))
+        (jma-safe-load-file (concat jma-elisp-base "dict.el"))
+        (jma-safe-load-file (concat jma-elisp-base "evan.el"))
+        (jma-safe-load-file (concat jma-elisp-base "jma.el"))
+        (jma-safe-load-file (concat jma-elisp-base "misc.el"))
 	;; copied from https://github.com/fxbois/web-mode.git
-	(load-file (concat jma-elisp-base "web-mode.el"))
-	(load-file (concat jma-elisp-base "pdftools.el"))
-	(load-file (concat jma-elisp-base "protobuf-mode.el"))
-	(load-file (concat jma-elisp-base "google-c-style.el"))
-	(load-file (concat jma-elisp-base "clang-format.el"))
+        (jma-safe-load-file (concat jma-elisp-base "web-mode.el"))
+        (jma-safe-load-file (concat jma-elisp-base "pdftools.el"))
+        (jma-safe-load-file (concat jma-elisp-base "protobuf-mode.el"))
+        (jma-safe-load-file (concat jma-elisp-base "google-c-style.el"))
+        (jma-safe-load-file (concat jma-elisp-base "clang-format.el"))
 	(setq clang-format-style-option "Google")
-	(load-file (concat jma-elisp-base "highlight-indentation.el"))
+        (jma-safe-load-file (concat jma-elisp-base "highlight-indentation.el"))
 	;; (load-file (concat jma-elisp-base "copilot.el"))
 	;; (load-file (concat jma-elisp-base "copilot-bindings.el"))
 
@@ -136,8 +181,8 @@
 
   ;; Downloaded and installed manually due to strange bug in
   ;; emacs 26.1 install.
-  (load "auctex.el" nil t t)
-  (load "preview-latex.el" nil t t)
+  (jma-safe-load "auctex.el" nil t t)
+  (jma-safe-load "preview-latex.el" nil t t)
 
   ;; Set frame title so that ratpoison-gtd can record something about
   ;; what I'm doing.
@@ -147,12 +192,15 @@
   ;; information because of debian policy of not installing ensurepip
   ;; globally.  This is intended to address that by making sure I
   ;; always use the elpy python venv.
-  (pyvenv-activate "~/.emacs.d/elpy/rpc-venv")
+  (jma-with-error-handling "activate elpy python virtualenv"
+    (pyvenv-activate "~/.emacs.d/elpy/rpc-venv"))
 
   ;; This should be the last block of this file.
   ;; The file site-end.el should not be included with
   ;; this distribution.  It is for user customization.
-  (if (file-readable-p (concat jma-elisp-base "site-end.el"))
-      (load-file (concat jma-elisp-base "site-end.el")))
+  (let ((site-end (concat jma-elisp-base "site-end.el")))
+    (if (file-readable-p site-end)
+        (jma-safe-load-file site-end)
+      (message "Skipping site-end.el; file is not readable.")))
 
   )
