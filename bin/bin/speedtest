@@ -73,12 +73,14 @@ record_value "$epoch_ts" "$ping_ms"    ping
 record_value "$epoch_ts" "$dl_MiBps"   download
 record_value "$epoch_ts" "$ul_MiBps"   upload
 
-# # SSID (if on Wi-Fi; ignore errors)
-# if command -v iwgetid >/dev/null 2>&1; then
-#   ssid=$(iwgetid -r 2>>/tmp/iwgetid.log || true)
-#   ssid=${ssid:-unknown-ssid}
-#   record_value "$epoch_ts" "$ssid" ssid
-# fi
-record_value "$epoch_ts" "$interface_name" ssid
+# SSID (if on Wi-Fi; ignore errors)
+if command -v iwgetid >/dev/null 2>&1; then
+  ssid=$(iwgetid -r 2>>/tmp/iwgetid.log || true)
+  ssid=${ssid:-unknown-ssid}
+  record_value "$epoch_ts" "$ssid" ssid
+else
+  record_value "$epoch_ts" "$interface_name" ssid
+fi
+
 
 exit 0

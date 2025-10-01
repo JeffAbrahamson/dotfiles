@@ -274,27 +274,6 @@ _wifi_connect_completions() {
 # Register the dynamic completion function.
 complete -F _wifi_connect_completions wifi-connect
 
-bandwidth() {
-    # Argument, if present, is number of lines of tail at the end.
-    if [ "X$1" = X ]; then
-	tail_cmd=cat
-    else
-	tail_cmd="tail -$1"
-    fi
-    bandwidth_format() {
-	awk '{printf("%10d  %-20s    %6.1f    %6.1f    %5.1f\n", $1, $2, $3, $4, $5);}'
-    }
-    tmp0=$(mktemp)
-    tmp1=$(mktemp)
-    tmp2=$(mktemp)
-    echo "time        ssid                  download    upload     ping"
-    (cd /home/jeff/data/hosts/$(hostname -s);
-     cat speedtest-ssid | sed -e 's/ /\t/; s/ /_/g;' > $tmp0
-     join $tmp0 speedtest-download > $tmp1; join $tmp1 speedtest-upload > $tmp2; join $tmp2 speedtest-ping | bandwidth_format | $tail_cmd;
-    )
-    rm $tmp1 $tmp2
-    unset bandwidth_format tail_cmd
-}
 bandwidth-stats() {
     ssid="$1"			# Fragment of SSID.
     depth="$2"
