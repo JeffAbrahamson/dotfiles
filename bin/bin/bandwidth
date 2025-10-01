@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+# speedtest-tail.sh
+# Usage:
+#   speedtest-tail.sh [-n N] [DIR]
+# Default DIR: $HOME/data/hosts/$(hostname -s)
+# Requires: gawk (GNU awk)
+
+set -euo pipefail
+
+N=20
+while getopts ":n:" opt; do
+  case "$opt" in
+    n) N="$OPTARG" ;;
+    *) echo "Usage: $0 [-n N] [DIR]" >&2; exit 2 ;;
+  esac
+done
+shift $((OPTIND-1))
+
+DIR="${1:-$HOME/data/hosts/$(hostname -s)}"
+
+u="$DIR/speedtest-upload"
+d="$DIR/speedtest-download"
+p="$DIR/speedtest-ping"
+s="$DIR/speedtest-ssid"
+
+# Sanity check
+for f in "$u" "$d" "$p" "$s"; do
+  [[ -f "$f" ]] || { echo "Missing file: $f" >&2; exit 1; }
+done
+
+gawk -v n="$N" '
+BEGIN {
+  FS=" ";
+}
+# For each file, store value by timestamp.
+# Value may contain spaces (SSID), so reconstruct from $2..end.
+FNR > 0 {
+  ts = $1
+  $1 = ""
+  val = substr($0,2)  # leading space removed
+  key[ts] = 1
+
+  fn = FILENAME
+  if (fn ~ /speedtest-upload$/)   up[ts]   = val
+  else if (fn ~ /speedtest-download$/) down[ts] = val
+  else if (fn ~ /speedtest-ping$/)     ping[ts] = val
+  else if (fn ~ /speedtest-ssid$/)     ssid[ts] = val
+}
+
+END {
+  # Sort timestamps numerically ascending
+  count = asorti(key, idx, "@ind_num_asc")
+  start = count - n + 1
+  if (start < 1) start = 1
+
+  # Header
+  printf "%s|%s|%s|%s|%s\n", "datetime", "upload_MiBps", "download_MiBps", "ping_ms", "ssid"
+
+  for (i = start; i <= count; i++) {
+    ts = idx[i]
+    dt = strftime("%Y-%m-%d %H:%M:%S", ts)  # local time
+    u  = (ts in up)   ? up[ts]   : "-"
+    d  = (ts in down) ? down[ts] : "-"
+    pg = (ts in ping) ? ping[ts] : "-"
+    ss = (ts in ssid) ? ssid[ts] : "-"
+    printf "%s|%s|%s|%s|%s\n", dt, u, d, pg, ss
+  }
+}
+' "$u" "$d" "$p" "$s" | column -t -s '|'

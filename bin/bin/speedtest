@@ -1,43 +1,84 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# speedtest_wrapper.sh
+# Runs Ookla speedtest, prints JSON to stdout, and records:
+#   - ping (ms)                 -> $HOME/data/hosts/<host>/speedtest-ping
+#   - download (MiB/s, 1024^2)  -> $HOME/data/hosts/<host>/speedtest-download
+#   - upload   (MiB/s, 1024^2)  -> $HOME/data/hosts/<host>/speedtest-upload
+#   - ssid (if wifi)            -> $HOME/data/hosts/<host>/speedtest-ssid
 
-# Analysis is more convenient if all times that we think of as the
-# same are the same.  So we avoid time skew by picking the script's
-# start time rather than several times during its very short run.
-now=$(date +%s)
+set -euo pipefail
+
+SPEEDTEST_BIN=${SPEEDTEST_BIN:-/usr/local/bin/speedtest}
+JQ_BIN=${JQ_BIN:-jq}
+
 host_shortname=$(hostname -s)
+base_dir="$HOME/data/hosts/$host_shortname"
+mkdir -p "$base_dir"
 
-# Write time and value $1 to datafile $2.
-record_value()
-{
-    echo $now "$1" >> "$HOME/data/hosts/$host_shortname/speedtest-$2"
+record_value() {
+  # $1 = epoch timestamp, $2 = value, $3 = key suffix
+  echo "$1 $2" >> "$base_dir/speedtest-$3"
 }
 
-main()
-{
-    outfile=/tmp/speedtest_$$.out
-    /bin/rm -f $outfile
-    $HOME/bin/speedtest.py --simple > $outfile
-    if [ "0" == "$?" ]; then
-	ping=$(cat $outfile | awk '/Ping/ {print $2}')
-	download=$(cat $outfile | awk /'Download/ {print $2}')
-	upload=$(cat $outfile | awk '/Upload/ {print $2}')
-	ssid=$(/sbin/iwgetid -r 2>> /tmp/iwgetid.log || echo 'unknown-ssid')
+tmp_json=$(mktemp -t speedtest_json_XXXXXX)
+cleanup() { rm -f "$tmp_json"; }
+trap cleanup EXIT
 
-	if [ "$Xping" != X ]; then
-	    record_value $ping ping
-	    record_value $download download
-	    record_value $upload upload
-	    record_value "$ssid" ssid
-	else
-	    fail_log=/tmp/speedtest-failure-log
-	    date >> $fail_log
-	    cat $outfile >> $fail_log
-	    record_value 1 failure
-	fi
-    else
-	record_value 1 failure
-    fi
-    /bin/rm -f $outfile
-}
+# Run speedtest -> JSON
+if ! "$SPEEDTEST_BIN" -f json >"$tmp_json" 2>/dev/null; then
+  # Fall back to invocation time only if we must
+  record_value "$(date +%s)" 1 failure
+  exit 1
+fi
 
-main
+# Print raw JSON to stdout
+cat "$tmp_json"
+
+# Ensure jq exists
+if ! command -v "$JQ_BIN" >/dev/null 2>&1; then
+  record_value "$(date +%s)" 1 failure
+  exit 2
+fi
+
+# Extract timestamp from JSON and convert to epoch seconds.
+# jq fromdate handles RFC3339/ISO 8601 like "2025-10-01T17:21:12Z".
+epoch_ts=$("$JQ_BIN" -r '.timestamp | fromdate? // empty' "$tmp_json")
+
+# Extract metrics
+ping_ms=$("$JQ_BIN" -r '.ping.latency // empty' "$tmp_json")
+dl_Bps=$("$JQ_BIN" -r '.download.bytes // empty' "$tmp_json")
+ul_Bps=$("$JQ_BIN" -r '.upload.bytes // empty' "$tmp_json")
+interface_name=$("$JQ_BIN" -r '.interface.name // empty' "$tmp_json")
+
+# Validate fields
+if [[ -z "${epoch_ts:-}" || -z "${ping_ms:-}" || -z "${dl_Bps:-}" || -z "${ul_Bps:-}" ]]; then
+  # If timestamp missing, try to derive it from .timestamp via shell as a fallback
+  iso_ts=$("$JQ_BIN" -r '.timestamp // empty' "$tmp_json")
+  if [[ -n "${iso_ts:-}" ]]; then
+    # GNU date expected on Ubuntu
+    epoch_ts=$(date -d "$iso_ts" +%s 2>/dev/null || true)
+  fi
+fi
+if [[ -z "${epoch_ts:-}" || -z "${ping_ms:-}" || -z "${dl_Bps:-}" || -z "${ul_Bps:-}" ]]; then
+  record_value "$(date +%s)" 1 failure
+  exit 3
+fi
+
+# Convert bytes/sec -> MiB/sec (1024*1024)
+dl_MiBps=$(awk -v bps="$dl_Bps" 'BEGIN { printf("%.3f", bps/1048576.0) }')
+ul_MiBps=$(awk -v bps="$ul_Bps" 'BEGIN { printf("%.3f", bps/1048576.0) }')
+
+# Record metrics using the JSON timestamp
+record_value "$epoch_ts" "$ping_ms"    ping
+record_value "$epoch_ts" "$dl_MiBps"   download
+record_value "$epoch_ts" "$ul_MiBps"   upload
+
+# # SSID (if on Wi-Fi; ignore errors)
+# if command -v iwgetid >/dev/null 2>&1; then
+#   ssid=$(iwgetid -r 2>>/tmp/iwgetid.log || true)
+#   ssid=${ssid:-unknown-ssid}
+#   record_value "$epoch_ts" "$ssid" ssid
+# fi
+record_value "$epoch_ts" "$interface_name" ssid
+
+exit 0
