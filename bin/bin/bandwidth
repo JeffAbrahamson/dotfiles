@@ -54,7 +54,7 @@ END {
   if (start < 1) start = 1
 
   # Header
-  printf "%s|%s|%s|%s|%s\n", "datetime", "upload_MiBps", "download_MiBps", "ping_ms", "ssid"
+  printf "%s|%s|%s|%s|%s\n", "datetime", "upload MiBps", "download MiBps", "ping ms", "ssid"
 
   for (i = start; i <= count; i++) {
     ts = idx[i]
@@ -63,7 +63,7 @@ END {
     d  = (ts in down) ? down[ts] : "-"
     pg = (ts in ping) ? ping[ts] : "-"
     ss = (ts in ssid) ? ssid[ts] : "-"
-    printf "%s|%s|%s|%s|%s\n", dt, u, d, pg, ss
+    printf "%s  |%11.2f|%13.2f|%6.2f|%s\n", dt, u, d, pg, ss
   }
 }
 ' "$u" "$d" "$p" "$s" | column -t -s '|'
