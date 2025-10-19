@@ -240,6 +240,17 @@ sched() {
         unset _schedule
     fi
 }
+zanow() {
+    cat <<EOF
+
+    present time   at this time
+    right now      right now, but no guarantee
+    now            eventually, maybe, but definitely not now
+    now now        shortly, soon (from Afrikans "nou nou", both future and immediate past tense)
+    just now       later (a few minutes, tomorrow or never)
+
+EOF
+    }
 
 internet() {
     in_out=$(ifconfig wlan0 | grep bytes | perl -pwe 's/^.*:([0-9]+).*:([0-9]+).*$/$1 $2/;');
@@ -292,11 +303,16 @@ bandwidth-stats() {
     done
 }
 
+myip() {
+    echo "$(curl -4 -s https://ifconfig.me) | $(curl -6 -s https://ifconfig.me)"
+}
+
 cppdoc() { ff $HOME/work/c++-docs/cpp.html & }
 
 #workm-periodic() { while true; do date; workm force-put; sleep 900; separator; done; }
 #workm-push() { workm force-put; }
 tea() { tsd tea $(date +%H%M); tsd tea; }
+ffs() { pg firef | grep -- -P | sed -e 's/^.*-P //;'; }
 
 tsd-group() {
     filter="$1"
