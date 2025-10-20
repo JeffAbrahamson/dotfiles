@@ -35,10 +35,22 @@ def sample_data(tmp_path: Path) -> Path:
         path = tmp_path / name
         path.write_text("\n".join(values) + "\n", encoding="utf-8")
 
-    write_file("speedtest-upload", [f"{ts} {value}" for ts, value in zip(timestamps, uploads)])
-    write_file("speedtest-download", [f"{ts} {value}" for ts, value in zip(timestamps, downloads)])
-    write_file("speedtest-ping", [f"{ts} {value}" for ts, value in zip(timestamps, pings)])
-    write_file("speedtest-ssid", [f"{ts} {ssid}" for ts, ssid in zip(timestamps, ssids)])
+    write_file(
+        "speedtest-upload",
+        [f"{ts} {value}" for ts, value in zip(timestamps, uploads)],
+    )
+    write_file(
+        "speedtest-download",
+        [f"{ts} {value}" for ts, value in zip(timestamps, downloads)],
+    )
+    write_file(
+        "speedtest-ping",
+        [f"{ts} {value}" for ts, value in zip(timestamps, pings)],
+    )
+    write_file(
+        "speedtest-ssid",
+        [f"{ts} {ssid}" for ts, ssid in zip(timestamps, ssids)],
+    )
     return tmp_path
 
 
@@ -80,7 +92,9 @@ def test_cli_outputs_table(sample_data: Path) -> None:
 
 def test_cli_missing_file_error(tmp_path: Path) -> None:
     # Only create a subset of the required files.
-    (tmp_path / "speedtest-upload").write_text("1700000000 10.0\n", encoding="utf-8")
+    (tmp_path / "speedtest-upload").write_text(
+        "1700000000 10.0\n", encoding="utf-8"
+    )
     env = os.environ.copy()
     env["PYTHONPATH"] = str(PYTHON_DIR)
     script = PROJECT_ROOT / "bin" / "bin" / "bandwidth"
