@@ -8,6 +8,7 @@
 
 set -euo pipefail
 
+PATH="$PATH:/usr/sbin/"
 SPEEDTEST_BIN=${SPEEDTEST_BIN:-/usr/local/bin/speedtest}
 JQ_BIN=${JQ_BIN:-jq}
 
