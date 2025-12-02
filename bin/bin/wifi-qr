@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Requirements: nmcli (NetworkManager), qrencode, imv-wayland
+
+# Find active Wi-Fi connection name (NM "connection" name, not necessarily same as SSID)
+# con_name=$(nmcli -t -f NAME,TYPE,DEVICE connection show --active \
+#   | awk -F: '$2=="wifi"{print $1; exit}')
+
+# This will fail if the SSID contains a space...
+con_name=$(nmcli connection show --active | grep wifi | awk '{print $1}')
+
+if [[ -z "${con_name:-}" ]]; then
+  echo "No active Wi-Fi connection found." >&2
+  exit 1
+fi
+
+# Get SSID from the connection
+ssid=$(nmcli -s -g 802-11-wireless.ssid connection show "$con_name" 2>/dev/null || true)
+if [[ -z "${ssid:-}" ]]; then
+  echo "Could not determine SSID for connection '$con_name'." >&2
+  exit 1
+fi
+
+# Get key management to infer security type
+key_mgmt=$(nmcli -s -g 802-11-wireless-security.key-mgmt connection show "$con_name" 2>/dev/null || true)
+
+# Default security type (for QR spec)
+sec="WPA"
+if [[ -z "${key_mgmt:-}" ]]; then
+  sec="nopass"
+elif [[ "$key_mgmt" == *"wpa"* ]]; then
+  sec="WPA"
+elif [[ "$key_mgmt" == *"wep"* ]]; then
+  sec="WEP"
+else
+  sec="WPA"
+fi
+
+# Get password (PSK) if there is one
+psk=""
+if [[ "$sec" != "nopass" ]]; then
+  psk=$(nmcli -s -g 802-11-wireless-security.psk connection show "$con_name" 2>/dev/null || true)
+  if [[ -z "${psk:-}" ]]; then
+    echo "No PSK found, but security type is '$sec'." >&2
+    exit 1
+  fi
+fi
+
+# Escape special characters for Wi-Fi QR format
+escape_wifi_field() {
+  local s=$1
+  s=${s//\\/\\\\}   # backslash -> \\
+  s=${s//;/\\;}     # semicolon -> \;
+  s=${s//,/\\,}     # comma -> \,
+  s=${s//:/\\:}     # colon -> \:
+  echo "$s"
+}
+
+ssid_esc=$(escape_wifi_field "$ssid")
+if [[ "$sec" != "nopass" ]]; then
+  psk_esc=$(escape_wifi_field "$psk")
+fi
+
+# Build Wi-Fi QR payload
+if [[ "$sec" == "nopass" ]]; then
+  qr_payload="WIFI:T:nopass;S:${ssid_esc};H:false;"
+else
+  qr_payload="WIFI:T:${sec};S:${ssid_esc};P:${psk_esc};H:false;"
+fi
+
+# Ensure qrencode and imv-wayland are available
+command -v qrencode >/dev/null 2>&1 || { echo "qrencode not found." >&2; exit 1; }
+command -v imv-wayland >/dev/null 2>&1 || { echo "imv-wayland not found." >&2; exit 1; }
+
+# Generate QR code PNG in a temp file
+tmp_png=$(mktemp --suffix=.png)
+qrencode -s 10 -o "$tmp_png" "$qr_payload"
+
+echo "SSID: $ssid"
+echo "Security: $sec"
+echo "QR code written to: $tmp_png"
+
+# Display with imv-wayland
+imv-wayland "$tmp_png"
+rm "$tmp_png"
