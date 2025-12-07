@@ -1,4 +1,5 @@
 """Utilities for inspecting recorded bandwidth measurements."""
+
 from __future__ import annotations
 
 import socket
@@ -79,7 +80,9 @@ class Measurement:
     ssid: Optional[str] = None
 
     def as_row(self) -> Sequence[str]:
-        dt = datetime.fromtimestamp(self.timestamp).strftime("%Y-%m-%d %H:%M:%S")
+        dt = datetime.fromtimestamp(self.timestamp).strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
         return (
             dt,
             format_number(self.upload),
@@ -149,7 +152,9 @@ def load_measurements(directory: Path) -> List[Measurement]:
     pings = _parse_numeric_file(paths["ping"])
     ssids = _parse_text_file(paths["ssid"])
 
-    timestamps = sorted({*uploads.keys(), *downloads.keys(), *pings.keys(), *ssids.keys()})
+    timestamps = sorted(
+        {*uploads.keys(), *downloads.keys(), *pings.keys(), *ssids.keys()}
+    )
     measurements: List[Measurement] = []
     for ts in timestamps:
         measurements.append(
@@ -164,7 +169,9 @@ def load_measurements(directory: Path) -> List[Measurement]:
     return measurements
 
 
-def limit_measurements(measurements: Sequence[Measurement], limit: int) -> List[Measurement]:
+def limit_measurements(
+    measurements: Sequence[Measurement], limit: int
+) -> List[Measurement]:
     if limit <= 0:
         return []
     return list(measurements[-limit:])
@@ -173,10 +180,14 @@ def limit_measurements(measurements: Sequence[Measurement], limit: int) -> List[
 def render_table(measurements: Iterable[Measurement]) -> str:
     rows = [measurement.as_row() for measurement in measurements]
     headers = ("datetime", "upload MiBps", "download MiBps", "ping ms", "ssid")
-    return format_table(headers, rows, colalign=("left", "right", "right", "right", "left"))
+    return format_table(
+        headers, rows, colalign=("left", "right", "right", "right", "left")
+    )
 
 
-def _collect_values(measurements: Iterable[Measurement], attribute: str) -> List[float]:
+def _collect_values(
+    measurements: Iterable[Measurement], attribute: str
+) -> List[float]:
     values: List[float] = []
     for measurement in measurements:
         value = getattr(measurement, attribute)
@@ -202,7 +213,9 @@ def _determine_edges(values: Sequence[float], bins: int = 10) -> List[float]:
     return edges
 
 
-def _histogram_from_edges(values: Sequence[float], edges: Sequence[float]) -> List[int]:
+def _histogram_from_edges(
+    values: Sequence[float], edges: Sequence[float]
+) -> List[int]:
     counts = [0 for _ in range(len(edges) - 1)]
     if not values:
         return counts
@@ -231,7 +244,9 @@ def _format_range(start: float, end: float, is_last: bool) -> str:
     return f"[{start:7.2f}, {end:7.2f}{right}"
 
 
-def _bar(count: int, max_count: int, width: int, *, reverse: bool = False) -> str:
+def _bar(
+    count: int, max_count: int, width: int, *, reverse: bool = False
+) -> str:
     if max_count <= 0 or count <= 0:
         bar = ""
     else:
@@ -242,7 +257,11 @@ def _bar(count: int, max_count: int, width: int, *, reverse: bool = False) -> st
     return bar.ljust(width)
 
 
-def _render_violin_text(edges: Sequence[float], upload_counts: Sequence[int], download_counts: Sequence[int]) -> List[str]:
+def _render_violin_text(
+    edges: Sequence[float],
+    upload_counts: Sequence[int],
+    download_counts: Sequence[int],
+) -> List[str]:
     width = 16
     lines = ["Upload/Download speeds (MiBps)"]
     lines.append("upload".rjust(width) + " │ " + "download".ljust(width))
@@ -256,7 +275,9 @@ def _render_violin_text(edges: Sequence[float], upload_counts: Sequence[int], do
     return lines
 
 
-def _render_ping_text(edges: Sequence[float], counts: Sequence[int]) -> List[str]:
+def _render_ping_text(
+    edges: Sequence[float], counts: Sequence[int]
+) -> List[str]:
     width = 32
     lines = ["Ping times (ms)"]
     max_count = max([*counts, 0])
@@ -268,7 +289,9 @@ def _render_ping_text(edges: Sequence[float], counts: Sequence[int]) -> List[str
     return lines
 
 
-def render_stats_text(measurements: Sequence[Measurement], bins: int = 10) -> str:
+def render_stats_text(
+    measurements: Sequence[Measurement], bins: int = 10
+) -> str:
     uploads = _collect_values(measurements, "upload")
     downloads = _collect_values(measurements, "download")
     pings = _collect_values(measurements, "ping")
@@ -279,7 +302,9 @@ def render_stats_text(measurements: Sequence[Measurement], bins: int = 10) -> st
         edges = _determine_edges([*uploads, *downloads], bins=bins)
         upload_counts = _histogram_from_edges(uploads, edges)
         download_counts = _histogram_from_edges(downloads, edges)
-        lines.extend(_render_violin_text(edges, upload_counts, download_counts))
+        lines.extend(
+            _render_violin_text(edges, upload_counts, download_counts)
+        )
     else:
         lines.append("No upload/download data available.")
 
@@ -295,11 +320,17 @@ def render_stats_text(measurements: Sequence[Measurement], bins: int = 10) -> st
     return "\n".join(lines)
 
 
-def render_stats_graphical(measurements: Sequence[Measurement], bins: int = 10) -> None:
+def render_stats_graphical(
+    measurements: Sequence[Measurement], bins: int = 10
+) -> None:
     try:
         import matplotlib.pyplot as plt  # type: ignore
-    except ImportError as exc:  # pragma: no cover - depends on optional dependency
-        raise RuntimeError("Matplotlib is required for graphical statistics") from exc
+    except (
+        ImportError
+    ) as exc:  # pragma: no cover - depends on optional dependency
+        raise RuntimeError(
+            "Matplotlib is required for graphical statistics"
+        ) from exc
 
     uploads = _collect_values(measurements, "upload")
     downloads = _collect_values(measurements, "download")
@@ -313,8 +344,22 @@ def render_stats_graphical(measurements: Sequence[Measurement], bins: int = 10) 
     centers = _bin_centers(edges)
     heights = [edges[i + 1] - edges[i] for i in range(len(edges) - 1)]
 
-    ax_speed.barh(centers, upload_counts, height=heights, align="center", color="tab:blue", label="Upload")
-    ax_speed.barh(centers, [-count for count in download_counts], height=heights, align="center", color="tab:orange", label="Download")
+    ax_speed.barh(
+        centers,
+        upload_counts,
+        height=heights,
+        align="center",
+        color="tab:blue",
+        label="Upload",
+    )
+    ax_speed.barh(
+        centers,
+        [-count for count in download_counts],
+        height=heights,
+        align="center",
+        color="tab:orange",
+        label="Download",
+    )
     ax_speed.axvline(0, color="black", linewidth=0.8)
     ax_speed.set_xlabel("Sample count")
     ax_speed.set_ylabel("MiBps")
@@ -324,7 +369,9 @@ def render_stats_graphical(measurements: Sequence[Measurement], bins: int = 10) 
     ping_edges = _determine_edges(pings, bins=bins)
     ping_counts = _histogram_from_edges(pings, ping_edges)
     ping_centers = _bin_centers(ping_edges)
-    widths = [ping_edges[i + 1] - ping_edges[i] for i in range(len(ping_edges) - 1)]
+    widths = [
+        ping_edges[i + 1] - ping_edges[i] for i in range(len(ping_edges) - 1)
+    ]
 
     ax_ping.bar(ping_centers, ping_counts, width=widths, color="tab:green")
     ax_ping.set_xlabel("Ping (ms)")
@@ -335,7 +382,9 @@ def render_stats_graphical(measurements: Sequence[Measurement], bins: int = 10) 
     plt.show()
 
 
-def render_stats(measurements: Sequence[Measurement], *, text: bool, bins: int = 10) -> Optional[str]:
+def render_stats(
+    measurements: Sequence[Measurement], *, text: bool, bins: int = 10
+) -> Optional[str]:
     if text:
         return render_stats_text(measurements, bins=bins)
     render_stats_graphical(measurements, bins=bins)

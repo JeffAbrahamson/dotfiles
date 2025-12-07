@@ -5,6 +5,7 @@ renderers so the repository does not depend on external packages at run
 or test time.  The :func:`format_table` helper aligns text in a way that is
 compatible with traditional command line utilities such as ``column``.
 """
+
 from __future__ import annotations
 
 from typing import Iterable, List, Sequence
@@ -22,7 +23,12 @@ def _align_cell(text: str, width: int, align: str) -> str:
     return text.ljust(width)
 
 
-def format_table(headers: Sequence[str], rows: Iterable[Row], *, colalign: Alignment | None = None) -> str:
+def format_table(
+    headers: Sequence[str],
+    rows: Iterable[Row],
+    *,
+    colalign: Alignment | None = None,
+) -> str:
     """Return a string representing a table with aligned columns.
 
     Parameters
@@ -49,17 +55,23 @@ def format_table(headers: Sequence[str], rows: Iterable[Row], *, colalign: Align
     widths = [len(headers[i]) for i in range(num_cols)]
     for row in row_list:
         if len(row) != num_cols:
-            raise ValueError("row has different number of columns than headers")
+            raise ValueError(
+                "row has different number of columns than headers"
+            )
         for i, cell in enumerate(row):
             widths[i] = max(widths[i], len(cell))
 
     header_line = "  ".join(
-        _align_cell(headers[i], widths[i], colalign[i]) for i in range(num_cols)
+        _align_cell(headers[i], widths[i], colalign[i])
+        for i in range(num_cols)
     )
     divider = "  ".join("-" * widths[i] for i in range(num_cols))
 
     body_lines = [
-        "  ".join(_align_cell(cell, widths[i], colalign[i]) for i, cell in enumerate(row))
+        "  ".join(
+            _align_cell(cell, widths[i], colalign[i])
+            for i, cell in enumerate(row)
+        )
         for row in row_list
     ]
 
