@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import socket
+import subprocess
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -15,6 +16,56 @@ UPLOAD_FILE = "speedtest-upload"
 DOWNLOAD_FILE = "speedtest-download"
 PING_FILE = "speedtest-ping"
 SSID_FILE = "speedtest-ssid"
+
+
+def detect_default_interface() -> Optional[str]:
+    """Return the interface used for the default route, or None."""
+
+    try:
+        output = subprocess.check_output(
+            ["ip", "route", "show", "default"],
+            stderr=subprocess.DEVNULL,
+            text=True,
+        )
+    except Exception:
+        return None
+
+    for line in output.splitlines():
+        line = line.strip()
+        if not line.startswith("default "):
+            continue
+        parts = line.split()
+        if "dev" in parts:
+            idx = parts.index("dev")
+            if idx + 1 < len(parts):
+                return parts[idx + 1]
+    return None
+
+
+def detect_wifi_ssid(interface: str) -> Optional[str]:
+    """Return SSID for a wifi interface, or None if unavailable."""
+
+    try:
+        output = subprocess.check_output(
+            ["iwgetid", interface, "--raw"],
+            stderr=subprocess.DEVNULL,
+            text=True,
+        ).strip()
+    except Exception:
+        return None
+    return output or None
+
+
+def current_network_identifier() -> str:
+    """Return SSID if wifi, otherwise default interface name or "unknown"."""
+
+    interface = detect_default_interface()
+    if not interface:
+        return "unknown"
+    ssid = detect_wifi_ssid(interface)
+    if ssid:
+        return ssid
+    return interface
 
 
 @dataclass
@@ -301,4 +352,7 @@ __all__ = [
     "render_stats_graphical",
     "render_stats_text",
     "render_table",
+    "detect_default_interface",
+    "detect_wifi_ssid",
+    "current_network_identifier",
 ]
