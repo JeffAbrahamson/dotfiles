@@ -99,7 +99,9 @@ class SpeedtestSample:
 
 def setup_logging(log_path: str) -> None:
     """Configure file-based logging with required time format."""
-    os.makedirs(os.path.dirname(log_path), exist_ok=True)
+    log_dir = os.path.dirname(log_path)
+    if log_dir:
+        os.makedirs(log_dir, exist_ok=True)
     logging.basicConfig(
         level=logging.INFO,
         filename=log_path,
@@ -1003,6 +1005,7 @@ def run_one_shot(
     end_time = start_time + collect_time
 
     logging.info("Entering one-shot data collection loop.")
+    last_network_id: Optional[str] = None
 
     while True:
         loop_start = time.time()
@@ -1014,14 +1017,17 @@ def run_one_shot(
         # If network changed -> drop history
         # In one-shot mode, this simply restarts accumulation
         # (previous data would be from a different network).
-        # For a short collect window this is acceptable.
-        # Note: we track last_network_id locally.
-        if not ping_history:
-            last_network_id = current_network_id
-        else:
-            last_network_id = (
-                current_network_id  # effectively ignore old network
+        if last_network_id is None:
+            logging.info("Network identifier detected: '%s'", current_network_id)
+        elif current_network_id != last_network_id:
+            logging.info(
+                "Network identifier changed from '%s' to '%s'; dropping cached data.",
+                last_network_id,
+                current_network_id,
             )
+            ping_history.clear()
+            speedtest_reader.drop_all_samples()
+        last_network_id = current_network_id
 
         # Ping all hosts
         sample = collect_ping_sample(ping_hosts, now_ts)
