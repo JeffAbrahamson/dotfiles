@@ -1,0 +1,1144 @@
+#!/usr/bin/env python3
+"""
+sway-network-monitor
+
+Periodically:
+- Pings a set of hosts once per second.
+- Maintains short and long sparklines of "up" status across hosts.
+- Computes EWMA of ping latencies.
+- Reads speedtest summary files and computes bandwidth estimates.
+- Writes a single status line either to stdout or to ~/.network-status
+  (via an atomic ~/.network-status.new -> ~/.network-status rename).
+
+Intended to be used by i3status' read_file module under sway.
+"""
+
+import argparse
+import dataclasses
+import logging
+import math
+import os
+import socket
+import subprocess
+import sys
+import time
+from typing import Dict, List, Optional, Tuple
+
+try:
+    import tomllib  # Python 3.11+
+except ImportError:  # pragma: no cover - older Python
+    tomllib = None
+
+# ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
+
+HOME = os.path.expanduser("~")
+HOSTNAME_SHORT = socket.gethostname().split(".", 1)[0]
+
+DEFAULT_CONFIG_PATH = os.path.join(
+    HOME, ".config", "sway-network-monitor.toml"
+)
+DEFAULT_LOG_PATH = "/tmp/sway-network-monitor.log"
+
+DEFAULT_PING_HOSTS = ["1.1.1.1", "8.8.8.8"]
+DEFAULT_LONG_INTERVAL = 15  # seconds
+DEFAULT_SPEEDTEST_MARGIN_MINUTES = 40  # minutes
+DEFAULT_SPEEDTEST_AGGREGATION = "ewma"  # or "mean"
+DEFAULT_EWMA_ALPHA = 0.3
+DEFAULT_ONE_SHOT_COLLECT_TIME = 10  # seconds
+
+NO_DATA_LENGTH = 60  # initial filler length
+NETWORK_STATUS_PATH = os.path.join(HOME, ".network-status")
+NETWORK_STATUS_TMP_PATH = NETWORK_STATUS_PATH + ".new"
+
+# Default speedtest directory: ${HOME}/data/hosts/$(hostname -s)/
+DEFAULT_SPEEDTEST_DIR = os.path.join(HOME, "data", "hosts", HOSTNAME_SHORT)
+
+SPEEDTEST_SSID_FILE = "speedtest-ssid"
+SPEEDTEST_DOWNLOAD_FILE = "speedtest-download"
+SPEEDTEST_UPLOAD_FILE = "speedtest-upload"
+SPEEDTEST_PING_FILE = "speedtest-ping"
+SPEEDTEST_FAILURE_FILE = "speedtest-failure"
+
+# The real sparkline chars are " ▁▂▃▄▅▆▇█", but it's really noisy to
+# see the full rectangle when all is well, so lighten that to "|".
+SPARKLINE_CHARS = (
+    " ▁▂▃▄▅▆▇|"  # index 0 = "no signal", 1..7 show increasing height
+)
+
+# ---------------------------------------------------------------------------
+# Data structures
+# ---------------------------------------------------------------------------
+
+
+@dataclasses.dataclass
+class PingSample:
+    """Per-second aggregate over all ping_hosts."""
+
+    timestamp: int
+    up_fraction: float  # fraction of hosts that responded
+    latencies_ms: List[float]  # latencies for successful pings at this second
+
+
+@dataclasses.dataclass
+class SpeedtestSample:
+    """Single successful speedtest result."""
+
+    timestamp: int
+    ssid: str
+    download_mbps: float
+    upload_mbps: float
+    ping_ms: float
+
+
+# ---------------------------------------------------------------------------
+# Logging
+# ---------------------------------------------------------------------------
+
+
+def setup_logging(log_path: str) -> None:
+    """Configure file-based logging with required time format."""
+    os.makedirs(os.path.dirname(log_path), exist_ok=True)
+    logging.basicConfig(
+        level=logging.INFO,
+        filename=log_path,
+        filemode="a",
+        format="%(asctime)s %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Config handling (TOML)
+# ---------------------------------------------------------------------------
+
+
+def load_config(
+    config_path: str,
+    default_ping_hosts: List[str],
+    default_speedtest_dir: str,
+) -> Dict[str, object]:
+    """Load configuration from TOML file, applying defaults.
+
+    Expected keys:
+      ping_hosts: list of hostnames/IPs
+      speedtest_dir: directory path
+
+    On config error (bad types, empty required values), prints an
+    error and exits.
+
+    """
+    config: Dict[str, object] = {
+        "ping_hosts": list(default_ping_hosts),
+        "speedtest_dir": default_speedtest_dir,
+    }
+
+    if not tomllib:
+        # tomllib missing; config file must be ignored, but that
+        # itself isn't a fatal error.
+        logging.info(
+            "tomllib not available; skipping config file parsing, using defaults."
+        )
+        return config
+
+    try:
+        with open(config_path, "rb") as f:
+            parsed = tomllib.load(f)
+        logging.info("Loaded config file: %s", config_path)
+    except FileNotFoundError:
+        logging.info("Config file not found: %s; using defaults.", config_path)
+        return config
+    except Exception as exc:
+        msg = f"Config error reading {config_path}: {exc}"
+        logging.error(msg)
+        print(msg, file=sys.stderr)
+        sys.exit(1)
+
+    # ping_hosts
+    if "ping_hosts" in parsed:
+        value = parsed["ping_hosts"]
+        if (
+            not isinstance(value, list)
+            or not value
+            or any(not isinstance(x, str) or not x.strip() for x in value)
+        ):
+            msg = "Config error: ping_hosts must be a non-empty list of non-empty strings."
+            logging.error(msg)
+            print(msg, file=sys.stderr)
+            sys.exit(1)
+        config["ping_hosts"] = value
+
+    # speedtest_dir
+    if "speedtest_dir" in parsed:
+        value = parsed["speedtest_dir"]
+        if not isinstance(value, str) or not value.strip():
+            msg = "Config error: speedtest_dir must be a non-empty string."
+            logging.error(msg)
+            print(msg, file=sys.stderr)
+            sys.exit(1)
+        # Allow ~ expansion etc.
+        config["speedtest_dir"] = os.path.expanduser(value)
+
+    logging.info(
+        "Config values after applying defaults and overrides: ping_hosts=%s, speedtest_dir=%s",
+        config["ping_hosts"],
+        config["speedtest_dir"],
+    )
+
+    return config
+
+
+# ---------------------------------------------------------------------------
+# Utility helpers
+# ---------------------------------------------------------------------------
+
+
+def ewma(values: List[float], alpha: float) -> Optional[float]:
+    """Compute EWMA of a list of values; returns None if list is empty."""
+    if not values:
+        return None
+    ema = None
+    for v in values:
+        if ema is None:
+            ema = v
+        else:
+            ema = alpha * v + (1.0 - alpha) * ema
+    return ema
+
+
+def sparkline_from_values(values: List[Optional[float]]) -> str:
+    """
+    Convert a list of values in [0,1] (or None) to a sparkline string.
+
+    None -> ' ' (gap)
+    0..1 -> mapped linearly onto SPARKLINE_CHARS[1..].
+    """
+    chars = []
+    n_levels = (
+        len(SPARKLINE_CHARS) - 1
+    )  # exclude index 0 which is not used for real data
+    for v in values:
+        if v is None:
+            chars.append(" ")
+        else:
+            vv = min(max(v, 0.0), 1.0)
+            idx = int(round(vv * n_levels))
+            idx = max(1, min(n_levels, idx))
+            chars.append(SPARKLINE_CHARS[idx])
+    return "".join(chars)
+
+
+def truncate_status_file_initial() -> None:
+    """On startup, write NO_DATA_LENGTH spaces to the status file."""
+    try:
+        with open(NETWORK_STATUS_PATH, "w", encoding="utf-8") as f:
+            f.write(" " * NO_DATA_LENGTH)
+    except Exception as exc:
+        logging.error("Failed to initialize %s: %s", NETWORK_STATUS_PATH, exc)
+
+
+def write_status_atomically(line: str) -> None:
+    """Write a single line atomically to NETWORK_STATUS_PATH."""
+    try:
+        with open(NETWORK_STATUS_TMP_PATH, "w", encoding="utf-8") as f:
+            f.write(line)
+        os.replace(NETWORK_STATUS_TMP_PATH, NETWORK_STATUS_PATH)
+    except Exception as exc:
+        logging.error("Failed to write network status file: %s", exc)
+
+
+# ---------------------------------------------------------------------------
+# Network identity detection
+# ---------------------------------------------------------------------------
+
+
+def detect_default_interface() -> Optional[str]:
+    """
+    Determine the interface used for the default route using `ip route`.
+    Returns interface name or None on failure.
+    """
+    try:
+        output = subprocess.check_output(
+            ["ip", "route", "show", "default"],
+            stderr=subprocess.DEVNULL,
+            text=True,
+        )
+    except Exception as exc:
+        logging.error("Failed to run 'ip route show default': %s", exc)
+        return None
+
+    for line in output.splitlines():
+        line = line.strip()
+        if not line or not line.startswith("default "):
+            continue
+        parts = line.split()
+        # Example: default via 192.168.1.1 dev wlp3s0 proto ...
+        if "dev" in parts:
+            idx = parts.index("dev")
+            if idx + 1 < len(parts):
+                return parts[idx + 1]
+    return None
+
+
+def detect_wifi_ssid(interface: str) -> Optional[str]:
+    """
+    Try to obtain SSID for a wifi interface using iwgetid.
+    Returns SSID string or None.
+    """
+    try:
+        output = subprocess.check_output(
+            ["iwgetid", interface, "--raw"],
+            stderr=subprocess.DEVNULL,
+            text=True,
+        ).strip()
+        if output:
+            return output
+    except Exception:
+        pass
+    return None
+
+
+def get_current_network_identifier() -> str:
+    """
+    Determine the current logical network identifier:
+
+    - If default route is via wifi (SSID available): use SSID.
+    - Otherwise: use interface name (e.g., enp2s0).
+
+    If detection fails, returns "unknown".
+    """
+    iface = detect_default_interface()
+    if not iface:
+        logging.error(
+            "Unable to detect default interface; using 'unknown' network id."
+        )
+        return "unknown"
+
+    ssid = detect_wifi_ssid(iface)
+    if ssid:
+        return ssid
+
+    # Fall back to interface name
+    return iface
+
+
+# ---------------------------------------------------------------------------
+# Ping handling
+# ---------------------------------------------------------------------------
+
+
+def ping_host_once(
+    host: str, timeout: float = 1.0
+) -> Tuple[int, Optional[float]]:
+    """
+    Ping a host once using the system 'ping' command.
+
+    Returns (up, latency_ms):
+      up: 1 if ping succeeded, 0 otherwise
+      latency_ms: float latency in ms if available, else None
+    """
+    # Using '-c 1' for a single packet, '-n' for numeric, '-w timeout' for timeout in seconds.
+    try:
+        # Note: for IPv6 you'd use 'ping6' or 'ping -6', but we stay with 'ping' as per spec.
+        result = subprocess.run(
+            [
+                "ping",
+                "-n",
+                "-c",
+                "1",
+                "-w",
+                str(int(math.ceil(timeout))),
+                host,
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+        )
+    except Exception as exc:
+        logging.error("Failed to execute ping for host %s: %s", host, exc)
+        return 0, None
+
+    if result.returncode != 0:
+        return 0, None
+
+    # Parse latency from typical ping output 'time=XYZ ms'
+    latency_ms = None
+    for line in result.stdout.splitlines():
+        line = line.strip()
+        if "time=" in line and " ms" in line:
+            # Example: '64 bytes from ...: icmp_seq=1 ttl=63 time=10.3 ms'
+            try:
+                # Find substring between 'time=' and ' ms'
+                t_part = line.split("time=", 1)[1].split(" ", 1)[0]
+                latency_ms = float(t_part)
+            except Exception:
+                latency_ms = None
+            break
+
+    return 1, latency_ms
+
+
+def collect_ping_sample(ping_hosts: List[str], timestamp: int) -> PingSample:
+    """
+    Ping all hosts once (in sequence) and aggregate into a PingSample.
+    """
+    ups: List[int] = []
+    latencies: List[float] = []
+
+    for host in ping_hosts:
+        up, latency = ping_host_once(host)
+        ups.append(up)
+        if latency is not None:
+            latencies.append(latency)
+
+    if not ups:
+        up_fraction = 0.0
+    else:
+        up_fraction = sum(ups) / float(len(ups))
+
+    return PingSample(
+        timestamp=timestamp, up_fraction=up_fraction, latencies_ms=latencies
+    )
+
+
+def prune_ping_history(
+    history: Dict[int, PingSample],
+    now_ts: int,
+    max_age_seconds: int,
+) -> None:
+    """
+    Remove ping samples older than now_ts - max_age_seconds.
+    """
+    cutoff = now_ts - max_age_seconds
+    for ts in list(history.keys()):
+        if ts < cutoff:
+            del history[ts]
+
+
+def collect_latencies_in_window(
+    history: Dict[int, PingSample], start_ts: int, end_ts: int
+) -> List[float]:
+    """Collect all latencies from ping samples between start_ts and end_ts inclusive."""
+    result: List[float] = []
+    for ts, sample in history.items():
+        if start_ts <= ts <= end_ts:
+            result.extend(sample.latencies_ms)
+    return sorted(
+        result, key=float
+    )  # sorted just to have deterministic EWMA iteration order
+
+
+def build_ping_sparkline_and_latency(
+    history: Dict[int, PingSample],
+    now_ts: int,
+    bucket_seconds: int,
+    num_buckets: int,
+    ewma_alpha: float,
+) -> Tuple[str, Optional[float]]:
+    """
+    Build sparkline and EWMA latency for a given window.
+
+    For sparkline:
+      - Window length = bucket_seconds * num_buckets.
+      - The oldest bucket maps to left-most character; newest to right-most.
+      - Each bucket aggregates the up_fraction across its per-second samples.
+
+    For latency:
+      - EWMA over all latencies in the whole window.
+    """
+    window_length = bucket_seconds * num_buckets
+    window_start = now_ts - window_length + 1
+    bucket_values: List[Optional[float]] = []
+
+    for i in range(num_buckets):
+        bucket_start = window_start + i * bucket_seconds
+        bucket_end = bucket_start + bucket_seconds - 1
+        # Collect per-second up_fraction values within this bucket
+        ups: List[float] = [
+            s.up_fraction
+            for ts, s in history.items()
+            if bucket_start <= ts <= bucket_end
+        ]
+        if ups:
+            bucket_values.append(sum(ups) / float(len(ups)))
+        else:
+            bucket_values.append(None)
+
+    spark = sparkline_from_values(bucket_values)
+
+    # Latency EWMA over entire window across all hosts
+    latencies = collect_latencies_in_window(history, window_start, now_ts)
+    latency_ewma = ewma(latencies, ewma_alpha) if latencies else None
+
+    return spark, latency_ewma
+
+
+# ---------------------------------------------------------------------------
+# Speedtest handling
+# ---------------------------------------------------------------------------
+
+
+class SpeedtestReader:
+    """
+    Handles reading and caching speedtest data from a directory.
+
+    - Uses os.stat to detect file changes.
+    - Reads only the last line of each file when needed.
+    - Maintains in-memory list of successful speedtests (SpeedtestSample).
+    """
+
+    def __init__(self, base_dir: str) -> None:
+        self.base_dir = base_dir
+        self.samples: List[SpeedtestSample] = []
+        self.last_success_timestamp: Optional[int] = None
+        self.last_mtimes: Dict[str, float] = {}
+        self.bad_read_streak: int = 0
+        self.suppressed: bool = False  # true after 3 consecutive bad reads
+
+    def _path(self, fname: str) -> str:
+        return os.path.join(self.base_dir, fname)
+
+    @staticmethod
+    def _read_last_line(path: str) -> Optional[str]:
+        """
+        Efficiently read the last line of a text file using seek.
+
+        Returns the line as a decoded string (without trailing newline),
+        or None if the file is empty or cannot be read.
+        """
+        try:
+            with open(path, "rb") as f:
+                f.seek(0, os.SEEK_END)
+                size = f.tell()
+                if size == 0:
+                    return None
+                # Move backward until we find a newline or reach start
+                pos = size - 1
+                while pos >= 0:
+                    f.seek(pos)
+                    ch = f.read(1)
+                    if ch == b"\n" and pos != size - 1:
+                        # read remainder of file
+                        break
+                    pos -= 1
+                if pos < 0:
+                    f.seek(0)
+                line = f.readline().decode("utf-8", errors="replace")
+                return line.rstrip("\r\n")
+        except FileNotFoundError:
+            logging.info("Speedtest file not found: %s", path)
+            return None
+        except Exception as exc:
+            logging.error("Error reading last line from %s: %s", path, exc)
+            return None
+
+    def _stat_files(self) -> Optional[Dict[str, os.stat_result]]:
+        """
+        Stat the primary speedtest files (ssid, download, upload, ping).
+
+        Returns dict name->stat_result or None if any required file is missing.
+        """
+        files = [
+            SPEEDTEST_SSID_FILE,
+            SPEEDTEST_DOWNLOAD_FILE,
+            SPEEDTEST_UPLOAD_FILE,
+            SPEEDTEST_PING_FILE,
+        ]
+        stats: Dict[str, os.stat_result] = {}
+        for fname in files:
+            path = self._path(fname)
+            try:
+                stats[fname] = os.stat(path)
+            except FileNotFoundError:
+                logging.info("Speedtest file missing: %s", path)
+                return None
+            except Exception as exc:
+                logging.error(
+                    "Error stat'ing speedtest file %s: %s", path, exc
+                )
+                return None
+        return stats
+
+    def maybe_update(self) -> None:
+        """
+        If the speedtest files have changed, read and append any new successful
+        SpeedtestSample.
+
+        Sets self.suppressed to True if 3 consecutive changes cannot be parsed
+        or are inconsistent. Clears suppression when successfully updated.
+        """
+        stats = self._stat_files()
+        if stats is None:
+            # Required files missing; treat as no-update, but potentially as a bad read.
+            self.bad_read_streak += 1
+            if self.bad_read_streak >= 3:
+                self.suppressed = True
+            return
+
+        # Check if any file mtime changed
+        mtimes = {name: st.st_mtime for name, st in stats.items()}
+        changed = any(
+            self.last_mtimes.get(name) != st.st_mtime
+            for name, st in stats.items()
+        )
+
+        if not changed:
+            # Nothing new
+            self.bad_read_streak = 0
+            return
+
+        # Ensure mtimes are within 1 second to avoid reading while being rewritten
+        mtime_values = list(mtimes.values())
+        if max(mtime_values) - min(mtime_values) > 1.0:
+            logging.warning(
+                "Speedtest files mtimes not aligned (likely being rewritten); skipping this iteration."
+            )
+            self.bad_read_streak += 1
+            if self.bad_read_streak >= 3:
+                self.suppressed = True
+            return
+
+        # Read last lines
+        path_ssid = self._path(SPEEDTEST_SSID_FILE)
+        path_down = self._path(SPEEDTEST_DOWNLOAD_FILE)
+        path_up = self._path(SPEEDTEST_UPLOAD_FILE)
+        path_ping = self._path(SPEEDTEST_PING_FILE)
+
+        line_ssid = self._read_last_line(path_ssid)
+        line_down = self._read_last_line(path_down)
+        line_up = self._read_last_line(path_up)
+        line_ping = self._read_last_line(path_ping)
+
+        if not all([line_ssid, line_down, line_up, line_ping]):
+            logging.warning(
+                "Speedtest files have empty or unreadable last lines; skipping."
+            )
+            self.bad_read_streak += 1
+            if self.bad_read_streak >= 3:
+                self.suppressed = True
+            return
+
+        try:
+            # SSID line: "<timestamp> <ssid possibly with spaces>"
+            parts_ssid = line_ssid.strip().split(maxsplit=1)
+            ts_ssid = int(parts_ssid[0])
+            ssid = parts_ssid[1] if len(parts_ssid) > 1 else ""
+
+            ts_down_str, down_str = line_down.strip().split(maxsplit=1)
+            ts_up_str, up_str = line_up.strip().split(maxsplit=1)
+            ts_ping_str, ping_str = line_ping.strip().split(maxsplit=1)
+
+            ts_down = int(ts_down_str)
+            ts_up = int(ts_up_str)
+            ts_ping = int(ts_ping_str)
+
+            # Ensure timestamps match
+            if not (ts_ssid == ts_down == ts_up == ts_ping):
+                logging.warning(
+                    "Speedtest timestamps mismatch: ssid=%d, down=%d, up=%d, ping=%d; skipping.",
+                    ts_ssid,
+                    ts_down,
+                    ts_up,
+                    ts_ping,
+                )
+                self.bad_read_streak += 1
+                if self.bad_read_streak >= 3:
+                    self.suppressed = True
+                return
+
+            download_mbps = float(down_str)
+            upload_mbps = float(up_str)
+            ping_ms = float(ping_str)
+
+        except Exception as exc:
+            logging.error("Failed parsing speedtest lines: %s", exc)
+            self.bad_read_streak += 1
+            if self.bad_read_streak >= 3:
+                self.suppressed = True
+            return
+
+        # Check if this is a new sample
+        ts = ts_ssid
+        if (
+            self.last_success_timestamp is not None
+            and ts <= self.last_success_timestamp
+        ):
+            # Not newer; maybe files were touched without new data
+            self.bad_read_streak = 0
+            self.last_mtimes = mtimes
+            return
+
+        # New successful sample
+        self.samples.append(
+            SpeedtestSample(
+                timestamp=ts,
+                ssid=ssid,
+                download_mbps=download_mbps,
+                upload_mbps=upload_mbps,
+                ping_ms=ping_ms,
+            )
+        )
+        self.last_success_timestamp = ts
+        self.last_mtimes = mtimes
+        self.bad_read_streak = 0
+        self.suppressed = False
+        logging.info(
+            "Recorded speedtest sample at %d for SSID '%s': down=%.2f Mbps, up=%.2f Mbps, ping=%.2f ms",
+            ts,
+            ssid,
+            download_mbps,
+            upload_mbps,
+            ping_ms,
+        )
+
+    def drop_all_samples(self) -> None:
+        """Clear all cached speedtest samples (e.g., on network change)."""
+        self.samples.clear()
+        self.last_success_timestamp = None
+        # Do not reset last_mtimes; we want to detect changes when files are updated again.
+
+    def compute_bandwidth_summary(
+        self,
+        current_network_id: str,
+        now_ts: int,
+        margin_minutes: int,
+        aggregation: str,
+        ewma_alpha: float,
+    ) -> Tuple[str, bool]:
+        """
+        Compute the bandwidth summary string for the current network.
+
+        Returns (summary_string, has_data_for_network).
+
+        If self.suppressed is True or there is no qualifying data for current_network_id
+        in the time window, the string is "- down / - up / - ms".
+        """
+        if self.suppressed:
+            logging.warning(
+                "Speedtest data suppressed due to repeated read errors; writing empty bandwidth section."
+            )
+            return "- down / - up / - ms", False
+
+        margin_seconds = margin_minutes * 60
+        cutoff = now_ts - margin_seconds
+        recent_samples = [s for s in self.samples if s.timestamp >= cutoff]
+
+        # Filter by current network identifier (SSID or interface name)
+        matching = [s for s in recent_samples if s.ssid == current_network_id]
+
+        if not matching:
+            # No qualifying data
+            # Log what we were looking for and what we found
+            all_ssids = sorted({s.ssid for s in recent_samples})
+            logging.info(
+                "No speedtest data for network '%s' in last %d minutes (cutoff=%d). "
+                "Available SSIDs/networks in that period: %s",
+                current_network_id,
+                margin_minutes,
+                cutoff,
+                ", ".join(all_ssids) if all_ssids else "(none)",
+            )
+            return "- down / - up / - ms", False
+
+        # Extract metrics
+        downs = [s.download_mbps for s in matching]
+        ups = [s.upload_mbps for s in matching]
+        pings = [s.ping_ms for s in matching]
+
+        if aggregation == "mean":
+
+            def _mean(vals: List[float]) -> float:
+                return sum(vals) / float(len(vals)) if vals else 0.0
+
+            down_val = _mean(downs)
+            up_val = _mean(ups)
+            ping_val = _mean(pings)
+        else:  # ewma
+            down_val = ewma(downs, ewma_alpha) or 0.0
+            up_val = ewma(ups, ewma_alpha) or 0.0
+            ping_val = ewma(pings, ewma_alpha) or 0.0
+
+        summary = f"{down_val:.1f} down / {up_val:.1f} up / {ping_val:.1f} ms"
+        return summary, True
+
+
+# ---------------------------------------------------------------------------
+# Status line assembly
+# ---------------------------------------------------------------------------
+
+
+def format_latency_ms(latency: Optional[float]) -> str:
+    """Format latency as string suitable for '(X.Y ms)'; '-' if None."""
+    if latency is None:
+        return "-"
+    return f"{latency:.1f}"
+
+
+def build_status_line(
+    ping_history: Dict[int, PingSample],
+    now_ts: int,
+    long_interval: int,
+    ewma_alpha: float,
+    speedtest_reader: SpeedtestReader,
+    current_network_id: str,
+    speedtest_margin_minutes: int,
+    speedtest_aggregation: str,
+) -> str:
+    """
+    Build the full status line:
+
+      SHORT_SPARK(E) (latency ms) | LONG_SPARK(E) (latency ms) | BW_STRING
+    """
+    # Short section: last 10 seconds, 1 second per bucket
+    short_spark, short_latency = build_ping_sparkline_and_latency(
+        ping_history,
+        now_ts,
+        bucket_seconds=1,
+        num_buckets=10,
+        ewma_alpha=ewma_alpha,
+    )
+    short_latency_str = format_latency_ms(short_latency)
+    short_section = f"{short_spark:10s} ({short_latency_str} ms)"
+
+    # Long section: last 10 * long_interval seconds, non-overlapping buckets
+    long_spark, long_latency = build_ping_sparkline_and_latency(
+        ping_history,
+        now_ts,
+        bucket_seconds=long_interval,
+        num_buckets=10,
+        ewma_alpha=ewma_alpha,
+    )
+    long_latency_str = format_latency_ms(long_latency)
+    long_section = f"{long_spark:10s} ({long_latency_str} ms)"
+
+    # Bandwidth section
+    bw_string, _has_bw_data = speedtest_reader.compute_bandwidth_summary(
+        current_network_id=current_network_id,
+        now_ts=now_ts,
+        margin_minutes=speedtest_margin_minutes,
+        aggregation=speedtest_aggregation,
+        ewma_alpha=ewma_alpha,
+    )
+
+    # return f"{short_section} | {long_section} | {bw_string}"
+    return f"{short_section}  {long_section}  {bw_string}"
+
+
+# ---------------------------------------------------------------------------
+# Main loop
+# ---------------------------------------------------------------------------
+
+
+def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Monitor network pings and recent bandwidth for sway/i3status."
+    )
+    parser.add_argument(
+        "--stdout",
+        action="store_true",
+        help=(
+            "Write status line to stdout instead of file; "
+            "if set, ~/.network-status is not modified."
+        ),
+    )
+    parser.add_argument(
+        "--long",
+        type=int,
+        default=DEFAULT_LONG_INTERVAL,
+        help="Number of seconds per interval in the long section (default: 15).",
+    )
+    parser.add_argument(
+        "--speedtest-margin",
+        type=int,
+        default=DEFAULT_SPEEDTEST_MARGIN_MINUTES,
+        help="Number of minutes of speedtest data to consider (default: 40).",
+    )
+    parser.add_argument(
+        "--speedtest-aggregation",
+        choices=["mean", "ewma"],
+        default=DEFAULT_SPEEDTEST_AGGREGATION,
+        help="Aggregation method for speedtest values: mean or ewma (default: ewma).",
+    )
+    parser.add_argument(
+        "--ewma-alpha",
+        type=float,
+        default=DEFAULT_EWMA_ALPHA,
+        help="Alpha parameter for EWMA computations (default: 0.3).",
+    )
+    parser.add_argument(
+        "--one-shot",
+        action="store_true",
+        help=(
+            "Run only once and quit (implies --stdout). "
+            "Collect data for a limited time and then output a single status line."
+        ),
+    )
+    parser.add_argument(
+        "--one-shot-collect-time",
+        type=int,
+        default=DEFAULT_ONE_SHOT_COLLECT_TIME,
+        help=(
+            "Seconds to accumulate data in one-shot mode (default: 10, "
+            "capped at 10 * --long)."
+        ),
+    )
+    parser.add_argument(
+        "--log",
+        type=str,
+        default=DEFAULT_LOG_PATH,
+        help=f"Path to log file (default: {DEFAULT_LOG_PATH}).",
+    )
+    parser.add_argument(
+        "--config",
+        type=str,
+        default=DEFAULT_CONFIG_PATH,
+        help=f"Path to config file (default: {DEFAULT_CONFIG_PATH}).",
+    )
+    return parser.parse_args(argv)
+
+
+def main(argv: Optional[List[str]] = None) -> None:
+    args = parse_args(argv)
+
+    # Initialize logging first, so we can log subsequent decisions.
+    setup_logging(args.log)
+    logging.info("Starting sway-network-monitor.")
+    logging.info("Command-line arguments: %s", vars(args))
+
+    # Handle one-shot -> implies stdout
+    effective_stdout = bool(args.stdout or args.one_shot)
+
+    # Cap one-shot collect time if needed (this must be logged)
+    if args.one_shot:
+        max_collect = 10 * args.long
+        collect_time = args.one_shot_collect_time
+        if collect_time > max_collect:
+            logging.info(
+                "one-shot-collect-time (%d) > 10 * long (%d); capping to %d seconds.",
+                collect_time,
+                args.long,
+                max_collect,
+            )
+            collect_time = max_collect
+        args.one_shot_collect_time = collect_time
+        logging.info(
+            "One-shot mode: collecting data for %d seconds.", collect_time
+        )
+
+    # Load config (ping_hosts, speedtest_dir)
+    config = load_config(
+        config_path=args.config,
+        default_ping_hosts=DEFAULT_PING_HOSTS,
+        default_speedtest_dir=DEFAULT_SPEEDTEST_DIR,
+    )
+
+    ping_hosts: List[str] = config["ping_hosts"]  # type: ignore[assignment]
+    speedtest_dir: str = config["speedtest_dir"]  # type: ignore[assignment]
+
+    logging.info("Using ping_hosts=%s", ping_hosts)
+    logging.info("Using speedtest_dir=%s", speedtest_dir)
+    logging.info("Using ewma_alpha=%.3f", args.ewma_alpha)
+    logging.info("Using speedtest_margin=%d minutes", args.speedtest_margin)
+    logging.info("Using speedtest_aggregation=%s", args.speedtest_aggregation)
+    logging.info("Using long_interval=%d seconds", args.long)
+
+    # Initialize status file with spaces (unless writing only to stdout)
+    if not effective_stdout:
+        truncate_status_file_initial()
+
+    # Initialize ping history & speedtest reader
+    ping_history: Dict[int, PingSample] = {}
+    max_ping_window = args.long * 10  # seconds for long section
+    speedtest_reader = SpeedtestReader(speedtest_dir)
+
+    # Detect initial network identifier
+    current_network_id = get_current_network_identifier()
+    logging.info("Initial network identifier: %s", current_network_id)
+
+    # Main logic split: one-shot vs continuous
+    if args.one_shot:
+        run_one_shot(
+            ping_hosts=ping_hosts,
+            long_interval=args.long,
+            ewma_alpha=args.ewma_alpha,
+            speedtest_reader=speedtest_reader,
+            speedtest_margin_minutes=args.speedtest_margin,
+            speedtest_aggregation=args.speedtest_aggregation,
+            collect_time=args.one_shot_collect_time,
+            ping_history=ping_history,
+            max_ping_window=max_ping_window,
+        )
+        return
+
+    run_continuous(
+        ping_hosts=ping_hosts,
+        long_interval=args.long,
+        ewma_alpha=args.ewma_alpha,
+        speedtest_reader=speedtest_reader,
+        speedtest_margin_minutes=args.speedtest_margin,
+        speedtest_aggregation=args.speedtest_aggregation,
+        ping_history=ping_history,
+        max_ping_window=max_ping_window,
+        effective_stdout=effective_stdout,
+    )
+
+
+def run_one_shot(
+    ping_hosts: List[str],
+    long_interval: int,
+    ewma_alpha: float,
+    speedtest_reader: SpeedtestReader,
+    speedtest_margin_minutes: int,
+    speedtest_aggregation: str,
+    collect_time: int,
+    ping_history: Dict[int, PingSample],
+    max_ping_window: int,
+) -> None:
+    """
+    One-shot mode: collect data for a specified number of seconds, then
+    emit a single status line to stdout and exit.
+    """
+    start_time = time.time()
+    end_time = start_time + collect_time
+
+    logging.info("Entering one-shot data collection loop.")
+
+    while True:
+        loop_start = time.time()
+        now_ts = int(loop_start)
+
+        # Detect current network each iteration
+        current_network_id = get_current_network_identifier()
+
+        # If network changed -> drop history
+        # In one-shot mode, this simply restarts accumulation
+        # (previous data would be from a different network).
+        # For a short collect window this is acceptable.
+        # Note: we track last_network_id locally.
+        if not ping_history:
+            last_network_id = current_network_id
+        else:
+            last_network_id = (
+                current_network_id  # effectively ignore old network
+            )
+
+        # Ping all hosts
+        sample = collect_ping_sample(ping_hosts, now_ts)
+        ping_history[now_ts] = sample
+        prune_ping_history(ping_history, now_ts, max_ping_window)
+
+        # Update speedtest reader (if new data)
+        speedtest_reader.maybe_update()
+
+        # Sleep until next second or end of collection
+        elapsed = time.time() - loop_start
+        remaining = 1.0 - elapsed
+        if remaining > 0:
+            time.sleep(remaining)
+
+        if time.time() >= end_time:
+            break
+
+    # Final status line after collection
+    final_now_ts = int(time.time())
+    current_network_id = get_current_network_identifier()
+    status_line = build_status_line(
+        ping_history=ping_history,
+        now_ts=final_now_ts,
+        long_interval=long_interval,
+        ewma_alpha=ewma_alpha,
+        speedtest_reader=speedtest_reader,
+        current_network_id=current_network_id,
+        speedtest_margin_minutes=speedtest_margin_minutes,
+        speedtest_aggregation=speedtest_aggregation,
+    )
+    # Only output is this single line
+    print(status_line)
+
+
+def run_continuous(
+    ping_hosts: List[str],
+    long_interval: int,
+    ewma_alpha: float,
+    speedtest_reader: SpeedtestReader,
+    speedtest_margin_minutes: int,
+    speedtest_aggregation: str,
+    ping_history: Dict[int, PingSample],
+    max_ping_window: int,
+    effective_stdout: bool,
+) -> None:
+    """
+    Continuous mode: loop forever, updating ping and speedtest data
+    approximately once per second and writing status lines.
+    """
+    logging.info("Entering continuous monitoring loop.")
+    last_network_id: Optional[str] = None
+
+    while True:
+        loop_start = time.time()
+        now_ts = int(loop_start)
+
+        # Detect current network
+        current_network_id = get_current_network_identifier()
+        if current_network_id != last_network_id:
+            if last_network_id is not None:
+                logging.info(
+                    "Network identifier changed from '%s' to '%s'; dropping cached data.",
+                    last_network_id,
+                    current_network_id,
+                )
+            else:
+                logging.info(
+                    "Network identifier detected: '%s'", current_network_id
+                )
+            last_network_id = current_network_id
+
+            # Drop ping history & speedtest samples when network changes
+            ping_history.clear()
+            speedtest_reader.drop_all_samples()
+
+        # Collect ping data
+        sample = collect_ping_sample(ping_hosts, now_ts)
+        ping_history[now_ts] = sample
+        prune_ping_history(ping_history, now_ts, max_ping_window)
+
+        # Update speedtest data (if files changed)
+        speedtest_reader.maybe_update()
+
+        # Build status line
+        status_line = build_status_line(
+            ping_history=ping_history,
+            now_ts=now_ts,
+            long_interval=long_interval,
+            ewma_alpha=ewma_alpha,
+            speedtest_reader=speedtest_reader,
+            current_network_id=current_network_id,
+            speedtest_margin_minutes=speedtest_margin_minutes,
+            speedtest_aggregation=speedtest_aggregation,
+        )
+
+        # Write out
+        if effective_stdout:
+            print(status_line, flush=True)
+        else:
+            write_status_atomically(status_line)
+
+        # Sleep to maintain ~1-second period
+        elapsed = time.time() - loop_start
+        remaining = 1.0 - elapsed
+        if remaining > 0:
+            time.sleep(remaining)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        logging.info("Received KeyboardInterrupt; exiting.")
+    except Exception as exc:
+        logging.exception(
+            "Unhandled exception in sway-network-monitor: %s", exc
+        )
+        # Let systemd or other supervisor restart if needed.
+        sys.exit(1)

@@ -8,13 +8,17 @@ from pathlib import Path
 
 import pytest
 
-# Make the repository's python utilities importable when tests execute directly.
+# Make repo python utilities importable when tests run directly.
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 PYTHON_DIR = PROJECT_ROOT / "python"
 if str(PYTHON_DIR) not in sys.path:
     sys.path.insert(0, str(PYTHON_DIR))
 
-from bandwidth_tool import (
+import bandwidth_tool  # noqa: E402
+from bandwidth_tool import (  # noqa: E402
+    current_network_identifier,
+    detect_default_interface,
+    detect_wifi_ssid,
     limit_measurements,
     load_measurements,
     render_stats,
@@ -52,6 +56,68 @@ def sample_data(tmp_path: Path) -> Path:
         [f"{ts} {ssid}" for ts, ssid in zip(timestamps, ssids)],
     )
     return tmp_path
+
+
+def test_detect_default_interface_parses_output(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fake_check_output(
+        cmd: list[str], *, stderr: object, text: bool
+    ) -> str:
+        assert cmd == ["ip", "route", "show", "default"]
+        return "default via 192.168.1.1 dev wlp3s0 proto dhcp metric 600\n"
+
+    monkeypatch.setattr(subprocess, "check_output", fake_check_output)
+
+    assert detect_default_interface() == "wlp3s0"
+
+
+def test_detect_wifi_ssid(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fake_check_output(
+        cmd: list[str], *, stderr: object, text: bool
+    ) -> str:
+        assert cmd == ["iwgetid", "wlp3s0", "--raw"]
+        return "OfficeWifi\n"
+
+    monkeypatch.setattr(subprocess, "check_output", fake_check_output)
+
+    assert detect_wifi_ssid("wlp3s0") == "OfficeWifi"
+
+
+def test_current_network_identifier_prefers_ssid(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        bandwidth_tool, "detect_default_interface", lambda: "wlp3s0"
+    )
+    monkeypatch.setattr(
+        bandwidth_tool, "detect_wifi_ssid", lambda interface: "OfficeWifi"
+    )
+
+    assert current_network_identifier() == "OfficeWifi"
+
+
+def test_current_network_identifier_falls_back_to_interface(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        bandwidth_tool, "detect_default_interface", lambda: "enp0s1"
+    )
+    monkeypatch.setattr(
+        bandwidth_tool, "detect_wifi_ssid", lambda interface: None
+    )
+
+    assert current_network_identifier() == "enp0s1"
+
+
+def test_current_network_identifier_unknown(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        bandwidth_tool, "detect_default_interface", lambda: None
+    )
+
+    assert current_network_identifier() == "unknown"
 
 
 def test_render_table_with_limit(sample_data: Path) -> None:

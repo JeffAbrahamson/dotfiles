@@ -25,6 +25,30 @@ tmp_json=$(mktemp -t speedtest_json_XXXXXX)
 cleanup() { rm -f "$tmp_json"; }
 trap cleanup EXIT
 
+detect_default_interface() {
+  local output line
+  if ! output=$(ip route show default 2>/dev/null); then
+    return
+  fi
+  while IFS= read -r line; do
+    [[ $line == default* ]] || continue
+    read -ra parts <<<"$line"
+    for idx in "${!parts[@]}"; do
+      if [[ ${parts[$idx]} == "dev" ]] && (( idx + 1 < ${#parts[@]} )); then
+        echo "${parts[$((idx + 1))]}"
+        return
+      fi
+    done
+  done <<<"$output"
+}
+
+detect_wifi_ssid() {
+  local interface=$1
+  if command -v iwgetid >/dev/null 2>&1; then
+    iwgetid "$interface" --raw 2>>/tmp/iwgetid.log | head -n1
+  fi
+}
+
 # Run speedtest -> JSON
 if ! "$SPEEDTEST_BIN" -f json >"$tmp_json" 2>/dev/null; then
   # Fall back to invocation time only if we must
@@ -74,14 +98,22 @@ record_value "$epoch_ts" "$ping_ms"    ping
 record_value "$epoch_ts" "$dl_MiBps"   download
 record_value "$epoch_ts" "$ul_MiBps"   upload
 
-# SSID (if on Wi-Fi; ignore errors)
-if command -v iwgetid >/dev/null 2>&1; then
-  ssid=$(iwgetid -r 2>>/tmp/iwgetid.log || true)
-  ssid=${ssid:-unknown-ssid}
-  record_value "$epoch_ts" "$ssid" ssid
-else
-  record_value "$epoch_ts" "$interface_name" ssid
+# Determine current network identifier (SSID if wifi, else interface name)
+network_id="unknown"
+default_iface=$(detect_default_interface)
+if [[ -n "${default_iface:-}" ]]; then
+  ssid=$(detect_wifi_ssid "$default_iface" || true)
+  if [[ -n "${ssid:-}" ]]; then
+    network_id="$ssid"
+  else
+    network_id="$default_iface"
+  fi
+elif [[ -n "${interface_name:-}" ]]; then
+  # Fall back to interface reported by speedtest JSON
+  network_id="$interface_name"
 fi
+
+record_value "$epoch_ts" "$network_id" ssid
 
 
 exit 0
