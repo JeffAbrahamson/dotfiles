@@ -258,3 +258,28 @@ flag should be valid grep flags (typically '-i') or else the empty string."
       calendar-month-name-array ["Janvier" "Février" "Mars" "Avril" "Mai"
 				 "Juin" "Juillet" "Août" "Septembre"
 				 "Octobre" "Novembre" "Décembre"])
+
+;; Set up some buffers that I like to have handy.
+(progn
+  (switch-to-buffer "tex.txt")
+  (set-input-method "TeX")
+  (auto-fill-mode 0))
+(progn
+  (switch-to-buffer "cn.txt")		; ISO 3166-1
+  (set-input-method "chinese-py")
+  (flyspell-mode 0)
+  (auto-fill-mode 0))
+;; Some other options:
+;;   * chinese-py-punct
+;;   * chinese-py-gb
+;; Consider setting up pyim.
+;; (use-package pyim
+;;   :config
+;;   (setq default-input-method "pyim"))
+
+(progn
+  (switch-to-buffer "fr.txt")
+  (set-input-method "latin-9-prefix")
+  (flyspell-mode 1)
+  (ispell-change-dictionary "francais")
+  (auto-fill-mode 0))
