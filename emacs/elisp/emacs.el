@@ -53,6 +53,7 @@ Return non-nil when the load succeeds."
     ein	         ;; cf. https://github.com/millejoh/emacs-ipython-notebook
     importmagic  ;; For use with elpy.
     flycheck	 ;; Notably, instead of flymake.
+    markdown-mode ;; Requires an external Markdown renderer such as pandoc (not installed here).
     magit        ;; git support.
     math-preview ;; For use with ein.  https://gitlab.com/matsievskiysv/math-preview
     python-isort ;; For use with elpy.
