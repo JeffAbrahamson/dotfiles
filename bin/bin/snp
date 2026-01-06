@@ -5,6 +5,7 @@ PATH="/usr/local/bin:/usr/bin:/bin:$PATH"
 
 DEFAULT_MAX_DIMENSION=800
 resize_max=""
+copy_to_clipboard=0
 what=region
 
 while [ "$#" -gt 0 ]; do
@@ -16,6 +17,9 @@ while [ "$#" -gt 0 ]; do
             else
                 resize_max="$DEFAULT_MAX_DIMENSION"
             fi
+            ;;
+        -c)
+            copy_to_clipboard=1
             ;;
         r*)
             what=region
@@ -51,6 +55,12 @@ resize_image() {
     mogrify -resize "${1}x${1}>" "$tmp"
 }
 
+copy_image_to_clipboard() {
+    [ "${copy_to_clipboard}" -eq 1 ] || return 0
+    need wl-copy
+    cat "${tmp}" | wl-copy
+}
+
 open_viewer() {
     if command -v imv >/dev/null 2>&1; then imv "$1"
     elif command -v imv-wayland >/dev/null 2>&1; then imv-wayland "$1"
@@ -61,32 +71,33 @@ open_viewer() {
 
 snap() {
     if [ -n "${WAYLAND_DISPLAY-}" ]; then
-	need grim
-	need slurp
-	case "$what" in
-	    region)
-		grim -g "$(slurp)" "$tmp"
-		;;
-	    window)
-		need swaymsg
-		need jq
-		region="$(swaymsg -t get_tree \
+        need grim
+        need slurp
+        case "$what" in
+            region)
+                grim -g "$(slurp)" "$tmp"
+                ;;
+            window)
+                need swaymsg
+                need jq
+                region="$(swaymsg -t get_tree \
           | jq -r '.. | objects | select(.pid? and .visible?) | .rect | "\(.x),\(.y) \(.width)x\(.height)"' \
           | slurp -r)" || { notify "Screenshot canceled"; return 130; }
-		grim -g "$region" "$tmp"
-		;;
-	    contents)
-		need swaymsg
-		need jq
-		region="$(swaymsg -t get_tree \
+                grim -g "$region" "$tmp"
+                ;;
+            contents)
+                need swaymsg
+                need jq
+                region="$(swaymsg -t get_tree \
           | jq -r '.. | objects | select(.pid? and .visible? and .window_rect?) | "\(.rect.x + .window_rect.x),\(.rect.y + .window_rect.y) \(.window_rect.width)x\(.window_rect.height)"' \
           | slurp -r)" || { notify "Screenshot canceled"; return 130; }
-		grim -g "$region" "$tmp"
-		;;
+                grim -g "$region" "$tmp"
+                ;;
             *)
                 notify "snp: unrecognised option \"$what\""; exit 1 ;;
         esac
         resize_image "$resize_max"
+        copy_image_to_clipboard
         open_viewer "$tmp"
     else
         # X11 (historical)
