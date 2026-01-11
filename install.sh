@@ -16,6 +16,7 @@ cd $(pwd)/$(dirname $0)
 (echo screen; cd screen && ./install.sh)
 (echo sway; cd sway && ./install.sh)
 (echo tmux; cd tmux && ./install.sh)
+(echo misc; cd misc && ./install.sh)
 
 # Things I no longer use but might some day.
 #
