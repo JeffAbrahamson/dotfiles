@@ -62,3 +62,7 @@ maybe_mkdir $dest
 	done
     )
 )
+
+bash_dest=$HOME/.dotfiles/bash/rc_post/
+maybe_mkdir $bash_dest
+rsync -av bash/ $bash_dest/

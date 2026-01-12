@@ -734,6 +734,7 @@ jb-d() { cd "$HOME/src/jellybooks/danube"; }
 jb-i() { cd "$HOME/src/jellybooks/infrastructure"; }
 jb-j() { cd "$HOME/src/jellybooks/jellybooks-ng"; }
 jb-p() { cd "$HOME/src/jellybooks/production"; }
+jb-s() { cd "$HOME/src/jellybooks/streamer-js-web"; }
 nux() {
     n=$1;
     if [ $n -gt 0 ]; then
