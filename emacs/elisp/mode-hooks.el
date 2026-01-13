@@ -8,6 +8,11 @@
 ;; I usually want my .h files in C++ mode.
 (add-to-list 'auto-mode-alist '("\\.h\\'" . c++-mode))
 (add-to-list 'auto-mode-alist '("\\.html\\'" . web-mode))
+(add-to-list 'auto-mode-alist
+             '("\\.ts\\'" . (lambda ()
+                              (if (fboundp 'typescript-ts-mode)
+                                  (typescript-ts-mode)
+                                (typescript-mode)))))
 (add-to-list 'auto-mode-alist '("mutt-[a-z0-9]+-[0-9]+-[0-9]+-[0-9]+" . post-mode))
 ;; YAML mode
 ;; https://raw.githubusercontent.com/yoshiki/yaml-mode/master/yaml-mode.el
