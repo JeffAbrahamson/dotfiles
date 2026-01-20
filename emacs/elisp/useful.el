@@ -1,8 +1,7 @@
 (setq makefile-name "GNUmakefile")
 (setq makefile-name-alt "Makefile")
 
-(global-set-key [C-f1] '(lambda () (interactive) (insert "Stéphane")))
-(global-set-key (kbd "<C-$>") '(lambda () (interactive) (insert "£")))
+(global-set-key [C-f1] '(lambda () (interactive) (insert "StÃ©phane")))
 (global-set-key [f2] 'compile-something)
 
 ;(global-set-key [(f3)] 'speedbar-get-focus)
@@ -149,12 +148,23 @@ mkaefile-name-alt. If neither exists, return nil. Else return t."
       ;;(compile (concat "pdflatex -interaction=nonstopmode " latex-name)))))
       (compile (concat "xelatex -interaction=nonstopmode " latex-name)))))
 
+;; Keep window panes stable when jumping to code from compilation
+;; errors or gdb.  Reuse an existing code window rather than
+;; splitting to create a new one.
+(defun jeff--reuse-window-for-display (orig-fn &rest args)
+  (let ((display-buffer-overriding-action
+         '((display-buffer-reuse-window
+            display-buffer-use-some-window)
+           (inhibit-same-window . t))))
+    (apply orig-fn args)))
 
-;; (defun latex-compile ()
-;;   "Transform latex file in current buffer to pdf and postscript."
-;;   (interactive)
-;;   (compile (concat "compile-latex" (buff-file-name))))
+(advice-add 'compilation-goto-locus :around #'jeff--reuse-window-for-display)
 
+(with-eval-after-load 'gud
+  (advice-add 'gud-display-line :around #'jeff--reuse-window-for-display))
+
+(with-eval-after-load 'gdb-mi
+  (advice-add 'gdb-display-source-buffer :around #'jeff--reuse-window-for-display))
 
 (setq makefile-name-list '("Makefile" "GNUmakefile" "makefile"))
 
