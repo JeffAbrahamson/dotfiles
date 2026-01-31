@@ -1,0 +1,47 @@
+services:
+  dev-base:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: compile-for-dev
+    image: dotfiles-dev
+    volumes:
+      - ..:/devsrc
+    environment:
+      SSH_AUTH_SOCK: /ssh-agent
+      SSH_USER: ${LOGNAME}
+
+  dev-test:
+    extends: dev-base
+    image: dotfiles-dev
+    command: >
+      /bin/bash -c "
+      ./test.sh && pytest"
+
+  dev-sh:
+    extends: dev-base
+    image: dotfiles-sh
+    command: sleep infinity
+
+  # Interactive shell with Claude Code
+  dev-claude:
+    extends: dev-base
+    build:
+      target: compile-for-claude
+    command: sleep infinity
+    environment:
+      HOME: /home/dev
+    volumes:
+      - ~/.claude:/home/dev/.claude
+      - ~/.claude.json:/home/dev/.claude.json
+
+  # Interactive shell with OpenAI Codex
+  dev-codex:
+    extends: dev-base
+    build:
+      target: compile-for-codex
+    command: sleep infinity
+    environment:
+      HOME: /home/dev
+    volumes:
+      - ~/.codex:/home/dev/.codex
