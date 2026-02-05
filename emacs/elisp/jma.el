@@ -278,6 +278,11 @@ flag should be valid grep flags (typically '-i') or else the empty string."
 ;;   (setq default-input-method "pyim"))
 
 (progn
+  (switch-to-buffer "en.txt")
+  (flyspell-mode 1)
+  (ispell-change-dictionary "en_GB")
+  (auto-fill-mode 0))
+(progn
   (switch-to-buffer "fr.txt")
   (set-input-method "latin-9-prefix")
   (flyspell-mode 1)
