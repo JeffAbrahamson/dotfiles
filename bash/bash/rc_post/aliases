@@ -731,6 +731,7 @@ pav-todo-print() { pav-todo | head -67 | cat -n | u2ps; }
 
 jb-a() { cd "$HOME/src/jellybooks/analytics"; }
 jb-d() { cd "$HOME/src/jellybooks/danube"; }
+jb-di() { cd "$HOME/src/jellybooks/discovery_ingest"; }
 jb-i() { cd "$HOME/src/jellybooks/infrastructure"; }
 jb-j() { cd "$HOME/src/jellybooks/jellybooks-ng"; }
 jb-p() { cd "$HOME/src/jellybooks/production"; }
