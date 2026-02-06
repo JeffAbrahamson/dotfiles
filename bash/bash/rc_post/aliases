@@ -627,15 +627,6 @@ gc-bilan() { gc_bilan.py $*; }
 ###########################################################################
 # docker
 
-# I often make a docker-manage.sh script for managing my docker
-# containers.  This saves typing the dots.
-dm() {
-    if [ -r docker/docker-manage.sh -a -x docker/docker-manage.sh ]; then
-	(cd docker && ./docker-manage.sh $*);
-    else
-	echo "No docker-manage.sh present."
-    fi;
-}
 nse() {
     pid=$(sudo docker inspect --format {{.State.Pid}} $1);
     echo $pid;
