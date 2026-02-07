@@ -115,19 +115,26 @@ mode "sway" {
     # bindsym Control+Up     move up;    mode "focus"
     # bindsym Control+Right  move right; mode "focus"
 
-    # Split in horizontal orientation.
-    bindsym h  split h; mode "default"
-
-    # Split in vertical orientation.
-    bindsym v  split v; mode "default"
-
     # Enter fullscreen mode for the focused container.
     bindsym f  fullscreen; mode "default"
 
-    # Change container layout (stacked, tabbed, toggle split).
-    bindsym s  layout stacking; mode "default"
-    bindsym w  layout tabbed; mode "default"
-    bindsym e  layout toggle split; mode "default"
+    ## The following is commented out, experimentally, to see if I can
+    ## live without.  I want always to be in tabbed mode.
+    #
+    # # Split in horizontal orientation.
+    # bindsym h  split h; mode "default"
+    #
+    # # Split in vertical orientation.
+    # bindsym v  split v; mode "default"
+    #
+    # # Change container layout (stacked, tabbed, toggle split).
+    # bindsym s  layout stacking; mode "default"
+    # bindsym w  layout tabbed; mode "default"
+    # bindsym e  layout toggle split; mode "default"
+
+    # Split current tab into two vertically stacked tabbed containers.
+    # Opens a new terminal below and returns focus to the upper pane.
+    bindsym v  split v; exec kitty; focus up; mode "default"
 
     # Toggle tiling / floating.
     bindsym Shift+space  floating toggle; mode "default"

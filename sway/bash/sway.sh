@@ -52,6 +52,22 @@ emf() {
       (dotimes (_ ${one_less})
         (make-frame-command)))" &
 }
+# Split current pane into two vertically stacked tabbed containers.
+# Opens a new kitty terminal below (with same CWD) and returns focus to upper.
+sway-vsplit() {
+    swaymsg -q split v
+    kitty @ launch --type=os-window --cwd=current
+    sleep 0.1
+    swaymsg -q focus up
+}
+
+# Flatten a nested container back into its parent tabbed container.
+# Use after closing one pane of a split to restore flat tab structure.
+sway-flatten() {
+    swaymsg -q focus parent
+    swaymsg -q layout tabbed
+}
+
 # Shortcut for opening some extra windows in the current stack.
 k-os() { kitty-os-windows $*; }
 k-osr() { kitty-os-windows-to-right $*; }
@@ -59,3 +75,7 @@ k-osr() { kitty-os-windows-to-right $*; }
 k-n() { kitty-tab-then-move-right $*; }
 # Shortcut for opening two stacks of n kitty windows and four emacs frames.
 k-e() { kitty-tab-then-move-right $*; emf 4; }
+# Split into vertical stack, preserving CWD.
+k-v() { sway-vsplit; }
+# Flatten nested container back to parent tabbed layout.
+k-f() { sway-flatten; }
