@@ -1,0 +1,233 @@
+#!/bin/bash
+
+# Notes:
+#
+# Worktrees live under
+# $(git rev-parse --show-toplevel)/.git/worktrees-local/
+#
+# A branch like feature/foo becomes a directory like feature__foo
+# (readable, collision-resistant enough for normal use).
+
+# --- Git worktree helpers ----------------------------------------------------
+
+# Print repo toplevel, or nothing if not in a repo.
+__git_toplevel() {
+  git rev-parse --show-toplevel 2>/dev/null
+}
+
+# Standard location + naming scheme for worktrees:
+#   <repo-toplevel>/.git/worktrees-local/<branch-sanitized>
+__git_wt_base() {
+  local top
+  top="$(__git_toplevel)" || return 1
+  printf '%s/.git/worktrees-local\n' "$top"
+}
+
+# Sanitize branch name for filesystem paths (keeps it readable).
+__git_wt_sanitize_branch() {
+  local b="$1"
+  # Replace slashes with __, and any other risky chars with _
+  b="${b//\//__}"
+  b="$(printf '%s' "$b" | sed -E 's/[^A-Za-z0-9._-]+/_/g')"
+  printf '%s' "$b"
+}
+
+# Resolve worktree path for a branch name.
+__git_wt_path_for_branch() {
+  local base b
+  base="$(__git_wt_base)" || return 1
+  b="$(__git_wt_sanitize_branch "$1")"
+  printf '%s/%s\n' "$base" "$b"
+}
+
+# List branch names (local + remote) that can be suggested.
+__git_wt_list_branches() {
+  # Local branches
+  git for-each-ref --format='%(refname:short)' refs/heads 2>/dev/null
+  # Remote branches (stripped to name after remote/)
+  git for-each-ref --format='%(refname:short)' refs/remotes 2>/dev/null \
+    | sed -E 's|^[^/]+/||' \
+    | grep -v '^HEAD$' \
+    | sort -u
+}
+
+# List existing worktrees as "<path>\t<branch>" (best-effort).
+__git_wt_list_worktrees() {
+  git worktree list --porcelain 2>/dev/null \
+    | awk '
+      $1=="worktree"{path=$2}
+      $1=="branch"{branch=$2; sub("^refs/heads/","",branch); print path "\t" branch}
+    '
+}
+
+# --- Public commands ---------------------------------------------------------
+
+# gwt <branch> [--no-cd]
+# Creates or switches to a worktree for <branch>.
+# - If branch doesn't exist locally but exists on a remote, creates local tracking branch.
+# - If branch doesn't exist anywhere, creates it off the current HEAD.
+# - If worktree already exists, just cd into it (unless --no-cd).
+gwt() {
+  local branch="$1"
+  local no_cd=0
+  if [[ -z "$branch" ]]; then
+    echo "Usage: gwt <branch> [--no-cd]"
+    return 2
+  fi
+  if [[ "${2:-}" == "--no-cd" ]]; then
+    no_cd=1
+  fi
+
+  local top
+  top="$(__git_toplevel)"
+  if [[ -z "$top" ]]; then
+    echo "Not in a git repo."
+    return 1
+  fi
+
+  local wt_path base
+  base="$(__git_wt_base)" || return 1
+  wt_path="$(__git_wt_path_for_branch "$branch")" || return 1
+  mkdir -p "$base" || return 1
+
+  # If a worktree already exists for this branch, cd there.
+  local existing
+  existing="$(__git_wt_list_worktrees | awk -F'\t' -v b="$branch" '$2==b{print $1; exit}')"
+  if [[ -n "$existing" ]]; then
+    if [[ $no_cd -eq 0 ]]; then cd "$existing" || return 1; fi
+    return 0
+  fi
+
+  # Ensure we have the branch locally; if only remote exists, create tracking branch.
+  if ! git show-ref --verify --quiet "refs/heads/$branch"; then
+    if git show-ref --verify --quiet "refs/remotes/origin/$branch"; then
+      git branch --track "$branch" "origin/$branch" >/dev/null || return 1
+    else
+      # Create new branch from current HEAD
+      git branch "$branch" >/dev/null || return 1
+    fi
+  fi
+
+  # Create the worktree.
+  git worktree add "$wt_path" "$branch" || return 1
+
+  if [[ $no_cd -eq 0 ]]; then
+    cd "$wt_path" || return 1
+  fi
+}
+
+# gwrm <branch|path>
+# Removes a worktree by branch name (preferred) or by path.
+# By default uses "git worktree remove". Add -f to force.
+gwtrm() {
+  local target="$1"
+  if [[ -z "$target" ]]; then
+    echo "Usage: gwrm <branch|path> [-f]"
+    return 2
+  fi
+
+  local top
+  top="$(__git_toplevel)"
+  if [[ -z "$top" ]]; then
+    echo "Not in a git repo."
+    return 1
+  fi
+
+  local force=""
+  if [[ "${2:-}" == "-f" || "${2:-}" == "--force" ]]; then
+    force="--force"
+  fi
+
+  local path=""
+  if [[ "$target" == /* || "$target" == ./* || "$target" == ../* ]]; then
+    path="$target"
+  else
+    # treat as branch
+    path="$(__git_wt_list_worktrees | awk -F'\t' -v b="$target" '$2==b{print $1; exit}')"
+    if [[ -z "$path" ]]; then
+      # fall back to the standard path if it exists on disk
+      local guess
+      guess="$(__git_wt_path_for_branch "$target")"
+      if [[ -d "$guess" ]]; then
+        path="$guess"
+      fi
+    fi
+  fi
+
+  if [[ -z "$path" ]]; then
+    echo "No worktree found for: $target"
+    return 1
+  fi
+
+  # If we're inside the worktree being removed, move somewhere safe first
+  local pwd_real path_real
+  pwd_real="$(cd "$PWD" 2>/dev/null && pwd -P)"
+  path_real="$(cd "$path" 2>/dev/null && pwd -P)"
+
+  if [[ -n "$pwd_real" && -n "$path_real" && "$pwd_real" == "$path_real"* ]]; then
+    # Prefer repo root; fall back to HOME
+    local top
+    top="$(git rev-parse --show-toplevel 2>/dev/null)"
+    if [[ -n "$top" ]]; then
+      cd "$top" || cd "$HOME"
+    else
+      cd "$HOME"
+    fi
+    pwd
+  fi
+
+  git worktree remove $force "$path" || return 1
+}
+
+# Optional tiny aliases if you like them
+alias gwtls='git worktree list'
+
+# --- Bash completion ---------------------------------------------------------
+
+# Complete gwt with branches; complete gwrm with existing worktree branches and paths.
+__complete_gwt() {
+  local cur="${COMP_WORDS[COMP_CWORD]}"
+  local top="$(__git_toplevel)"
+  [[ -z "$top" ]] && return 0
+  COMPREPLY=( $(compgen -W "$(__git_wt_list_branches)" -- "$cur") )
+}
+
+__complete_gwrm() {
+  local cur="${COMP_WORDS[COMP_CWORD]}"
+  local top="$(__git_toplevel)"
+  [[ -z "$top" ]] && return 0
+
+  # Suggest both branch names that have worktrees and their paths.
+  local items
+  items="$(__git_wt_list_worktrees | awk -F'\t' '{print $2 "\n" $1}')"
+  COMPREPLY=( $(compgen -W "$items" -- "$cur") )
+}
+
+complete -F __complete_gwt gwt
+complete -F __complete_gwrm gwrm
+
+# Extra helper functions.
+
+# Jump to the repo root from anywhere inside it.
+cdgit() {
+  local top
+  top="$(git rev-parse --show-toplevel 2>/dev/null)" || { echo "Not in a git repo."; return 1; }
+  cd "$top" || return 1
+}
+
+# Jump to a worktree by branch name (no creation).
+gwtcd() {
+  local branch="$1"
+  [[ -z "$branch" ]] && { echo "Usage: gwtcd <branch>"; return 2; }
+  local top
+  top="$(git rev-parse --show-toplevel 2>/dev/null)" || { echo "Not in a git repo."; return 1; }
+  local path
+  path="$(git worktree list --porcelain 2>/dev/null | awk '
+    $1=="worktree"{p=$2}
+    $1=="branch"{b=$2; sub("^refs/heads/","",b); if (b=="'"$branch"'") {print p; exit}}
+  ')"
+  [[ -z "$path" ]] && { echo "No worktree found for branch: $branch"; return 1; }
+  cd "$path" || return 1
+}
+
+complete -F __complete_gwt gwtcd
