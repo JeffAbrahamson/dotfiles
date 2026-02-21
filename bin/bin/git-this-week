@@ -1,0 +1,102 @@
+#!/bin/bash
+
+git-this-week() {
+  local days=8
+  local full=0
+  local stat=0
+
+  # --- option parsing ---
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -n)
+        shift
+        [[ $# -gt 0 ]] || { echo "git-this-week: -n requires a number" >&2; return 2; }
+        [[ "$1" =~ ^[0-9]+$ ]] || { echo "git-this-week: -n expects an integer, got: $1" >&2; return 2; }
+        days="$1"
+        shift
+        ;;
+      --full)
+        full=1
+        shift
+        ;;
+      --stat)
+        stat=1
+        full=1
+        shift
+        ;;
+      -h|--help)
+        cat <<EOF
+Usage: git-this-week [-n DAYS] [--full] [--stat]
+
+  -n DAYS   Number of days to look back (default: 8)
+  --full    Use standard 'git log' output (default uses git-log-table)
+  --stat    Implies --full; runs 'git log --stat'
+EOF
+        return 0
+        ;;
+      *)
+        echo "git-this-week: unknown option: $1" >&2
+        return 2
+        ;;
+    esac
+  done
+
+  local since="${days} days ago"
+
+  # --- helpers ---
+  _gtw_is_repo() {
+    git -C "$1" rev-parse --is-inside-work-tree >/dev/null 2>&1
+  }
+
+  _gtw_run_in_repo() {
+    local dir="$1"
+
+    # Header for readability when iterating multiple repos
+    echo
+    echo "==> $dir"
+    echo
+
+    if (( full )); then
+      if (( stat )); then
+        git -C "$dir" log --since="$since" --stat
+      else
+        git -C "$dir" log --since="$since"
+      fi
+    else
+      # Use your formatting function if it exists; otherwise fall back to a simple one-liner.
+      if declare -F git-log-table >/dev/null 2>&1; then
+        # Assumes git-log-table forwards args to git log (common pattern).
+        ( cd "$dir" && git-log-table --since="$since" )
+      else
+        git -C "$dir" log --since="$since" --oneline --decorate
+      fi
+    fi
+  }
+
+  # --- main logic ---
+  local cwd="."
+  if _gtw_is_repo "$cwd"; then
+    _gtw_run_in_repo "$cwd"
+    return $?
+  fi
+
+  local found=0
+  local d
+  shopt -s nullglob
+  for d in ./*/; do
+    # trim trailing slash
+    d="${d%/}"
+    if _gtw_is_repo "$d"; then
+      found=1
+      _gtw_run_in_repo "$d"
+    fi
+  done
+  shopt -u nullglob
+
+  if (( ! found )); then
+    echo "git-this-week: not in a git repo, and no git repos found in immediate subdirectories." >&2
+    return 1
+  fi
+}
+
+git-this-week "$@"

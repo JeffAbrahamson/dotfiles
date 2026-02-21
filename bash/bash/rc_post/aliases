@@ -415,10 +415,10 @@ bluestat() { bluetoothctl devices Connected; }
 blueinfo() { bluetoothctl info; }
 
 # The bose Resolve Soundlink: cylinder speaker.
-bose-resolve-pair() { bluetoothctl pair 2C:41:A1:6D:2B:1C; }
-bose-resolve-trust() { bluetoothctl trust 2C:41:A1:6D:2B:1C; }
-bose-resolve-connect() { bluetoothctl connect 2C:41:A1:6D:2B:1C; }
-bose-resolve-disconnect() { bluetoothctl disconnect 2C:41:A1:6D:2B:1C; }
+bose-flex-pair() { bluetoothctl pair AC:BF:71:FB:A8:CF; }
+bose-flex-trust() { bluetoothctl trust AC:BF:71:FB:A8:CF; }
+bose-flex-connect() { bluetoothctl connect AC:BF:71:FB:A8:CF; }
+bose-flex-disconnect() { bluetoothctl disconnect AC:BF:71:FB:A8:CF; }
 
 # Bose QC Ultra.
 bose-blue-pair() { bluetoothctl pair E4:58:BC:2C:02:C8; }
@@ -451,7 +451,8 @@ bose-black-beats-disconnect() { bluetoothctl disconnect B0:BE:83:DB:E3:3B; }
 audio-sinks() { pactl list short sinks; }
 # Cf. also wpctl set-default <sink-id>.
 # The issue is that that id isn't clearly stable over time.
-audio-to-bose-resolve() { pactl set-default-sink bluez_output.2C_41_A1_6D_2B_1C.1; }
+# audio-to-bose-flex() { pactl set-default-sink bluez_output.AC:BF:71:FB:A8:CF; }  # Should work but didn't today.
+audio-to-bose-flex() { pactl set-default-sink bluez_output.AC_BF_71_FB_A8_CF.1; }  # Worked today.
 audio-to-bose-blue() { pactl set-default-sink bluez_output.E4_58_BC_2C_02_C8.1; }
 # It's also possible to move an existing sink.
 # For example,
@@ -465,7 +466,15 @@ audio-to-bose-blue() { pactl set-default-sink bluez_output.E4_58_BC_2C_02_C8.1; 
 # git-log-graph() { git log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit $*; }
 git-log-graph() { git log --graph --oneline --all $*; }
 git-log-terse() { git log --pretty=format:"%ad%x09%an%x09%s" --date=short $*; }
-git-log-table() { git log --pretty=format:'%C(yellow)%h|%Cred%ad|%Cblue%an|%Cgreen%d %Creset%s' --date=short $*; }
+git-log-table() {
+  git log \
+    --pretty=format:'%C(yellow)%h%Creset|%C(red)%ad%Creset|%C(blue)%an%Creset|%C(green)%d%Creset %s' \
+    --date=short \
+    --decorate \
+    --abbrev-commit \
+    "$@"
+}
+git-log-table_old() { git log --pretty=format:'%C(yellow)%h|%Cred%ad|%Cblue%an|%Cgreen%d %Creset%s' --date=short $*; }
 alias glt=git-log-table
 
 # git config --global alias.lg "log --color --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit"
