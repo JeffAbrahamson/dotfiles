@@ -282,7 +282,7 @@ fig1.tight_layout()
 
 # ── Figure 2: Time series ─────────────────────────────────────────────────────
 
-fig2, axes2 = plt.subplots(3, 1, figsize=(15, 11), sharex=False)
+fig2, axes2 = plt.subplots(3, 1, figsize=(15, 11), sharex=True)
 fig2.suptitle(
     f"Sleep over time  (dots=nightly, line={ROLL_DAYS}-day rolling mean)",
     fontsize=13,
@@ -300,8 +300,6 @@ roll_bt = (
 ax.plot(roll_bt.index, roll_bt.values, color="darkblue", lw=1.8)
 ax.yaxis.set_major_formatter(plt.FuncFormatter(fmt_hour_tick))
 ax.yaxis.set_major_locator(plt.MultipleLocator(1.0))
-ax.xaxis.set_major_locator(mdates.YearLocator())
-ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
 ax.set_ylabel("Bedtime")
 ax.set_title("Bedtime")
 
@@ -317,8 +315,6 @@ roll_dur = (
 )
 ax.plot(roll_dur.index, roll_dur.values, color="darkgreen", lw=1.8)
 ax.axhline(7, color="red", ls=":", lw=1.2, alpha=0.7, label="7h")
-ax.xaxis.set_major_locator(mdates.YearLocator())
-ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
 ax.set_ylabel("Hours")
 ax.set_title("Sleep duration")
 ax.legend(fontsize=8, loc="upper right")
@@ -339,8 +335,13 @@ ax.set_yticks([1, 2, 3, 4])
 ax.set_yticklabels([f"{q} ({QUALITY_LABELS[q]})" for q in [1, 2, 3, 4]])
 ax.set_ylabel("Quality")
 ax.set_title("Sleep quality")
-ax.xaxis.set_major_locator(mdates.YearLocator())
-ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
+
+# Shared x-axis: set locator/formatter once, then force year labels visible
+# on every panel (sharex=True hides them on all but the bottom by default).
+axes2[-1].xaxis.set_major_locator(mdates.YearLocator())
+axes2[-1].xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
+for ax in axes2:
+    plt.setp(ax.xaxis.get_majorticklabels(), visible=True)
 
 fig2.tight_layout()
 
