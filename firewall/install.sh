@@ -9,16 +9,29 @@ fi
 . ../script/lib.sh
 
 echo "Setting up firewall, will require sudo."
-sudo ufw default allow outgoing
-sudo ufw default deny incoming
-sudo ufw allow ssh/tcp
-#sudo ufw allow 5353/udp		# For hp-5540 printer discovery (?)
-sudo ufw limit ssh
-sudo ufw enable
-if [ "X$$HOSTNAME" = "Xsiegfried" ]; then
-    ## For pi-hole:
-    sudo ufw allow 80/tcp
-    sudo ufw allow 53/udp    # DNS
+
+have_sudo=1
+if sudo -n true 2>/dev/null; then
+    : # sudo already available without prompting
+elif sudo -v; then
+    : # cached credentials
+else
+    echo "Warning: sudo not available; skipping firewall setup."
+    have_sudo=0
+fi
+
+if [ "$have_sudo" -eq 1 ]; then
+    sudo ufw default allow outgoing
+    sudo ufw default deny incoming
+    sudo ufw allow ssh/tcp
+    #sudo ufw allow 5353/udp		# For hp-5540 printer discovery (?)
+    sudo ufw limit ssh
+    sudo ufw enable
+    if [ "X$$HOSTNAME" = "Xsiegfried" ]; then
+        ## For pi-hole:
+        sudo ufw allow 80/tcp
+        sudo ufw allow 53/udp    # DNS
+    fi
 fi
 
 ## If we want to see the current iptables rules, we could call
