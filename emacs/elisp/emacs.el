@@ -171,9 +171,6 @@ Return non-nil when the load succeeds."
         (jma-safe-load-file (concat jma-elisp-base "clang-format.el"))
 	(setq clang-format-style-option "Google")
         (jma-safe-load-file (concat jma-elisp-base "highlight-indentation.el"))
-	;; (load-file (concat jma-elisp-base "copilot.el"))
-	;; (load-file (concat jma-elisp-base "copilot-bindings.el"))
-
 	;; cf. https://github.com/spotify/dockerfile-mode
 	;; (load-file (concat jma-elisp-base "dockerfile-mode.el"))
 	(add-to-list 'auto-mode-alist '("Dockerfile\\'" . dockerfile-mode))

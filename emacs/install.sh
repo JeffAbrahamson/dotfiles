@@ -11,7 +11,4 @@ maybe_mkdir $dest
     done
 )
 
-maybe_mkdir ${dest}/dist
-rsync lib/copilot-dist/* ${dest}/dist/
-
 maybe_append .emacs .dotfiles/elisp/emacs.el emacs-include
