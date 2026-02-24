@@ -312,7 +312,7 @@ cppdoc() { ff $HOME/work/c++-docs/cpp.html & }
 #workm-periodic() { while true; do date; workm force-put; sleep 900; separator; done; }
 #workm-push() { workm force-put; }
 tea() { tsd tea $(date +%H%M); tsd tea; }
-ffs() { pg firef | grep -- -P | sed -e 's/^.*-P //;'; }
+ffs() { pg firef | grep -- -P | sed -e 's/^.*-P//;'; }
 
 tsd-group() {
     filter="$1"
