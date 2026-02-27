@@ -18,7 +18,7 @@ prompt_extra=
 exit_status_indicator() {
     # And this must be the first line:
     exit_status_indicator_="$?,"
-    if [ $exit_status_indicator_ = 0, ]; then
+    if [[ $exit_status_indicator_ == 0, ]]; then
 	exit_status_indicator_=
 	space_=''
 	exit_color_=$fg_black
@@ -30,23 +30,48 @@ exit_status_indicator() {
 
 script_indicator() {
     script_indicator_=
-    if [ "X$SCRIPT_NAME" != X ]; then
+    if [[ -n $SCRIPT_NAME ]]; then
 	script_indicator_="[$SCRIPT_NAME] "
 	space_=' '
     fi
 }
 
+# Computes display_indicator_ for combinations of:
+#   T = no windowing environment (neither X nor Wayland)
+#   S = SSH agent inaccessible (SSH_AUTH_SOCK unset, or socket dead)
+#   K = SSH agent reachable but no keys loaded (e.g. after ssh-tabula-rasa)
 display_indicator() {
     display_indicator_=
-    if [ "X$DISPLAY" = X ]; then
-	display_indicator_='[T]'
+    local _t='' _s=''
+    case $XDG_SESSION_TYPE in
+	wayland) [[ -z $WAYLAND_DISPLAY ]] && _t=T ;;
+	x11)     [[ -z $DISPLAY ]]         && _t=T ;;
+	*)       # tty, unset (SSH, virtual console, etc.): flag if neither is present.
+		 # Leaves [T] absent when X11 forwarding sets DISPLAY.
+		 [[ -z $DISPLAY && -z $WAYLAND_DISPLAY ]] && _t=T ;;
+    esac
+    if [[ -z $SSH_AUTH_SOCK ]]; then
+	_s=S
+    else
+	# ssh-add -l is run on every prompt when SSH_AUTH_SOCK is set.
+	# For a local agent this is negligible, but a forwarded agent
+	# over a slow or high-latency link will cause a visible pause.
+	ssh-add -l &>/dev/null
+	case $? in
+	    0) ;;          # agent has keys — no indicator
+	    1) _s=K ;;     # agent reachable but no keys loaded
+	    *) _s=S ;;     # can't connect despite SSH_AUTH_SOCK being set
+	esac
+    fi
+    if [[ -n ${_s}${_t} ]]; then
+	display_indicator_="[${_s}${_t}]"
 	space_=' '
     fi
 }
 
 screen_indicator() {
     screen_indicator_=
-    if [ "X$TERM" = Xscreen ]; then
+    if [[ $TERM == screen ]]; then
 	screen_indicator_="\[$fg_green\][S-\\l]"
 	space=' '
     fi
@@ -54,7 +79,7 @@ screen_indicator() {
 
 virtualenv_indicator() {
     virtualenv_indicator_=
-    if [ "X$VIRTUAL_ENV" != X ]; then
+    if [[ -n $VIRTUAL_ENV ]]; then
 	virtualenv_indicator_="$fg_green[virt]$fg_black"
     fi
 }
@@ -78,7 +103,7 @@ line_zero() {
     git_=$(__git_ps1)
     virt_=$virtualenv_indicator_
     zerospace=
-    if [ "X$git_" != X -a "X$virt_" != X ]; then
+    if [[ -n $git_ && -n $virt_ ]]; then
 	zerospace=' '
     fi
     line_zero_="$git_$zerospace$virt_$prompt_extra"
@@ -89,7 +114,7 @@ line_zero_format() {
     zero_suffix=
     one_prefix_=
     zero_=
-    if [ X != "X$line_zero_" ]; then
+    if [[ -n $line_zero_ ]]; then
 	# The echo -e makes the \u work correctly.  In other words,
 	# this is a trick for translating \u notation to proper UTF-8.
 	#zero_prefix_=$(echo -e "\u2554\u2550")
@@ -128,4 +153,3 @@ $zero_\[$exit_color_\]$one_prefix_\${exit_status_indicator_}${screen_indicator_}
 # Prompt command outputs nothing, only sets state.
 # The prompt itself computes nothing, only displays state.
 PROMPT_COMMAND="exit_status_indicator; script_indicator; display_indicator; screen_indicator; virtualenv_indicator; line_zero; line_zero_format; setup_prompt"
-
