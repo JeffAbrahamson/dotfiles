@@ -496,6 +496,26 @@ alias glt=git-log-table
 
 # git config --global alias.lg "log --color --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit"
 
+gh-issue() {
+    if [[ -z "$1" ]]; then
+        echo "Usage: gh-issue <issue-number>" >&2
+        return 1
+    fi
+    gh issue view "$1" \
+        --json number,title,state,author,assignees,labels,milestone,createdAt,updatedAt,url,body \
+        --jq .
+}
+
+gh-pr() {
+    if [[ -z "$1" ]]; then
+        echo "Usage: gh-pr <pr-number>" >&2
+        return 1
+    fi
+    gh pr view "$1" \
+        --json number,title,state,author,reviewRequests,reviews,assignees,labels,baseRefName,headRefName,createdAt,mergedAt,url,body \
+        --jq .
+}
+
 # From https://stackoverflow.com/a/3452888/833300
 pip-update-all() {
     pip list --outdated --format=freeze | \
