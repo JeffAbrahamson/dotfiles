@@ -226,24 +226,25 @@ data-notes() {
     # rm gs.tgz;
 };
 
-# Things I should be doing.  A number indicates a priority, so the
-# higher the number, the more restricted the list.  Realistically, the
-# highest and second highest numbers available are generally all that
-# is really useful, since the most important things I should do, and
-# getting a glimpse of what's next can be useful.
-#
-# The priority is based on the number of trailing '=' on the entries.
-# No number is equivalent to 1, so untagged items are not shown with
-# this todo function.
-todo() {
-    # This assumes $1 is a number or doesn't exist.
-    _tag==$(printf "=%.0s" $(seq 1 ${1:-1}))
-    (cd $HOME/data/TODO/; grep $_tag *.txt | perl -pwe "s/$_tag$//;")
-    unset _tag
+# Shared helpers for todo display and printing.
+# _todo_show: filter comment lines (^#) from one or more files.
+_todo_show() { grep -h -vE '^#' "$@"; }
+# _todo_print: read from stdin and send to printer.
+#   Pass "true" for Chinese text support (uses paps); otherwise uses u2ps.
+_todo_print() {
+    # Use paps to handle CJK.  Otherwise, u2ps worked great (67 lines).
+    if [[ "${1:-false}" == true ]]; then
+        head -53 | cat -n | paps | lpr
+    else
+        head -67 | cat -n | u2ps
+    fi
 }
-# Use paps to handle JCK.  Otherwise, u2ps worked great.
-# Was 67 lines with u2ps.
-todo-print() { todo 3 | head -53 | cat -n | paps | lpr; }
+
+# Things I should be doing.  Lines beginning with '#' are comments/headers
+# and are omitted from the output.
+todo() { _todo_show "$HOME/data/TODO/todo.txt"; }
+# Use paps to handle CJK.  Otherwise, u2ps worked great (67 lines).
+todo-print() { todo | _todo_print true; }
 
 # Show my ideal schedule for the day.  The argument is schedule
 # version, which corresponds to a prefix tag on the relevant lines of
@@ -753,15 +754,15 @@ tma-r2() { tmux attach-session -t R2; }
 ###########################################################################
 # Quick directory access for favourite spots.
 jbks() { cd "$HOME/work/startup/jellybooks/"; }
-jbks-todo() { grep -vE '^#' "$HOME/work/startup/jellybooks/TODO.txt"; }
-jbks-todo-print() { jbks-todo | head -67 | cat -n | u2ps; }
+jbks-todo() { _todo_show "$HOME/work/startup/jellybooks/TODO.txt"; }
+jbks-todo-print() { jbks-todo | _todo_print false; }
 tn() { cd "$HOME/work/startup/transport-nantes/"; }
 tns() { cd "$HOME/src/jma/transport-nantes/tn_web/"; }
 pav() { cd "$HOME/work/associations/place_au_velo/"; }
 pavadm() { cd "$HOME/work/associations/place_au_velo/administrateur/"; }
 pavqr() { qrencode -l L -s 5 --foreground 004996 -o "${2:-/tmp/pavqr.png}" "$1"; }
-pav-todo() { grep -vE '^#' "$HOME/work/associations/place_au_velo/administrateur/TODO.txt"; }
-pav-todo-print() { pav-todo | head -67 | cat -n | u2ps; }
+pav-todo() { _todo_show "$HOME/work/associations/place_au_velo/administrateur/TODO.txt"; }
+pav-todo-print() { pav-todo | _todo_print false; }
 
 ###########################################################################
 # Jellybooks personal.
