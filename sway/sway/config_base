@@ -6,6 +6,7 @@
 #
 set $mod Mod1
 set $exit_mode Do you really want to exit?
+set $shutdown_mode Do you really want to shutdown?
 
 # Note: pass the final command to swaymsg so that the resulting window can be opened
 # on the original workspace that the command was run on.
@@ -179,6 +180,7 @@ mode "sway" {
     bindsym Control+8  move container to workspace 8; mode "default"
     bindsym Control+9  move container to workspace 9; mode "default"
     bindsym Control+0  move container to workspace 10; mode "default"
+    bindsym Control+p  move container to workspace b; mode "default"
 
     bindsym Shift+1  exec $menu; mode "default"
 
@@ -189,6 +191,7 @@ mode "sway" {
 
     # Exit sway.
     bindsym Control+Shift+Q mode "$exit_mode"
+    bindsym Control+Shift+P mode "$shutdown_mode"
 
     bindsym Escape     mode "default"
     bindsym Return     mode "default"
@@ -236,6 +239,12 @@ mode "resize" {
 
 mode "$exit_mode" {
     bindsym y          exit
+    bindsym Control+g  mode default
+    bindsym n          mode default
+    bindsym Escape     mode default
+}
+mode "$shutdown_mode" {
+    bindsym y          exec systemctl poweroff
     bindsym Control+g  mode default
     bindsym n          mode default
     bindsym Escape     mode default
