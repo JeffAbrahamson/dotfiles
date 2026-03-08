@@ -20,6 +20,7 @@ maybe_mkdir "$dest"
 (
     cd bin
     for f in *; do
+        [[ -f "$f" && "${f: -1}" != "~" ]] || continue
         if [ "$f" = "tsd-plot.py" ]; then
             copy_to "$f" "$dest/tsd-plot"
         else
