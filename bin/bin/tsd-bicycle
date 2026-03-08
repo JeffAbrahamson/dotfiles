@@ -1,0 +1,278 @@
+#!/usr/bin/env python3
+"""tsd-bicycle — Bicycle ride distance analytics.
+
+Reads $TSD_DIR/bicycle-* files (date<tab>km format) and provides
+summary statistics and plots.
+
+Commands:
+  year             List km per year across all bikes
+  bike             List km per bike (total)
+  plot-year        Bar chart: km per month, grouped by year
+  plot-bike        Bar chart: km per month, grouped by bicycle
+  plot-cumulative  Cumulative km by year, starting at zero each year
+
+Options for plot-cumulative:
+  --comparison-year YEAR    Highlight this year in red
+"""
+
+import argparse
+import calendar
+import os
+import sys
+from collections import defaultdict
+from datetime import date
+from pathlib import Path
+
+# ── TSD directory discovery ───────────────────────────────────────────────────
+
+_TSD_CANDIDATES = [
+    os.environ.get("TSD_DIR"),
+    Path.home() / "tsd",
+    Path.home() / "common" / "data" / "tsd",
+    Path.home() / "data" / "tsd",
+]
+
+
+def find_tsd_dir() -> Path:
+    for p in _TSD_CANDIDATES:
+        if p and Path(p).is_dir():
+            return Path(p)
+    sys.exit("Cannot find TSD directory. Set $TSD_DIR or create ~/tsd.")
+
+
+# ── Data loading ──────────────────────────────────────────────────────────────
+
+def load_bicycle_data(tsd_dir: Path):
+    """Return list of (bike_name, date, km) from all bicycle-* files."""
+    records = []
+    for path in sorted(tsd_dir.glob("bicycle-*")):
+        bike = path.name[len("bicycle-"):]
+        with open(path) as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                parts = line.split()
+                if len(parts) < 2:
+                    continue
+                try:
+                    d = date.fromisoformat(parts[0])
+                    km = float(parts[1])
+                except (ValueError, TypeError):
+                    continue
+                records.append((bike, d, km))
+    return records
+
+
+# ── Text commands ─────────────────────────────────────────────────────────────
+
+def cmd_year(records):
+    by_year = defaultdict(float)
+    for _bike, d, km in records:
+        by_year[d.year] += km
+    for year in sorted(by_year):
+        print(f"{year}  {by_year[year]:8.1f}")
+
+
+def cmd_bike(records):
+    by_bike = defaultdict(float)
+    for bike, _d, km in records:
+        by_bike[bike] += km
+    for bike, total in sorted(by_bike.items(), key=lambda x: -x[1]):
+        print(f"{bike:<25}  {total:8.0f}")
+
+
+# ── Plot commands ─────────────────────────────────────────────────────────────
+
+def cmd_plot_year(records):
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    by_year_month = defaultdict(lambda: defaultdict(float))
+    for _bike, d, km in records:
+        by_year_month[d.year][d.month] += km
+
+    years = sorted(by_year_month)
+    months = list(range(1, 13))
+    month_names = [calendar.month_abbr[m] for m in months]
+
+    n_years = len(years)
+    x = np.arange(12)
+    bar_width = 0.8 / max(n_years, 1)
+
+    fig, ax = plt.subplots(figsize=(14, 6))
+    colors = plt.cm.tab10(np.linspace(0, 1, max(n_years, 1)))
+
+    for i, year in enumerate(years):
+        data = [by_year_month[year].get(m, 0) for m in months]
+        offset = (i - n_years / 2 + 0.5) * bar_width
+        ax.bar(x + offset, data, bar_width, label=str(year), color=colors[i])
+
+    ax.set_xlabel("Month")
+    ax.set_ylabel("km")
+    ax.set_title("Bicycle distance by month and year")
+    ax.set_xticks(x)
+    ax.set_xticklabels(month_names)
+    ax.legend()
+    plt.tight_layout()
+    plt.show()
+
+
+def cmd_plot_bike(records):
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    by_bike_month = defaultdict(lambda: defaultdict(float))
+    for bike, d, km in records:
+        by_bike_month[bike][d.month] += km
+
+    bikes = sorted(by_bike_month)
+    months = list(range(1, 13))
+    month_names = [calendar.month_abbr[m] for m in months]
+
+    n_bikes = len(bikes)
+    x = np.arange(12)
+    bar_width = 0.8 / max(n_bikes, 1)
+
+    fig, ax = plt.subplots(figsize=(14, 6))
+    colors = plt.cm.tab10(np.linspace(0, 1, max(n_bikes, 1)))
+
+    for i, bike in enumerate(bikes):
+        data = [by_bike_month[bike].get(m, 0) for m in months]
+        offset = (i - n_bikes / 2 + 0.5) * bar_width
+        ax.bar(x + offset, data, bar_width, label=bike, color=colors[i])
+
+    ax.set_xlabel("Month")
+    ax.set_ylabel("km")
+    ax.set_title("Bicycle distance by month and bicycle")
+    ax.set_xticks(x)
+    ax.set_xticklabels(month_names)
+    ax.legend()
+    plt.tight_layout()
+    plt.show()
+
+
+def cmd_plot_cumulative(records, comparison_year=None):
+    import matplotlib.pyplot as plt
+
+    today = date.today()
+    current_year = today.year
+
+    # Group rides by year, sorted by day-of-year.
+    by_year = defaultdict(list)
+    for _bike, d, km in records:
+        by_year[d.year].append((d.timetuple().tm_yday, km))
+
+    years = sorted(by_year)
+
+    def year_style(year):
+        """Return matplotlib line kwargs for a given year."""
+        if year == current_year:
+            return dict(color="#2563EB", linewidth=2.5, zorder=10, alpha=1.0)
+        if year == comparison_year:
+            return dict(color="#DC2626", linewidth=2.2, zorder=9, alpha=1.0)
+        # Gray scale: age=1 (last year) is nearly black; older => lighter gray.
+        age = current_year - year
+        gray = min(0.12 + (age - 1) * 0.10, 0.72)
+        lw = max(1.8 - (age - 1) * 0.15, 0.7)
+        return dict(color=str(gray), linewidth=lw, zorder=max(8 - age, 1), alpha=1.0)
+
+    fig, ax = plt.subplots(figsize=(14, 7))
+
+    # Plot older years first so current year renders on top.
+    for year in years:
+        rides = sorted(by_year[year])
+
+        # Build step-cumulative curve starting from (0, 0).
+        doys = [0]
+        cumkm = [0.0]
+        total = 0.0
+        for doy, km in rides:
+            total += km
+            doys.append(doy)
+            cumkm.append(total)
+
+        # Extend line to end of year (or today for current year).
+        if year == current_year:
+            end_doy = today.timetuple().tm_yday
+        else:
+            end_doy = 366 if calendar.isleap(year) else 365
+        doys.append(end_doy)
+        cumkm.append(total)
+
+        style = year_style(year)
+        ax.step(doys, cumkm, where="post", label=str(year), **style)
+
+    # Month tick marks on x-axis (using a non-leap reference year).
+    month_doys = [date(2001, m, 1).timetuple().tm_yday for m in range(1, 13)]
+    ax.set_xticks(month_doys)
+    ax.set_xticklabels([calendar.month_abbr[m] for m in range(1, 13)])
+    ax.set_xlim(0, 366)
+
+    ax.set_ylabel("Cumulative km")
+    ax.set_title("Cumulative bicycle distance by year")
+
+    # Legend: current year first, then descending.
+    handles, labels = ax.get_legend_handles_labels()
+    pairs = list(zip(labels, handles))
+    pairs.sort(key=lambda lh: -int(lh[0]))
+    sorted_labels, sorted_handles = zip(*pairs) if pairs else ([], [])
+    ax.legend(sorted_handles, sorted_labels, loc="upper left")
+
+    plt.tight_layout()
+    plt.show()
+
+
+# ── CLI ───────────────────────────────────────────────────────────────────────
+
+def main():
+    parser = argparse.ArgumentParser(
+        prog="tsd-bicycle",
+        description="Bicycle ride distance analytics from tsd files.",
+    )
+    sub = parser.add_subparsers(dest="command", metavar="COMMAND")
+
+    sub.add_parser("year", help="List km per year across all bikes")
+    sub.add_parser("bike", help="List total km per bike, sorted by distance")
+    sub.add_parser("plot-year", help="Bar chart: km per month, grouped by year")
+    sub.add_parser("plot-bike", help="Bar chart: km per month, grouped by bicycle")
+
+    p_cum = sub.add_parser(
+        "plot-cumulative",
+        help="Cumulative km by year (starting at zero each year); "
+             "use --comparison-year YEAR to highlight a year in red",
+    )
+    p_cum.add_argument(
+        "--comparison-year",
+        type=int,
+        metavar="YEAR",
+        help="Highlight this year in red",
+    )
+
+    args = parser.parse_args()
+
+    if not args.command:
+        parser.print_help()
+        sys.exit(1)
+
+    tsd_dir = find_tsd_dir()
+    records = load_bicycle_data(tsd_dir)
+
+    if not records:
+        sys.exit("No bicycle data found in " + str(tsd_dir))
+
+    if args.command == "year":
+        cmd_year(records)
+    elif args.command == "bike":
+        cmd_bike(records)
+    elif args.command == "plot-year":
+        cmd_plot_year(records)
+    elif args.command == "plot-bike":
+        cmd_plot_bike(records)
+    elif args.command == "plot-cumulative":
+        comparison = getattr(args, "comparison_year", None)
+        cmd_plot_cumulative(records, comparison_year=comparison)
+
+
+if __name__ == "__main__":
+    main()
