@@ -450,6 +450,7 @@ audio-sinks() { pactl list short sinks; }
 # audio-to-bose-flex() { pactl set-default-sink bluez_output.AC:BF:71:FB:A8:CF; }  # Should work but didn't today.
 audio-to-bose-flex() { pactl set-default-sink bluez_output.AC_BF_71_FB_A8_CF.1; }  # Worked today.
 audio-to-bose-blue() { pactl set-default-sink bluez_output.E4_58_BC_2C_02_C8.1; }
+autio-to-usb() { pactl set-default-sink alsa_output.usb-JKY_Technology_Co._Ltd_HIFI_Audio_1531420230421-00.analog-stereo; }
 # It's also possible to move an existing sink.
 # For example,
 # pactl move-sink-input <input_index> bluez_output.2C_41_A1_6D_2B_1C.a2dp-sink
