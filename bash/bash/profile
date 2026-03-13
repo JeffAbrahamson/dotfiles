@@ -38,7 +38,7 @@ export LESS="rEMX"
 export PYTHONPATH=$HOME/local/python
 
 # export CS_PAPER_DIR=$HOME/mst/work/Research/papers/
-export TSD_DIR=$HOME/common/data/tsd/
+export TSD_DIR=$HOME/tsd/
 export JELLYBOOKS_PRODUCTION_BASE=$HOME/src/jellybooks/production
 export JELLYBOOKS_BASH_ALIASES=$HOME/.dotfiles/bash/jellybooks
 
