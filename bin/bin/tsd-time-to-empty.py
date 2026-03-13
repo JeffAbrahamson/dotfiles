@@ -25,6 +25,7 @@ Multi-file usage (files resolved relative to $TSD_DIR):
 import argparse
 import math
 import os
+import subprocess
 import sys
 from dataclasses import dataclass
 from datetime import date, datetime
@@ -39,9 +40,11 @@ DATE_FMT = "%Y-%m-%d"
 # Data structures
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class Options:
-    files: List[Tuple[str, str]]   # (label, path) pairs
+    files: List[Tuple[str, str]]  # (label, path) pairs
+    not_found: List[str]          # patterns that had no match in tsd -L
     multi_file_mode: bool
     sigma_r: float
     sigma_q: float
@@ -63,6 +66,7 @@ class Options:
 @dataclass
 class FileResult:
     """Processed results for a single input file."""
+
     label: str
     n_rows: int
     q_now: float
@@ -71,12 +75,32 @@ class FileResult:
     finite: np.ndarray
     censored: int
     censored_pct: float
-    already_empty: bool = False   # True when q_now <= 0 at forecast time
+    already_empty: bool = False  # True when q_now <= 0 at forecast time
+    error: Optional[str] = None  # set when the file could not be processed
 
 
 # ---------------------------------------------------------------------------
 # Argument parsing
 # ---------------------------------------------------------------------------
+
+
+def _resolve_name_via_tsd_list(
+    pattern: str, tsd_dir: str
+) -> List[Tuple[str, str]]:
+    """Run ``tsd -L`` and return (name, path) pairs whose name contains pattern."""
+    try:
+        result = subprocess.run(
+            ["tsd.py", "-L"], capture_output=True, text=True, check=True
+        )
+    except subprocess.CalledProcessError as e:
+        sys.exit(f"`tsd -L` failed: {e.stderr.strip() or e}")
+    matches = []
+    for line in result.stdout.splitlines():
+        name = line.strip()
+        if name and pattern in name:
+            matches.append((name, os.path.join(tsd_dir, name)))
+    return matches
+
 
 def parse_args() -> Options:
     """
@@ -94,11 +118,16 @@ def parse_args() -> Options:
     # --- input ---
     inp = p.add_argument_group("input")
     inp.add_argument(
-        "files", nargs="*", metavar="FILE",
+        "files",
+        nargs="*",
+        metavar="FILE",
         help="File names relative to $TSD_DIR (enables multi-file mode)",
     )
     inp.add_argument(
-        "-f", "--file", dest="file_path", metavar="PATH",
+        "-f",
+        "--file",
+        dest="file_path",
+        metavar="PATH",
         help="Path to a single data file",
     )
     inp.add_argument(
@@ -111,65 +140,90 @@ def parse_args() -> Options:
     # --- Kalman filter ---
     kf = p.add_argument_group("Kalman filter")
     kf.add_argument(
-        "--sigma-r", type=float, default=0.50,
+        "--sigma-r",
+        type=float,
+        default=0.50,
         help="Rate random-walk diffusion per √day (default: 0.50)",
     )
     kf.add_argument(
-        "--sigma-q", type=float, default=0.25,
+        "--sigma-q",
+        type=float,
+        default=0.25,
         help="Quantity process-noise diffusion per √day (default: 0.25)",
     )
     kf.add_argument(
-        "--sigma-z", type=float, default=0.50,
+        "--sigma-z",
+        type=float,
+        default=0.50,
         help="Measurement noise std on observed quantity (default: 0.50)",
     )
 
     # --- Monte Carlo ---
     mc = p.add_argument_group("Monte Carlo")
     mc.add_argument(
-        "--nsims", type=int, default=20000,
+        "--nsims",
+        type=int,
+        default=20000,
         help="Number of forward simulations (default: 20000)",
     )
     mc.add_argument(
-        "--dt-forward", type=float, default=1.0,
+        "--dt-forward",
+        type=float,
+        default=1.0,
         help="Simulation step in days (default: 1.0)",
     )
     mc.add_argument(
-        "--max-days", type=float, default=3650.0,
+        "--max-days",
+        type=float,
+        default=3650.0,
         help="Forward horizon in days (default: 3650)",
     )
     mc.add_argument(
-        "--seed", type=int, default=None,
+        "--seed",
+        type=int,
+        default=None,
         help="Random seed for reproducibility",
     )
     mc.add_argument(
-        "--allow-negative-rate", action="store_true",
+        "--allow-negative-rate",
+        action="store_true",
         help="Allow simulated rate to go negative (net gains); default clips to 0",
     )
     mc.add_argument(
-        "--min-rate", type=float, default=0.0,
+        "--min-rate",
+        type=float,
+        default=0.0,
         help="Lower bound for simulated rate (default: 0.0)",
     )
 
     # --- display ---
     disp = p.add_argument_group("display")
     disp.add_argument(
-        "--bins", type=int, default=24,
+        "--bins",
+        type=int,
+        default=24,
         help="Target number of histogram bins (default: 24)",
     )
     disp.add_argument(
-        "--quantiles", type=str, default="0.10,0.25,0.50,0.75,0.90",
+        "--quantiles",
+        type=str,
+        default="0.10,0.25,0.50,0.75,0.90",
         help="Comma-separated quantiles to report (default: 0.10,0.25,0.50,0.75,0.90)",
     )
     disp.add_argument(
-        "--fractional", action="store_true",
+        "--fractional",
+        action="store_true",
         help="Display fractional days; default rounds to whole days",
     )
     disp.add_argument(
-        "--hist-min", type=float, default=0.0,
+        "--hist-min",
+        type=float,
+        default=0.0,
         help="Earliest day shown in histogram (default: 0); ignored with --auto-size",
     )
     disp.add_argument(
-        "--auto-size", action="store_true",
+        "--auto-size",
+        action="store_true",
         help="Fit histogram x-axis to where the data has mass; overrides --hist-min",
     )
 
@@ -186,25 +240,45 @@ def parse_args() -> Options:
     # Resolve file list
     multi_file_mode = bool(args.files)
     files: List[Tuple[str, str]] = []
+    not_found: List[str] = []
 
     if args.files:
         tsd_dir = os.environ.get("TSD_DIR", "")
         if not tsd_dir:
-            sys.exit("$TSD_DIR is not set; required for positional file arguments.")
+            sys.exit(
+                "$TSD_DIR is not set; required for positional file arguments."
+            )
         for name in args.files:
-            files.append((name, os.path.join(tsd_dir, name)))
+            path = os.path.join(tsd_dir, name)
+            if os.path.exists(path):
+                files.append((name, path))
+            else:
+                matches = _resolve_name_via_tsd_list(name, tsd_dir)
+                if matches:
+                    files.extend(matches)
+                else:
+                    not_found.append(name)
+        # Deduplicate by path while preserving order
+        seen: set = set()
+        unique: List[Tuple[str, str]] = []
+        for label, path in files:
+            if path not in seen:
+                seen.add(path)
+                unique.append((label, path))
+        files = unique
 
     if args.file_path:
         label = os.path.basename(args.file_path)
         files.append((label, args.file_path))
         if not args.files:
-            multi_file_mode = False   # -f alone → single-file mode
+            multi_file_mode = False  # -f alone → single-file mode
 
     if not files:
         p.error("Specify at least one file: use FILE arguments or -f/--file.")
 
     return Options(
         files=files,
+        not_found=not_found,
         multi_file_mode=multi_file_mode,
         sigma_r=args.sigma_r,
         sigma_q=args.sigma_q,
@@ -228,6 +302,7 @@ def parse_args() -> Options:
 # Data loading
 # ---------------------------------------------------------------------------
 
+
 def read_data(
     path: str, drop_same_day_duplicates: bool
 ) -> List[Tuple[date, float]]:
@@ -250,7 +325,9 @@ def read_data(
                 continue
             try:
                 d = datetime.strptime(parts[0], DATE_FMT).date()
-                q = float(round(float(parts[1])))  # normalise to integer-like float
+                q = float(
+                    round(float(parts[1]))
+                )  # normalise to integer-like float
             except ValueError:
                 continue
             rows.append((d, q))
@@ -271,6 +348,7 @@ def read_data(
 # ---------------------------------------------------------------------------
 # Model
 # ---------------------------------------------------------------------------
+
 
 def compute_time_axis(
     rows: List[Tuple[date, float]],
@@ -348,8 +426,8 @@ def kalman_filter_random_walk_rate(
     x = np.array([z[0], r0], dtype=float)
     P = np.diag([10.0**2, 1.0**2])
 
-    H = np.array([[1.0, 0.0]])   # observe quantity only
-    R_scalar = sigma_z**2        # measurement variance (scalar)
+    H = np.array([[1.0, 0.0]])  # observe quantity only
+    R_scalar = sigma_z**2  # measurement variance (scalar)
     I = np.eye(2)
 
     for k in range(1, n):
@@ -364,7 +442,7 @@ def kalman_filter_random_walk_rate(
 
         # Innovation and Kalman gain; S is 1×1 so invert as a scalar
         S_scalar = float((H @ P @ H.T)[0, 0]) + R_scalar
-        K = (P @ H.T) / S_scalar          # shape (2, 1)
+        K = (P @ H.T) / S_scalar  # shape (2, 1)
         y = float(z[k]) - float((H @ x)[0])
         x = x + K.ravel() * y
 
@@ -418,7 +496,7 @@ def simulate_hitting_time(
         np.clip(r, min_rate, None, out=r)
 
     hits = np.full(nsims, np.inf, dtype=float)
-    active = np.ones(nsims, dtype=bool)   # True = not yet depleted
+    active = np.ones(nsims, dtype=bool)  # True = not yet depleted
 
     sqrt_dt = math.sqrt(dt_forward)
     n_steps = math.ceil(max_days / dt_forward)
@@ -449,6 +527,16 @@ def simulate_hitting_time(
 # Per-file computation
 # ---------------------------------------------------------------------------
 
+
+def _make_error_result(label: str, msg: str) -> FileResult:
+    empty = np.array([], dtype=float)
+    return FileResult(
+        label=label, n_rows=0, q_now=0.0, r_now=0.0,
+        hits=empty, finite=empty, censored=0, censored_pct=0.0,
+        error=msg,
+    )
+
+
 def process_file(
     label: str,
     path: str,
@@ -461,11 +549,18 @@ def process_file(
     already depleted; the simulation is skipped and already_empty is set on the
     returned result.
     """
-    rows = read_data(path, drop_same_day_duplicates=opt.drop_same_day_duplicates)
+    try:
+        rows = read_data(path, drop_same_day_duplicates=opt.drop_same_day_duplicates)
+    except OSError as e:
+        return _make_error_result(label, str(e))
+
     t_days, q_obs = compute_time_axis(rows)
     xT, PT = kalman_filter_random_walk_rate(
-        t_days, q_obs,
-        sigma_r=opt.sigma_r, sigma_q=opt.sigma_q, sigma_z=opt.sigma_z,
+        t_days,
+        q_obs,
+        sigma_r=opt.sigma_r,
+        sigma_q=opt.sigma_q,
+        sigma_z=opt.sigma_z,
     )
     q_now = float(xT[0])
     r_now = float(xT[1])
@@ -485,10 +580,16 @@ def process_file(
         )
 
     hits = simulate_hitting_time(
-        x_mean=xT, P=PT, nsims=opt.nsims, sigma_r=opt.sigma_r,
-        sigma_q=opt.sigma_q, dt_forward=opt.dt_forward,
-        max_days=opt.max_days, rng=rng,
-        allow_negative_rate=opt.allow_negative_rate, min_rate=opt.min_rate,
+        x_mean=xT,
+        P=PT,
+        nsims=opt.nsims,
+        sigma_r=opt.sigma_r,
+        sigma_q=opt.sigma_q,
+        dt_forward=opt.dt_forward,
+        max_days=opt.max_days,
+        rng=rng,
+        allow_negative_rate=opt.allow_negative_rate,
+        min_rate=opt.min_rate,
     )
     finite = hits[np.isfinite(hits)]
     censored = int(np.sum(~np.isfinite(hits)))
@@ -507,6 +608,7 @@ def process_file(
 # ---------------------------------------------------------------------------
 # Formatting helpers
 # ---------------------------------------------------------------------------
+
 
 def fmt_days(v: float, fractional: bool) -> str:
     """Format a day count as a fractional (1 d.p.) or rounded whole number."""
@@ -564,7 +666,9 @@ def ascii_histogram(
     for i in range(len(counts)):
         bar_len = int(round(width * counts[i] / peak)) if peak > 0 else 0
         bar = "█" * bar_len
-        lines.append(f"{fmt(edges[i]):>8}–{fmt(edges[i + 1]):>8} d | {bar} {counts[i]}")
+        lines.append(
+            f"{fmt(edges[i]):>8}–{fmt(edges[i + 1]):>8} d | {bar} {counts[i]}"
+        )
     return "\n".join(lines)
 
 
@@ -572,8 +676,11 @@ def ascii_histogram(
 # Output: single-file mode
 # ---------------------------------------------------------------------------
 
+
 def _print_single(result: FileResult, opt: Options) -> None:
     """Print the full verbose report for a single file."""
+    if result.error:
+        sys.exit(f"ERROR: {result.error}")
     print("=== Time-to-Empty Forecast (State-space RW rate + Monte Carlo) ===")
     print(
         f"Readings: {result.n_rows}"
@@ -582,7 +689,9 @@ def _print_single(result: FileResult, opt: Options) -> None:
     )
 
     if result.already_empty:
-        print("Already empty (last observed value is 0); no forecast produced.")
+        print(
+            "Already empty (last observed value is 0); no forecast produced."
+        )
         sys.exit(0)
 
     print(
@@ -601,7 +710,9 @@ def _print_single(result: FileResult, opt: Options) -> None:
         )
 
     if len(result.finite) == 0:
-        print("No depletion expected within the chosen horizon given current model/settings.")
+        print(
+            "No depletion expected within the chosen horizon given current model/settings."
+        )
         sys.exit(0)
 
     qs = np.quantile(result.finite, q=opt.quantiles)
@@ -620,15 +731,19 @@ def _print_single(result: FileResult, opt: Options) -> None:
         print("Threshold survival:", " | ".join(probs))
 
     print("\nHistogram of time-to-empty (days):")
-    print(ascii_histogram(
-        result.finite, bins=opt.bins,
-        hist_min=opt.hist_min, auto_size=opt.auto_size,
-        fractional=opt.fractional,
-    ))
+    print(
+        ascii_histogram(
+            result.finite,
+            bins=opt.bins,
+            hist_min=opt.hist_min,
+            auto_size=opt.auto_size,
+            fractional=opt.fractional,
+        )
+    )
 
     med = fmt_days(float(np.median(result.finite)), opt.fractional)
-    lo  = fmt_days(float(np.quantile(result.finite, 0.25)), opt.fractional)
-    hi  = fmt_days(float(np.quantile(result.finite, 0.75)), opt.fractional)
+    lo = fmt_days(float(np.quantile(result.finite, 0.25)), opt.fractional)
+    hi = fmt_days(float(np.quantile(result.finite, 0.75)), opt.fractional)
     print(
         f"\nSummary: median ≈ {med} days (IQR {lo}–{hi}),"
         f" {'with long tail' if result.censored_pct > 0 else 'finite for nearly all sims'}."
@@ -639,6 +754,7 @@ def _print_single(result: FileResult, opt: Options) -> None:
 # Output: multi-file mode
 # ---------------------------------------------------------------------------
 
+
 def _section_header(label: str, total_width: int = 60) -> str:
     """Return a divider line of the form '── label ────────'."""
     prefix = f"── {label} "
@@ -648,6 +764,9 @@ def _section_header(label: str, total_width: int = 60) -> str:
 def _print_file_section(result: FileResult, opt: Options) -> None:
     """Print the labeled parameters-and-histogram section for one file."""
     print(_section_header(result.label))
+    if result.error:
+        print(f"ERROR: {result.error}\n")
+        return
     print(
         f"Readings: {result.n_rows}"
         f"  |  q_now ≈ {result.q_now:.2f}"
@@ -665,17 +784,21 @@ def _print_file_section(result: FileResult, opt: Options) -> None:
         print("No depletion within horizon.\n")
         return
     print("\nHistogram of time-to-empty (days):")
-    print(ascii_histogram(
-        result.finite, bins=opt.bins,
-        hist_min=opt.hist_min, auto_size=opt.auto_size,
-        fractional=opt.fractional,
-    ))
+    print(
+        ascii_histogram(
+            result.finite,
+            bins=opt.bins,
+            hist_min=opt.hist_min,
+            auto_size=opt.auto_size,
+            fractional=opt.fractional,
+        )
+    )
     print()
 
 
 def _median_sort_key(result: FileResult) -> float:
-    """Return the median hitting time for sorting; inf if already empty or no finite hits."""
-    if result.already_empty or len(result.finite) == 0:
+    """Return the median hitting time for sorting; inf if already empty, error, or no finite hits."""
+    if result.error or result.already_empty or len(result.finite) == 0:
         return float("inf")
     return float(np.median(result.finite))
 
@@ -685,8 +808,11 @@ def _print_summary_table(results: List[FileResult], opt: Options) -> None:
     Print the quantile summary table, sorted by median in descending order
     (most time remaining first).  Files with no finite hits appear at the end.
     """
-    # Descending: negate finite medians; already-empty and no-hits go to the end
+
+    # Descending: negate finite medians; already-empty and no-hits go to the end; errors last
     def _sort_key(r: FileResult) -> Tuple[int, float]:
+        if r.error:
+            return (3, 0.0)
         if r.already_empty:
             return (2, 0.0)
         if len(r.finite) == 0:
@@ -709,7 +835,12 @@ def _print_summary_table(results: List[FileResult], opt: Options) -> None:
 
     for r in sorted_results:
         row = f"{r.label:{name_w}s}"
-        if r.already_empty:
+        if r.error:
+            tag = "error"
+            for _ in q_headers:
+                row += f"  {tag:>{val_w}s}"
+                tag = ""
+        elif r.already_empty:
             tag = "empty"
             for _ in q_headers:
                 row += f"  {tag:>{val_w}s}"
@@ -729,6 +860,7 @@ def _print_summary_table(results: List[FileResult], opt: Options) -> None:
 # Entry point
 # ---------------------------------------------------------------------------
 
+
 def main() -> None:
     """Parse arguments, run Kalman filter + Monte Carlo for each file, print results."""
     opt = parse_args()
@@ -737,6 +869,8 @@ def main() -> None:
     results: List[FileResult] = []
     for label, path in opt.files:
         results.append(process_file(label, path, opt, rng))
+    for name in opt.not_found:
+        results.append(_make_error_result(name, f"no series matching {name!r} found in tsd -L"))
 
     if opt.multi_file_mode:
         print(
@@ -755,6 +889,9 @@ def main() -> None:
         _print_summary_table(results, opt)
     else:
         _print_single(results[0], opt)
+
+    if any(r.error for r in results):
+        sys.exit(1)
 
 
 if __name__ == "__main__":
