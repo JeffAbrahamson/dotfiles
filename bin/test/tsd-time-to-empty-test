@@ -727,6 +727,12 @@ class TestIntegration(unittest.TestCase):
 2025-03-15     0
 """
 
+    ZERO_LAST_DATA = """\
+2025-03-01   120
+2025-03-09   112
+2025-03-15     0
+"""
+
     def test_already_empty_single_file_exits_zero(self):
         r = run_script("--seed", "42", "--nsims", "500", data=self.ZERO_DATA)
         self.assertEqual(r.returncode, 0)
@@ -738,6 +744,13 @@ class TestIntegration(unittest.TestCase):
     def test_already_empty_single_file_message(self):
         r = run_script("--seed", "42", "--nsims", "500", data=self.ZERO_DATA)
         self.assertIn("Already empty", r.stdout)
+
+    def test_already_empty_single_zero_last_reading(self):
+        # Only the last reading is zero; Kalman estimate would be > 0 without fix
+        r = run_script("--seed", "42", "--nsims", "500", data=self.ZERO_LAST_DATA)
+        self.assertEqual(r.returncode, 0)
+        self.assertIn("Already empty", r.stdout)
+        self.assertNotIn("Histogram", r.stdout)
 
     def test_already_empty_multi_file_section_message(self):
         r = self._run_multi(

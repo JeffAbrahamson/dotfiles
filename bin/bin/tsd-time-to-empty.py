@@ -470,7 +470,7 @@ def process_file(
     q_now = float(xT[0])
     r_now = float(xT[1])
 
-    if q_now <= 0.0:
+    if q_obs[-1] <= 0.0:
         empty_arr = np.array([], dtype=float)
         return FileResult(
             label=label,
@@ -582,7 +582,7 @@ def _print_single(result: FileResult, opt: Options) -> None:
     )
 
     if result.already_empty:
-        print("Already empty (q_now ≤ 0); no forecast produced.")
+        print("Already empty (last observed value is 0); no forecast produced.")
         sys.exit(0)
 
     print(
@@ -654,7 +654,7 @@ def _print_file_section(result: FileResult, opt: Options) -> None:
         f"  |  rate ≈ {result.r_now:.4f}/day"
     )
     if result.already_empty:
-        print("Already empty (q_now ≤ 0).\n")
+        print("Already empty (last observed value is 0).\n")
         return
     if result.censored > 0:
         print(
