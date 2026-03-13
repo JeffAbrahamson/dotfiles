@@ -450,6 +450,41 @@ class TestAsciiHistogram(unittest.TestCase):
             bar_section = line.split("|", 1)[1] if "|" in line else ""
             self.assertLessEqual(bar_section.count("█"), 30)
 
+    def test_hist_min_zero_shows_empty_leading_bins(self):
+        # Data from 50–100 with hist_min=0 (default): the first half of the
+        # bins should be empty because no hitting times fall before day 50.
+        data = np.linspace(50.0, 100.0, 200)
+        lines = ascii_histogram(data, bins=10, hist_min=0.0).strip().split("\n")
+        self.assertEqual(len(lines), 10)
+        for i in range(5):
+            self.assertNotIn("█", lines[i])   # empty bins before the data
+        for i in range(5, 10):
+            self.assertIn("█", lines[i])      # bins that contain data
+
+    def test_auto_size_omits_empty_leading_region(self):
+        # With auto_size the axis starts near the actual data, not at 0.
+        data = np.linspace(50.0, 100.0, 100)
+        lines_auto    = ascii_histogram(data, bins=5, auto_size=True).strip().split("\n")
+        lines_default = ascii_histogram(data, bins=5).strip().split("\n")
+        self.assertIn("█", lines_auto[0])       # first bin has data
+        self.assertNotIn("█", lines_default[0]) # default hist_min=0 → empty leading bin
+
+    def test_non_fractional_has_integer_edges(self):
+        # With fractional=False, the edge values printed must be integers (no ".").
+        data = np.linspace(1.0, 100.0, 200)
+        result = ascii_histogram(data, bins=10, fractional=False)
+        for line in result.strip().split("\n"):
+            edge_part = line.split(" d |")[0]
+            self.assertNotIn(".", edge_part)
+
+    def test_non_fractional_bin_count_near_target(self):
+        # Integer-snapped bins may differ slightly from the target but should
+        # be in the same ballpark (within ±4 for a target of 10).
+        data = np.linspace(1.0, 100.0, 300)
+        lines = ascii_histogram(data, bins=10, fractional=False).strip().split("\n")
+        self.assertGreater(len(lines), 6)
+        self.assertLessEqual(len(lines), 14)
+
 
 # ---------------------------------------------------------------------------
 # Integration (CLI via subprocess)
@@ -574,6 +609,113 @@ class TestIntegration(unittest.TestCase):
         r = run_script("--seed", "42", "--nsims", "500", data=data)
         self.assertEqual(r.returncode, 0)
         self.assertIn("Readings: 2", r.stdout)
+
+    def test_fractional_flag_shows_decimal_days(self):
+        r = run_script("--seed", "42", "--nsims", "500", "--fractional")
+        self.assertEqual(r.returncode, 0)
+        # Fractional mode: quantile values contain a decimal point
+        self.assertRegex(r.stdout, r"\d+\.\d+ d")
+
+    def test_default_integer_days_no_decimal_in_quantiles(self):
+        # Without --fractional, quantile labels like "50%=123 d" contain no "."
+        # before " d" (the integer format).
+        r = run_script("--seed", "42", "--nsims", "500")
+        self.assertEqual(r.returncode, 0)
+        import re
+        # Match pattern like "50%=<digits> d" (no decimal in the value)
+        self.assertRegex(r.stdout, r"\d+%=\d+ d")
+
+    def test_hist_min_option_accepted(self):
+        r = run_script("--seed", "42", "--nsims", "500", "--hist-min", "50")
+        self.assertEqual(r.returncode, 0)
+
+    def test_auto_size_option_accepted(self):
+        r = run_script("--seed", "42", "--nsims", "500", "--auto-size")
+        self.assertEqual(r.returncode, 0)
+
+    # -----------------------------------------------------------------------
+    # Multi-file mode (positional args + $TSD_DIR)
+    # -----------------------------------------------------------------------
+
+    def _run_multi(self, files_data: dict, *args) -> subprocess.CompletedProcess:
+        """Write files to a temp $TSD_DIR and run the script with positional args."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            for name, data in files_data.items():
+                with open(os.path.join(tmpdir, name), "w") as fh:
+                    fh.write(data)
+            env = {**os.environ, "TSD_DIR": tmpdir}
+            return subprocess.run(
+                [sys.executable, str(SCRIPT), *files_data.keys(), *args],
+                capture_output=True, text=True, env=env,
+            )
+
+    def test_multi_file_exits_zero(self):
+        r = self._run_multi(
+            {"alpha": SAMPLE_DATA, "beta": SAMPLE_DATA},
+            "--seed", "42", "--nsims", "500",
+        )
+        self.assertEqual(r.returncode, 0, msg=r.stderr)
+
+    def test_multi_file_section_headers_present(self):
+        r = self._run_multi(
+            {"alpha": SAMPLE_DATA, "beta": SAMPLE_DATA},
+            "--seed", "42", "--nsims", "500",
+        )
+        self.assertIn("── alpha", r.stdout)
+        self.assertIn("── beta",  r.stdout)
+
+    def test_multi_file_summary_table_present(self):
+        r = self._run_multi(
+            {"alpha": SAMPLE_DATA},
+            "--seed", "42", "--nsims", "500",
+        )
+        self.assertIn("Summary", r.stdout)
+        self.assertIn("alpha",   r.stdout)
+
+    def test_multi_file_no_single_file_header(self):
+        # Multi-file mode must not emit the single-file "===" header
+        r = self._run_multi(
+            {"alpha": SAMPLE_DATA},
+            "--seed", "42", "--nsims", "500",
+        )
+        self.assertNotIn("Time-to-Empty Forecast", r.stdout)
+
+    def test_multi_file_summary_sorted_descending(self):
+        # fast: ~3.3 units/day → median hitting time ~24 days
+        # slow: ~0.17 units/day → median hitting time ~700 days
+        # Table should list 'slow' before 'fast'.
+        fast = "2025-03-01  120\n2025-03-07  100\n2025-03-13   80\n"
+        slow = "2025-03-01  120\n2025-03-07  119\n2025-03-13  118\n"
+        r = self._run_multi(
+            {"fast": fast, "slow": slow},
+            "--seed", "42", "--nsims", "2000",
+        )
+        self.assertEqual(r.returncode, 0, msg=r.stderr)
+        summary_start = r.stdout.index("Summary")
+        slow_pos = r.stdout.index("slow", summary_start)
+        fast_pos = r.stdout.index("fast", summary_start)
+        self.assertLess(slow_pos, fast_pos,
+                        msg="'slow' should appear before 'fast' in the descending table")
+
+    def test_multi_file_no_tsd_dir_exits_nonzero(self):
+        # Positional args without $TSD_DIR set should fail
+        env = {k: v for k, v in os.environ.items() if k != "TSD_DIR"}
+        r = subprocess.run(
+            [sys.executable, str(SCRIPT), "somefile"],
+            capture_output=True, text=True, env=env,
+        )
+        self.assertNotEqual(r.returncode, 0)
+
+    def test_multi_file_seed_reproducible(self):
+        r1 = self._run_multi(
+            {"alpha": SAMPLE_DATA, "beta": SAMPLE_DATA},
+            "--seed", "7", "--nsims", "500",
+        )
+        r2 = self._run_multi(
+            {"alpha": SAMPLE_DATA, "beta": SAMPLE_DATA},
+            "--seed", "7", "--nsims", "500",
+        )
+        self.assertEqual(r1.stdout, r2.stdout)
 
 
 # ---------------------------------------------------------------------------

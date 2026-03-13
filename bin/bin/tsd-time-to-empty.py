@@ -15,12 +15,16 @@ Example:
     2025-04-10   98
     2025-04-22   90
 
-Usage:
+Single-file usage:
     tsd-time-to-empty.py -f data.txt
+
+Multi-file usage (files resolved relative to $TSD_DIR):
+    tsd-time-to-empty.py widget sprocket
 """
 
 import argparse
 import math
+import os
 import sys
 from dataclasses import dataclass
 from datetime import date, datetime
@@ -31,9 +35,14 @@ import numpy as np
 DATE_FMT = "%Y-%m-%d"
 
 
+# ---------------------------------------------------------------------------
+# Data structures
+# ---------------------------------------------------------------------------
+
 @dataclass
 class Options:
-    path: str
+    files: List[Tuple[str, str]]   # (label, path) pairs
+    multi_file_mode: bool
     sigma_r: float
     sigma_q: float
     sigma_z: float
@@ -46,84 +55,126 @@ class Options:
     bins: int
     quantiles: Tuple[float, ...]
     drop_same_day_duplicates: bool
+    fractional: bool
+    auto_size: bool
+    hist_min: float
 
+
+@dataclass
+class FileResult:
+    """Processed results for a single input file."""
+    label: str
+    n_rows: int
+    q_now: float
+    r_now: float
+    hits: np.ndarray
+    finite: np.ndarray
+    censored: int
+    censored_pct: float
+
+
+# ---------------------------------------------------------------------------
+# Argument parsing
+# ---------------------------------------------------------------------------
 
 def parse_args() -> Options:
-    """Parse command-line arguments and return a validated Options object."""
+    """
+    Parse command-line arguments and return a validated Options object.
+
+    Files may be supplied either as positional names resolved under $TSD_DIR
+    (enabling multi-file mode with a summary table) or via -f/--file for
+    single-file mode that preserves the classic verbose output.
+    """
     p = argparse.ArgumentParser(
-        description="State-space random-walk rate + Monte-Carlo time-to-empty estimator"
+        description="State-space random-walk rate + Monte-Carlo time-to-empty estimator",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    p.add_argument(
-        "-f", "--file", required=True, help="Input file path (date, quantity)"
+
+    # --- input ---
+    inp = p.add_argument_group("input")
+    inp.add_argument(
+        "files", nargs="*", metavar="FILE",
+        help="File names relative to $TSD_DIR (enables multi-file mode)",
     )
-    p.add_argument(
-        "--sigma-r",
-        type=float,
-        default=0.50,
-        help="Rate random-walk std per sqrt(day). Larger -> faster rate drift (default: 0.50)",
+    inp.add_argument(
+        "-f", "--file", dest="file_path", metavar="PATH",
+        help="Path to a single data file",
     )
-    p.add_argument(
-        "--sigma-q",
-        type=float,
-        default=0.25,
-        help="Process noise std on quantity per sqrt(day) (default: 0.25)",
-    )
-    p.add_argument(
-        "--sigma-z",
-        type=float,
-        default=0.50,
-        help="Measurement noise std on observed quantity (default: 0.50)",
-    )
-    p.add_argument(
-        "--nsims",
-        type=int,
-        default=20000,
-        help="Number of Monte-Carlo forward simulations (default: 20000)",
-    )
-    p.add_argument(
-        "--dt-forward",
-        type=float,
-        default=1.0,
-        help="Forward simulation step in days (default: 1.0)",
-    )
-    p.add_argument(
-        "--max-days",
-        type=float,
-        default=3650.0,
-        help="Maximum forward horizon in days (default: 3650)",
-    )
-    p.add_argument("--seed", type=int, default=None, help="Random seed")
-    p.add_argument(
-        "--allow-negative-rate",
-        action="store_true",
-        help="If set, simulated rate may go negative (i.e., net gains). Default clips at 0.",
-    )
-    p.add_argument(
-        "--min-rate",
-        type=float,
-        default=0.0,
-        help="Lower bound for rate in simulations (default: 0.0)",
-    )
-    p.add_argument(
-        "--bins",
-        type=int,
-        default=24,
-        help="Histogram bins for text output (default: 24)",
-    )
-    p.add_argument(
-        "--quantiles",
-        type=str,
-        default="0.10,0.25,0.50,0.75,0.90",
-        help="Comma-separated quantiles to report (default: 0.10,0.25,0.50,0.75,0.90)",
-    )
-    p.add_argument(
+    inp.add_argument(
         "--keep-same-day",
         dest="drop_same_day",
         action="store_false",
-        help="Keep multiple readings on the same day (default drops all but last)",
+        help="Keep all readings on the same day (default: keep only the last)",
     )
+
+    # --- Kalman filter ---
+    kf = p.add_argument_group("Kalman filter")
+    kf.add_argument(
+        "--sigma-r", type=float, default=0.50,
+        help="Rate random-walk diffusion per √day (default: 0.50)",
+    )
+    kf.add_argument(
+        "--sigma-q", type=float, default=0.25,
+        help="Quantity process-noise diffusion per √day (default: 0.25)",
+    )
+    kf.add_argument(
+        "--sigma-z", type=float, default=0.50,
+        help="Measurement noise std on observed quantity (default: 0.50)",
+    )
+
+    # --- Monte Carlo ---
+    mc = p.add_argument_group("Monte Carlo")
+    mc.add_argument(
+        "--nsims", type=int, default=20000,
+        help="Number of forward simulations (default: 20000)",
+    )
+    mc.add_argument(
+        "--dt-forward", type=float, default=1.0,
+        help="Simulation step in days (default: 1.0)",
+    )
+    mc.add_argument(
+        "--max-days", type=float, default=3650.0,
+        help="Forward horizon in days (default: 3650)",
+    )
+    mc.add_argument(
+        "--seed", type=int, default=None,
+        help="Random seed for reproducibility",
+    )
+    mc.add_argument(
+        "--allow-negative-rate", action="store_true",
+        help="Allow simulated rate to go negative (net gains); default clips to 0",
+    )
+    mc.add_argument(
+        "--min-rate", type=float, default=0.0,
+        help="Lower bound for simulated rate (default: 0.0)",
+    )
+
+    # --- display ---
+    disp = p.add_argument_group("display")
+    disp.add_argument(
+        "--bins", type=int, default=24,
+        help="Target number of histogram bins (default: 24)",
+    )
+    disp.add_argument(
+        "--quantiles", type=str, default="0.10,0.25,0.50,0.75,0.90",
+        help="Comma-separated quantiles to report (default: 0.10,0.25,0.50,0.75,0.90)",
+    )
+    disp.add_argument(
+        "--fractional", action="store_true",
+        help="Display fractional days; default rounds to whole days",
+    )
+    disp.add_argument(
+        "--hist-min", type=float, default=0.0,
+        help="Earliest day shown in histogram (default: 0); ignored with --auto-size",
+    )
+    disp.add_argument(
+        "--auto-size", action="store_true",
+        help="Fit histogram x-axis to where the data has mass; overrides --hist-min",
+    )
+
     args = p.parse_args()
 
+    # Validate quantiles
     try:
         qs = tuple(float(x) for x in args.quantiles.split(","))
     except Exception:
@@ -131,8 +182,29 @@ def parse_args() -> Options:
     if not all(0 < q < 1 for q in qs):
         sys.exit("Quantiles must be in (0,1).")
 
+    # Resolve file list
+    multi_file_mode = bool(args.files)
+    files: List[Tuple[str, str]] = []
+
+    if args.files:
+        tsd_dir = os.environ.get("TSD_DIR", "")
+        if not tsd_dir:
+            sys.exit("$TSD_DIR is not set; required for positional file arguments.")
+        for name in args.files:
+            files.append((name, os.path.join(tsd_dir, name)))
+
+    if args.file_path:
+        label = os.path.basename(args.file_path)
+        files.append((label, args.file_path))
+        if not args.files:
+            multi_file_mode = False   # -f alone → single-file mode
+
+    if not files:
+        p.error("Specify at least one file: use FILE arguments or -f/--file.")
+
     return Options(
-        path=args.file,
+        files=files,
+        multi_file_mode=multi_file_mode,
         sigma_r=args.sigma_r,
         sigma_q=args.sigma_q,
         sigma_z=args.sigma_z,
@@ -145,8 +217,15 @@ def parse_args() -> Options:
         bins=args.bins,
         quantiles=qs,
         drop_same_day_duplicates=args.drop_same_day,
+        fractional=args.fractional,
+        auto_size=args.auto_size,
+        hist_min=args.hist_min,
     )
 
+
+# ---------------------------------------------------------------------------
+# Data loading
+# ---------------------------------------------------------------------------
 
 def read_data(
     path: str, drop_same_day_duplicates: bool
@@ -187,6 +266,10 @@ def read_data(
 
     return rows
 
+
+# ---------------------------------------------------------------------------
+# Model
+# ---------------------------------------------------------------------------
 
 def compute_time_axis(
     rows: List[Tuple[date, float]],
@@ -361,106 +444,277 @@ def simulate_hitting_time(
     return hits
 
 
-def ascii_histogram(data: np.ndarray, bins: int, width: int = 60) -> str:
+# ---------------------------------------------------------------------------
+# Per-file computation
+# ---------------------------------------------------------------------------
+
+def process_file(
+    label: str,
+    path: str,
+    opt: Options,
+    rng: np.random.Generator,
+) -> FileResult:
+    """Run the Kalman filter and Monte Carlo simulation for a single data file."""
+    rows = read_data(path, drop_same_day_duplicates=opt.drop_same_day_duplicates)
+    t_days, q_obs = compute_time_axis(rows)
+    xT, PT = kalman_filter_random_walk_rate(
+        t_days, q_obs,
+        sigma_r=opt.sigma_r, sigma_q=opt.sigma_q, sigma_z=opt.sigma_z,
+    )
+    hits = simulate_hitting_time(
+        x_mean=xT, P=PT, nsims=opt.nsims, sigma_r=opt.sigma_r,
+        sigma_q=opt.sigma_q, dt_forward=opt.dt_forward,
+        max_days=opt.max_days, rng=rng,
+        allow_negative_rate=opt.allow_negative_rate, min_rate=opt.min_rate,
+    )
+    finite = hits[np.isfinite(hits)]
+    censored = int(np.sum(~np.isfinite(hits)))
+    return FileResult(
+        label=label,
+        n_rows=len(rows),
+        q_now=float(xT[0]),
+        r_now=float(xT[1]),
+        hits=hits,
+        finite=finite,
+        censored=censored,
+        censored_pct=100.0 * censored / len(hits),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Formatting helpers
+# ---------------------------------------------------------------------------
+
+def fmt_days(v: float, fractional: bool) -> str:
+    """Format a day count as a fractional (1 d.p.) or rounded whole number."""
+    if fractional:
+        return f"{v:,.1f}"
+    return f"{int(round(v)):,d}"
+
+
+def ascii_histogram(
+    data: np.ndarray,
+    bins: int,
+    width: int = 60,
+    hist_min: float = 0.0,
+    auto_size: bool = False,
+    fractional: bool = True,
+) -> str:
     """
     Render a fixed-width ASCII bar chart of data values.
 
     Only finite values are plotted; each bar is scaled relative to the tallest
-    bin.  Returns a plain message string if no finite values exist.
+    bin.  When auto_size is False the x-axis starts at hist_min (default 0),
+    showing empty leading bars when the data arrives later — useful for seeing
+    how quickly depletion becomes probable.  When auto_size is True the axis
+    is fitted to where the data has mass.  When fractional is False, bin
+    boundaries are snapped to whole days.  Returns a plain message string if
+    no finite values exist.
     """
     finite = data[np.isfinite(data)]
     if len(finite) == 0:
         return "(no depletion within horizon for any simulation)"
-    counts, edges = np.histogram(finite, bins=bins)
+
+    data_max = float(np.max(finite))
+
+    if fractional:
+        if auto_size:
+            hist_range = None
+        else:
+            lo = min(float(hist_min), data_max)
+            hist_range = (lo, data_max)
+        counts, edges = np.histogram(finite, bins=bins, range=hist_range)
+        fmt = lambda v: f"{v:.1f}"
+    else:
+        if auto_size:
+            lo = int(math.floor(float(np.min(finite))))
+        else:
+            lo = min(int(math.floor(hist_min)), int(math.floor(data_max)))
+        hi = int(math.ceil(data_max))
+        bin_width = max(1, math.ceil((hi - lo) / bins))
+        bin_edges = np.arange(lo, hi + bin_width, bin_width, dtype=float)
+        counts, edges = np.histogram(finite, bins=bin_edges)
+        fmt = lambda v: f"{int(round(v))}"
+
     peak = counts.max()
     lines = []
     for i in range(len(counts)):
         bar_len = int(round(width * counts[i] / peak)) if peak > 0 else 0
         bar = "█" * bar_len
-        lines.append(f"{edges[i]:8.1f}–{edges[i + 1]:8.1f} d | {bar} {counts[i]}")
+        lines.append(f"{fmt(edges[i]):>8}–{fmt(edges[i + 1]):>8} d | {bar} {counts[i]}")
     return "\n".join(lines)
 
 
-def main():
-    """Entry point: parse arguments, run Kalman filter + Monte Carlo, print results."""
-    opt = parse_args()
-    rng = np.random.default_rng(opt.seed)
+# ---------------------------------------------------------------------------
+# Output: single-file mode
+# ---------------------------------------------------------------------------
 
-    rows = read_data(opt.path, drop_same_day_duplicates=opt.drop_same_day_duplicates)
-    t_days, q_obs = compute_time_axis(rows)
-
-    xT, PT = kalman_filter_random_walk_rate(
-        t_days,
-        q_obs,
-        sigma_r=opt.sigma_r,
-        sigma_q=opt.sigma_q,
-        sigma_z=opt.sigma_z,
-    )
-
-    q_now, r_now = float(xT[0]), float(xT[1])
-
-    hits = simulate_hitting_time(
-        x_mean=xT,
-        P=PT,
-        nsims=opt.nsims,
-        sigma_r=opt.sigma_r,
-        sigma_q=opt.sigma_q,
-        dt_forward=opt.dt_forward,
-        max_days=opt.max_days,
-        rng=rng,
-        allow_negative_rate=opt.allow_negative_rate,
-        min_rate=opt.min_rate,
-    )
-
-    finite = hits[np.isfinite(hits)]
-    censored = np.sum(~np.isfinite(hits))
-    censored_pct = 100.0 * censored / len(hits)
-
+def _print_single(result: FileResult, opt: Options) -> None:
+    """Print the full verbose report for a single file."""
     print("=== Time-to-Empty Forecast (State-space RW rate + Monte Carlo) ===")
     print(
-        f"Readings: {len(rows)}  |  Current q_now ≈ {q_now:.2f}  |  Current rate r_now ≈ {r_now:.4f} per day"
+        f"Readings: {result.n_rows}"
+        f"  |  Current q_now ≈ {result.q_now:.2f}"
+        f"  |  Current rate r_now ≈ {result.r_now:.4f} per day"
     )
     print(
-        f"Model params: sigma_r={opt.sigma_r:.3f}/√day, sigma_q={opt.sigma_q:.3f}/√day, sigma_z={opt.sigma_z:.3f}"
+        f"Model params: sigma_r={opt.sigma_r:.3f}/√day,"
+        f" sigma_q={opt.sigma_q:.3f}/√day, sigma_z={opt.sigma_z:.3f}"
     )
     print(
-        f"Simulations: {opt.nsims}  |  step={opt.dt_forward} day  |  horizon={opt.max_days} days"
+        f"Simulations: {opt.nsims}"
+        f"  |  step={opt.dt_forward} day"
+        f"  |  horizon={opt.max_days} days"
     )
-    if censored > 0:
+    if result.censored > 0:
         print(
-            f"Note: {censored} simulations ({censored_pct:.1f}%) did NOT reach zero within horizon."
+            f"Note: {result.censored} simulations"
+            f" ({result.censored_pct:.1f}%) did NOT reach zero within horizon."
         )
 
-    if len(finite) == 0:
-        print(
-            "No depletion expected within the chosen horizon given current model/settings."
-        )
+    if len(result.finite) == 0:
+        print("No depletion expected within the chosen horizon given current model/settings.")
         sys.exit(0)
 
-    qs = np.quantile(finite, q=opt.quantiles)
+    qs = np.quantile(result.finite, q=opt.quantiles)
     qlabels = ", ".join(
-        f"{int(100*q):>2d}%={v:,.1f} d" for q, v in zip(opt.quantiles, qs)
+        f"{int(100*q):>2d}%={fmt_days(float(v), opt.fractional)} d"
+        for q, v in zip(opt.quantiles, qs)
     )
     print("Quantiles:", qlabels)
 
     thresholds = sorted(set(float(round(v / 10) * 10) for v in qs))
     if thresholds:
-        probs = []
-        for th in thresholds:
-            p = 100.0 * (finite >= th).mean()
-            probs.append(f"P[T ≥ {th:.0f} d] = {p:5.1f}%")
+        probs = [
+            f"P[T ≥ {fmt_days(th, opt.fractional)} d] = {100.0*(result.finite >= th).mean():5.1f}%"
+            for th in thresholds
+        ]
         print("Threshold survival:", " | ".join(probs))
 
     print("\nHistogram of time-to-empty (days):")
-    print(ascii_histogram(finite, bins=opt.bins))
+    print(ascii_histogram(
+        result.finite, bins=opt.bins,
+        hist_min=opt.hist_min, auto_size=opt.auto_size,
+        fractional=opt.fractional,
+    ))
 
-    med = float(np.median(finite))
-    lo = float(np.quantile(finite, 0.25))
-    hi = float(np.quantile(finite, 0.75))
+    med = fmt_days(float(np.median(result.finite)), opt.fractional)
+    lo  = fmt_days(float(np.quantile(result.finite, 0.25)), opt.fractional)
+    hi  = fmt_days(float(np.quantile(result.finite, 0.75)), opt.fractional)
     print(
-        f"\nSummary: median ≈ {med:.1f} days (IQR {lo:.1f}–{hi:.1f}), "
-        f"{'with long tail' if censored_pct > 0 else 'finite for nearly all sims'}."
+        f"\nSummary: median ≈ {med} days (IQR {lo}–{hi}),"
+        f" {'with long tail' if result.censored_pct > 0 else 'finite for nearly all sims'}."
     )
+
+
+# ---------------------------------------------------------------------------
+# Output: multi-file mode
+# ---------------------------------------------------------------------------
+
+def _section_header(label: str, total_width: int = 60) -> str:
+    """Return a divider line of the form '── label ────────'."""
+    prefix = f"── {label} "
+    return prefix + "─" * max(0, total_width - len(prefix))
+
+
+def _print_file_section(result: FileResult, opt: Options) -> None:
+    """Print the labeled parameters-and-histogram section for one file."""
+    print(_section_header(result.label))
+    print(
+        f"Readings: {result.n_rows}"
+        f"  |  q_now ≈ {result.q_now:.2f}"
+        f"  |  rate ≈ {result.r_now:.4f}/day"
+    )
+    if result.censored > 0:
+        print(
+            f"Note: {result.censored} sims"
+            f" ({result.censored_pct:.1f}%) did NOT reach zero within horizon."
+        )
+    if len(result.finite) == 0:
+        print("No depletion within horizon.\n")
+        return
+    print("\nHistogram of time-to-empty (days):")
+    print(ascii_histogram(
+        result.finite, bins=opt.bins,
+        hist_min=opt.hist_min, auto_size=opt.auto_size,
+        fractional=opt.fractional,
+    ))
+    print()
+
+
+def _median_sort_key(result: FileResult) -> float:
+    """Return the median hitting time for sorting; inf if no finite hits."""
+    if len(result.finite) == 0:
+        return float("inf")
+    return float(np.median(result.finite))
+
+
+def _print_summary_table(results: List[FileResult], opt: Options) -> None:
+    """
+    Print the quantile summary table, sorted by median in descending order
+    (most time remaining first).  Files with no finite hits appear at the end.
+    """
+    # Descending: negate finite medians; keep inf (no hits) at the end
+    sorted_results = sorted(
+        results,
+        key=lambda r: -_median_sort_key(r) if len(r.finite) > 0 else float("inf"),
+    )
+
+    q_headers = [f"P{int(100*q)}" for q in opt.quantiles]
+    name_w = max(4, max(len(r.label) for r in results))
+    val_w = 8 if opt.fractional else 6
+
+    print("\n=== Summary (sorted by median, descending) ===\n")
+    header = f"{'Name':{name_w}s}"
+    for h in q_headers:
+        header += f"  {h:>{val_w}s}"
+    header += f"  {'censored':>9s}"
+    print(header)
+    print("─" * len(header))
+
+    for r in sorted_results:
+        row = f"{r.label:{name_w}s}"
+        if len(r.finite) == 0:
+            for _ in q_headers:
+                row += f"  {'—':>{val_w}s}"
+        else:
+            qs = np.quantile(r.finite, q=opt.quantiles)
+            for v in qs:
+                row += f"  {fmt_days(float(v), opt.fractional):>{val_w}s}"
+        row += f"  {r.censored_pct:>8.1f}%"
+        print(row)
+
+
+# ---------------------------------------------------------------------------
+# Entry point
+# ---------------------------------------------------------------------------
+
+def main() -> None:
+    """Parse arguments, run Kalman filter + Monte Carlo for each file, print results."""
+    opt = parse_args()
+    rng = np.random.default_rng(opt.seed)
+
+    results: List[FileResult] = []
+    for label, path in opt.files:
+        results.append(process_file(label, path, opt, rng))
+
+    if opt.multi_file_mode:
+        print(
+            f"Model: sigma_r={opt.sigma_r:.3f}"
+            f"  sigma_q={opt.sigma_q:.3f}"
+            f"  sigma_z={opt.sigma_z:.3f}"
+        )
+        print(
+            f"Simulations: {opt.nsims}"
+            f"  |  step={opt.dt_forward} d"
+            f"  |  horizon={opt.max_days} d"
+        )
+        print()
+        for r in results:
+            _print_file_section(r, opt)
+        _print_summary_table(results, opt)
+    else:
+        _print_single(results[0], opt)
 
 
 if __name__ == "__main__":
