@@ -1,0 +1,582 @@
+#!/usr/bin/env python3
+"""Tests for tsd-time-to-empty.py.
+
+Covers unit tests for every public function and integration tests for the CLI.
+"""
+
+import importlib.util
+import os
+import subprocess
+import sys
+import tempfile
+import unittest
+from datetime import date
+from pathlib import Path
+
+import numpy as np
+
+# ---------------------------------------------------------------------------
+# Load the module under test (its filename contains hyphens)
+# ---------------------------------------------------------------------------
+
+SCRIPT = Path(__file__).resolve().parent.parent / "bin" / "tsd-time-to-empty.py"
+
+spec = importlib.util.spec_from_file_location("tsd_time_to_empty", SCRIPT)
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+
+read_data = mod.read_data
+compute_time_axis = mod.compute_time_axis
+initial_rate_guess = mod.initial_rate_guess
+kalman_filter_random_walk_rate = mod.kalman_filter_random_walk_rate
+simulate_hitting_time = mod.simulate_hitting_time
+ascii_histogram = mod.ascii_histogram
+
+# ---------------------------------------------------------------------------
+# Shared helpers / fixtures
+# ---------------------------------------------------------------------------
+
+SAMPLE_DATA = """\
+2025-03-01   120
+2025-03-09   112
+2025-03-15   100
+2025-03-30   98
+2025-04-10   98
+2025-04-22   90
+"""
+
+
+def write_temp(content: str) -> str:
+    """Write *content* to a temporary file and return its path."""
+    fd, path = tempfile.mkstemp(suffix=".txt")
+    with os.fdopen(fd, "w") as fh:
+        fh.write(content)
+    return path
+
+
+def run_script(*args, data: str = SAMPLE_DATA) -> subprocess.CompletedProcess:
+    """Run tsd-time-to-empty.py against a temp data file; return the result."""
+    path = write_temp(data)
+    try:
+        return subprocess.run(
+            [sys.executable, str(SCRIPT), "-f", path, *args],
+            capture_output=True,
+            text=True,
+        )
+    finally:
+        os.unlink(path)
+
+
+# ---------------------------------------------------------------------------
+# read_data
+# ---------------------------------------------------------------------------
+
+class TestReadData(unittest.TestCase):
+
+    def _read(self, content, **kwargs):
+        path = write_temp(content)
+        try:
+            return read_data(path, **kwargs)
+        finally:
+            os.unlink(path)
+
+    def test_basic_parsing(self):
+        rows = self._read(SAMPLE_DATA, drop_same_day_duplicates=True)
+        self.assertEqual(len(rows), 6)
+        self.assertEqual(rows[0], (date(2025, 3, 1), 120.0))
+        self.assertEqual(rows[-1], (date(2025, 4, 22), 90.0))
+
+    def test_sorts_by_date(self):
+        content = "2025-03-15   100\n2025-03-01   120\n2025-03-09   112\n"
+        rows = self._read(content, drop_same_day_duplicates=False)
+        dates = [d for d, _ in rows]
+        self.assertEqual(dates, sorted(dates))
+
+    def test_skips_blank_lines(self):
+        content = "\n2025-03-01   120\n\n2025-03-09   112\n\n"
+        rows = self._read(content, drop_same_day_duplicates=False)
+        self.assertEqual(len(rows), 2)
+
+    def test_skips_comment_lines(self):
+        content = "# header\n2025-03-01   120\n# note\n2025-03-09   112\n"
+        rows = self._read(content, drop_same_day_duplicates=False)
+        self.assertEqual(len(rows), 2)
+
+    def test_skips_malformed_date(self):
+        # Wrong date format: should be skipped
+        content = "03/01/2025   120\n2025-03-09   112\n"
+        rows = self._read(content, drop_same_day_duplicates=False)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0][0], date(2025, 3, 9))
+
+    def test_skips_malformed_quantity(self):
+        content = "2025-03-01   notanumber\n2025-03-09   112\n"
+        rows = self._read(content, drop_same_day_duplicates=False)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0][0], date(2025, 3, 9))
+
+    def test_skips_lines_with_only_one_column(self):
+        content = "2025-03-01\n2025-03-09   112\n"
+        rows = self._read(content, drop_same_day_duplicates=False)
+        self.assertEqual(len(rows), 1)
+
+    def test_dedup_keeps_last_reading_per_day(self):
+        content = "2025-03-01   120\n2025-03-01   115\n2025-03-01   110\n"
+        rows = self._read(content, drop_same_day_duplicates=True)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0][1], 110.0)
+
+    def test_keep_same_day_retains_all_readings(self):
+        content = "2025-03-01   120\n2025-03-01   115\n"
+        rows = self._read(content, drop_same_day_duplicates=False)
+        self.assertEqual(len(rows), 2)
+
+    def test_float_quantity_is_rounded_to_integer(self):
+        content = "2025-03-01   36.6\n2025-03-09   37.0\n"
+        rows = self._read(content, drop_same_day_duplicates=False)
+        self.assertEqual(rows[0][1], 37.0)   # 36.6 → 37
+        self.assertEqual(rows[1][1], 37.0)   # 37.0 → 37
+
+    def test_exits_on_empty_file(self):
+        path = write_temp("")
+        try:
+            with self.assertRaises(SystemExit):
+                read_data(path, drop_same_day_duplicates=True)
+        finally:
+            os.unlink(path)
+
+    def test_exits_when_all_lines_malformed(self):
+        content = "# only comment\n\nbadline\n"
+        path = write_temp(content)
+        try:
+            with self.assertRaises(SystemExit):
+                read_data(path, drop_same_day_duplicates=True)
+        finally:
+            os.unlink(path)
+
+
+# ---------------------------------------------------------------------------
+# compute_time_axis
+# ---------------------------------------------------------------------------
+
+class TestComputeTimeAxis(unittest.TestCase):
+
+    ROWS = [
+        (date(2025, 3, 1),  120.0),
+        (date(2025, 3, 11), 110.0),
+        (date(2025, 3, 21), 100.0),
+    ]
+
+    def test_first_time_is_zero(self):
+        t, _ = compute_time_axis(self.ROWS)
+        self.assertEqual(t[0], 0.0)
+
+    def test_correct_day_intervals(self):
+        t, _ = compute_time_axis(self.ROWS)
+        np.testing.assert_array_equal(t, [0.0, 10.0, 20.0])
+
+    def test_correct_quantities(self):
+        _, q = compute_time_axis(self.ROWS)
+        np.testing.assert_array_equal(q, [120.0, 110.0, 100.0])
+
+    def test_single_row(self):
+        rows = [(date(2025, 1, 1), 50.0)]
+        t, q = compute_time_axis(rows)
+        np.testing.assert_array_equal(t, [0.0])
+        np.testing.assert_array_equal(q, [50.0])
+
+
+# ---------------------------------------------------------------------------
+# initial_rate_guess
+# ---------------------------------------------------------------------------
+
+class TestInitialRateGuess(unittest.TestCase):
+
+    def _guess(self, days, vals):
+        return initial_rate_guess(
+            np.array(days, dtype=float),
+            np.array(vals, dtype=float),
+        )
+
+    def test_simple_one_interval(self):
+        # 10 units over 10 days → 1.0 per day
+        self.assertAlmostEqual(self._guess([0, 10], [100, 90]), 1.0)
+
+    def test_median_of_multiple_rates(self):
+        # Rates: (100-90)/10=1.0, (90-80)/5=2.0, (80-70)/10=1.0 → median 1.0
+        self.assertAlmostEqual(
+            self._guess([0, 10, 15, 25], [100, 90, 80, 70]), 1.0
+        )
+
+    def test_ignores_zero_change_intervals(self):
+        # Interval 0→5: no change (excluded); 5→10: rate 2.0
+        self.assertAlmostEqual(self._guess([0, 5, 10], [100, 100, 90]), 2.0)
+
+    def test_ignores_net_gain_intervals(self):
+        # Interval 0→5: net gain (excluded); 5→10: 20/5 = 4.0
+        self.assertAlmostEqual(self._guess([0, 5, 10], [100, 110, 90]), 4.0)
+
+    def test_fallback_when_no_positive_rates(self):
+        # Quantity only increases
+        self.assertEqual(self._guess([0, 5, 10], [80, 90, 100]), 1e-6)
+
+    def test_fallback_on_single_observation(self):
+        self.assertEqual(self._guess([0], [50]), 1e-6)
+
+    def test_fallback_on_duplicate_timestamps(self):
+        # dt=0 is skipped for all intervals
+        self.assertEqual(self._guess([0, 0, 0], [100, 90, 80]), 1e-6)
+
+
+# ---------------------------------------------------------------------------
+# kalman_filter_random_walk_rate
+# ---------------------------------------------------------------------------
+
+class TestKalmanFilter(unittest.TestCase):
+
+    def _kf(self, days, vals, **kw):
+        defaults = dict(sigma_r=0.5, sigma_q=0.25, sigma_z=0.5)
+        defaults.update(kw)
+        return kalman_filter_random_walk_rate(
+            np.array(days, dtype=float),
+            np.array(vals, dtype=float),
+            **defaults,
+        )
+
+    def test_single_observation_returns_prior(self):
+        xT, PT = self._kf([0], [50])
+        self.assertAlmostEqual(xT[0], 50.0)
+        self.assertGreaterEqual(xT[1], 0.0)
+        self.assertEqual(PT.shape, (2, 2))
+
+    def test_rate_always_non_negative(self):
+        # Quantity is increasing → filter should clip rate to 0
+        xT, _ = self._kf(range(10), [50 + 2 * k for k in range(10)])
+        self.assertGreaterEqual(xT[1], 0.0)
+
+    def test_two_observations_non_negative_rate(self):
+        xT, _ = self._kf([0, 10], [100, 90])
+        self.assertGreaterEqual(xT[1], 0.0)
+
+    def test_linear_signal_recovers_rate(self):
+        # Perfect linear decrease of 1 unit/day; with low noise the filter
+        # should converge close to the true rate of 1.0.
+        t = list(range(21))
+        z = [100.0 - k for k in t]
+        xT, _ = self._kf(t, z, sigma_r=0.01, sigma_q=0.01, sigma_z=0.1)
+        self.assertAlmostEqual(xT[1], 1.0, delta=0.1)
+
+    def test_quantity_tracks_low_noise_observations(self):
+        # With very low measurement noise, q_now should match the last reading.
+        xT, _ = self._kf([0, 10], [100, 85], sigma_z=0.01)
+        self.assertAlmostEqual(xT[0], 85.0, delta=0.5)
+
+    def test_covariance_is_symmetric(self):
+        _, PT = self._kf([0, 5, 10, 15], [100, 96, 91, 87])
+        np.testing.assert_allclose(PT, PT.T, atol=1e-10)
+
+    def test_covariance_is_positive_semidefinite(self):
+        _, PT = self._kf([0, 5, 10, 15], [100, 96, 91, 87])
+        eigenvalues = np.linalg.eigvalsh(PT)
+        self.assertTrue(np.all(eigenvalues >= -1e-10))
+
+    def test_longer_series_tightens_covariance(self):
+        # More observations should reduce posterior uncertainty.
+        _, PT_short = self._kf([0, 10], [100, 90])
+        _, PT_long = self._kf(range(21), [100 - k for k in range(21)])
+        self.assertLess(PT_long[0, 0], PT_short[0, 0])
+        self.assertLess(PT_long[1, 1], PT_short[1, 1])
+
+
+# ---------------------------------------------------------------------------
+# simulate_hitting_time
+# ---------------------------------------------------------------------------
+
+class TestSimulateHittingTime(unittest.TestCase):
+
+    def _sim(self, q0, r0, *, nsims=300, sigma_r=0.0, sigma_q=0.0,
+             dt=1.0, max_days=100.0, allow_neg=False, min_rate=0.0, seed=42):
+        P = np.diag([1e-10, 1e-10])   # tiny uncertainty so initial state ≈ (q0, r0)
+        return simulate_hitting_time(
+            x_mean=np.array([q0, r0]),
+            P=P,
+            nsims=nsims,
+            sigma_r=sigma_r,
+            sigma_q=sigma_q,
+            dt_forward=dt,
+            max_days=max_days,
+            rng=np.random.default_rng(seed),
+            allow_negative_rate=allow_neg,
+            min_rate=min_rate,
+        )
+
+    def test_output_shape(self):
+        hits = self._sim(10.0, 1.0, nsims=500)
+        self.assertEqual(hits.shape, (500,))
+
+    def test_high_rate_all_hit_first_step(self):
+        # q=10, r=20: after one step q = 10 - 20*1 = -10 → depleted
+        hits = self._sim(10.0, 20.0, dt=1.0, max_days=5.0)
+        np.testing.assert_array_equal(hits, 1.0)
+
+    def test_zero_rate_no_noise_all_censored(self):
+        # q=1000, r=0, no noise: quantity never decreases
+        hits = self._sim(1000.0, 0.0, sigma_r=0.0, sigma_q=0.0,
+                         allow_neg=False, min_rate=0.0, max_days=50.0)
+        self.assertTrue(np.all(hits == np.inf))
+
+    def test_censored_paths_recorded_as_inf(self):
+        hits = self._sim(1000.0, 0.0, max_days=10.0)
+        self.assertTrue(np.all(~np.isfinite(hits)))
+
+    def test_hitting_time_close_to_expected(self):
+        # q=20, r=1/day → expected depletion at ~20 days
+        hits = self._sim(20.0, 1.0, nsims=1000, max_days=60.0)
+        finite = hits[np.isfinite(hits)]
+        self.assertGreater(len(finite), 900)
+        self.assertAlmostEqual(float(np.median(finite)), 20.0, delta=3.0)
+
+    def test_seed_produces_identical_results(self):
+        P = np.diag([0.5, 0.1])
+        kwargs = dict(
+            x_mean=np.array([50.0, 2.0]), P=P, nsims=200,
+            sigma_r=0.1, sigma_q=0.05, dt_forward=1.0, max_days=100.0,
+            allow_negative_rate=False, min_rate=0.0,
+        )
+        h1 = simulate_hitting_time(**kwargs, rng=np.random.default_rng(7))
+        h2 = simulate_hitting_time(**kwargs, rng=np.random.default_rng(7))
+        np.testing.assert_array_equal(h1, h2)
+
+    def test_different_seeds_produce_different_results(self):
+        P = np.diag([0.5, 0.1])
+        kwargs = dict(
+            x_mean=np.array([50.0, 2.0]), P=P, nsims=200,
+            sigma_r=0.1, sigma_q=0.05, dt_forward=1.0, max_days=100.0,
+            allow_negative_rate=False, min_rate=0.0,
+        )
+        h1 = simulate_hitting_time(**kwargs, rng=np.random.default_rng(1))
+        h2 = simulate_hitting_time(**kwargs, rng=np.random.default_rng(2))
+        self.assertFalse(np.array_equal(h1, h2))
+
+    def test_allow_negative_rate_runs_without_error(self):
+        hits = self._sim(10.0, -2.0, allow_neg=True, max_days=20.0)
+        self.assertEqual(hits.shape, (300,))
+
+    def test_min_rate_forces_depletion(self):
+        # With min_rate=1.0, even a zero initial rate gets floored to 1.
+        # q=5 at rate ≥ 1/day depletes within 6 steps.
+        hits = self._sim(5.0, 0.0, allow_neg=False, min_rate=1.0,
+                         dt=1.0, max_days=20.0)
+        self.assertTrue(np.all(np.isfinite(hits)))
+        self.assertTrue(np.all(hits <= 6.0))
+
+    def test_sigma_q_scales_with_sqrt_dt(self):
+        # With correct sqrt(dt) scaling, changing dt should not shift the
+        # median hitting time — the diffusion rate stays the same.
+        P = np.diag([0.01, 0.001])
+        base = dict(
+            x_mean=np.array([50.0, 1.0]), P=P, nsims=8000,
+            sigma_r=0.0, sigma_q=1.0, max_days=200.0,
+            allow_negative_rate=False, min_rate=0.0,
+        )
+        h1 = simulate_hitting_time(**base, dt_forward=1.0,
+                                   rng=np.random.default_rng(0))
+        h2 = simulate_hitting_time(**base, dt_forward=2.0,
+                                   rng=np.random.default_rng(0))
+        f1 = h1[np.isfinite(h1)]
+        f2 = h2[np.isfinite(h2)]
+        # Medians should be within 5 days; std within 10 days
+        self.assertAlmostEqual(float(np.median(f1)), float(np.median(f2)),
+                               delta=5.0)
+        self.assertAlmostEqual(float(np.std(f1)), float(np.std(f2)),
+                               delta=10.0)
+
+    def test_non_psd_covariance_handled_gracefully(self):
+        # A near-singular P (not perfectly PSD) should not crash
+        P = np.array([[1.0, 1.0], [1.0, 1.0]])  # rank-1, borderline PSD
+        hits = simulate_hitting_time(
+            x_mean=np.array([10.0, 1.0]), P=P, nsims=50,
+            sigma_r=0.1, sigma_q=0.1, dt_forward=1.0, max_days=50.0,
+            rng=np.random.default_rng(0), allow_negative_rate=False, min_rate=0.0,
+        )
+        self.assertEqual(hits.shape, (50,))
+
+
+# ---------------------------------------------------------------------------
+# ascii_histogram
+# ---------------------------------------------------------------------------
+
+class TestAsciiHistogram(unittest.TestCase):
+
+    def test_all_inf_returns_message(self):
+        result = ascii_histogram(np.array([np.inf, np.inf]), bins=5)
+        self.assertIn("no depletion", result)
+
+    def test_line_count_equals_bins(self):
+        data = np.linspace(1.0, 100.0, 200)
+        lines = ascii_histogram(data, bins=10).strip().split("\n")
+        self.assertEqual(len(lines), 10)
+
+    def test_tallest_bin_has_full_width_bar(self):
+        # All identical values → one bin is tallest → full bar of `width` blocks
+        data = np.full(100, 42.0)
+        result = ascii_histogram(data, bins=1, width=15)
+        self.assertIn("█" * 15, result)
+
+    def test_empty_bin_has_no_bar_characters(self):
+        # Bimodal data with a gap in the middle forces the inner bins to be
+        # empty when using 4 bins.
+        data = np.array([10.0, 11.0, 90.0, 91.0])
+        lines = ascii_histogram(data, bins=4).strip().split("\n")
+        self.assertNotIn("█", lines[1])   # second bin is empty
+        self.assertNotIn("█", lines[2])   # third bin is empty
+
+    def test_output_lines_contain_day_label(self):
+        data = np.array([10.0, 20.0, 30.0])
+        result = ascii_histogram(data, bins=3)
+        self.assertIn(" d |", result)
+
+    def test_inf_values_are_excluded(self):
+        data = np.array([10.0, 20.0, np.inf, 30.0, np.inf])
+        lines = ascii_histogram(data, bins=3).strip().split("\n")
+        # Only finite values contribute; histogram should still have 3 bins
+        self.assertEqual(len(lines), 3)
+
+    def test_custom_bar_width(self):
+        data = np.linspace(1.0, 50.0, 100)
+        result = ascii_histogram(data, bins=5, width=30)
+        # Bar cannot exceed width=30 characters
+        for line in result.split("\n"):
+            bar_section = line.split("|", 1)[1] if "|" in line else ""
+            self.assertLessEqual(bar_section.count("█"), 30)
+
+
+# ---------------------------------------------------------------------------
+# Integration (CLI via subprocess)
+# ---------------------------------------------------------------------------
+
+class TestIntegration(unittest.TestCase):
+
+    def test_normal_run_exits_zero(self):
+        r = run_script("--seed", "42", "--nsims", "500")
+        self.assertEqual(r.returncode, 0, msg=r.stderr)
+
+    def test_output_header(self):
+        r = run_script("--seed", "42", "--nsims", "500")
+        self.assertIn("Time-to-Empty Forecast", r.stdout)
+
+    def test_output_readings_count(self):
+        r = run_script("--seed", "42", "--nsims", "500")
+        self.assertIn("Readings: 6", r.stdout)
+
+    def test_output_contains_quantiles(self):
+        r = run_script("--seed", "42", "--nsims", "500")
+        self.assertIn("Quantiles:", r.stdout)
+
+    def test_output_contains_histogram(self):
+        r = run_script("--seed", "42", "--nsims", "500")
+        self.assertIn("Histogram", r.stdout)
+
+    def test_output_contains_summary(self):
+        r = run_script("--seed", "42", "--nsims", "500")
+        self.assertIn("Summary:", r.stdout)
+
+    def test_seed_makes_output_reproducible(self):
+        r1 = run_script("--seed", "99", "--nsims", "500")
+        r2 = run_script("--seed", "99", "--nsims", "500")
+        self.assertEqual(r1.stdout, r2.stdout)
+
+    def test_different_seeds_produce_different_output(self):
+        r1 = run_script("--seed", "1", "--nsims", "500")
+        r2 = run_script("--seed", "2", "--nsims", "500")
+        self.assertNotEqual(r1.stdout, r2.stdout)
+
+    def test_missing_file_exits_nonzero(self):
+        r = subprocess.run(
+            [sys.executable, str(SCRIPT), "-f", "/nonexistent/__no_such_file__.txt"],
+            capture_output=True, text=True,
+        )
+        self.assertNotEqual(r.returncode, 0)
+
+    def test_empty_file_exits_nonzero(self):
+        r = run_script(data="")
+        self.assertNotEqual(r.returncode, 0)
+
+    def test_custom_quantiles_appear_in_output(self):
+        r = run_script("--seed", "42", "--nsims", "500",
+                       "--quantiles", "0.05,0.95")
+        self.assertIn(" 5%=", r.stdout)
+        self.assertIn("95%=", r.stdout)
+
+    def test_allow_negative_rate_flag(self):
+        r = run_script("--seed", "42", "--nsims", "500", "--allow-negative-rate")
+        self.assertEqual(r.returncode, 0)
+
+    def test_single_data_point(self):
+        r = run_script("--seed", "42", "--nsims", "500",
+                       data="2025-03-01   100\n")
+        self.assertEqual(r.returncode, 0)
+        self.assertIn("Readings: 1", r.stdout)
+
+    def test_two_data_points(self):
+        r = run_script("--seed", "42", "--nsims", "500",
+                       data="2025-03-01   100\n2025-03-11   90\n")
+        self.assertEqual(r.returncode, 0)
+        self.assertIn("Readings: 2", r.stdout)
+
+    def test_unsorted_input_matches_sorted_output(self):
+        sorted_d = "2025-03-01   120\n2025-03-09   112\n2025-03-15   100\n"
+        unsorted_d = "2025-03-15   100\n2025-03-01   120\n2025-03-09   112\n"
+        r_sorted = run_script("--seed", "42", "--nsims", "500", data=sorted_d)
+        r_unsorted = run_script("--seed", "42", "--nsims", "500", data=unsorted_d)
+        self.assertEqual(r_sorted.stdout, r_unsorted.stdout)
+
+    def test_default_drops_same_day_duplicates(self):
+        # Two readings on 2025-03-01; default keeps last (110). 2 total rows.
+        data = "2025-03-01   120\n2025-03-01   110\n2025-03-09   100\n"
+        r = run_script("--seed", "42", "--nsims", "500", data=data)
+        self.assertIn("Readings: 2", r.stdout)
+
+    def test_keep_same_day_retains_duplicates(self):
+        data = "2025-03-01   120\n2025-03-01   110\n2025-03-09   100\n"
+        r = run_script("--seed", "42", "--nsims", "500",
+                       "--keep-same-day", data=data)
+        self.assertIn("Readings: 3", r.stdout)
+
+    def test_invalid_quantiles_exits_nonzero(self):
+        r = run_script("--quantiles", "not,numbers")
+        self.assertNotEqual(r.returncode, 0)
+
+    def test_out_of_range_quantiles_exits_nonzero(self):
+        # 0.0 and 1.0 are not in the open interval (0, 1)
+        r = run_script("--quantiles", "0.0,0.5,1.0")
+        self.assertNotEqual(r.returncode, 0)
+
+    def test_comments_and_blanks_in_input_ignored(self):
+        data = (
+            "# this is a comment\n"
+            "\n"
+            "2025-03-01   100\n"
+            "# another comment\n"
+            "2025-03-11   90\n"
+        )
+        r = run_script("--seed", "42", "--nsims", "500", data=data)
+        self.assertEqual(r.returncode, 0)
+        self.assertIn("Readings: 2", r.stdout)
+
+    def test_malformed_lines_skipped_gracefully(self):
+        data = (
+            "bad-date   100\n"
+            "2025-03-01   notanumber\n"
+            "2025-03-01   100\n"
+            "2025-03-11   90\n"
+        )
+        r = run_script("--seed", "42", "--nsims", "500", data=data)
+        self.assertEqual(r.returncode, 0)
+        self.assertIn("Readings: 2", r.stdout)
+
+
+# ---------------------------------------------------------------------------
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)

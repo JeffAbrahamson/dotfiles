@@ -16,7 +16,7 @@ Example:
     2025-04-22   90
 
 Usage:
-    python time_to_empty.py -f data.txt
+    tsd-time-to-empty.py -f data.txt
 """
 
 import argparse
@@ -49,6 +49,7 @@ class Options:
 
 
 def parse_args() -> Options:
+    """Parse command-line arguments and return a validated Options object."""
     p = argparse.ArgumentParser(
         description="State-space random-walk rate + Monte-Carlo time-to-empty estimator"
     )
@@ -65,7 +66,7 @@ def parse_args() -> Options:
         "--sigma-q",
         type=float,
         default=0.25,
-        help="Process noise std on quantity per step (default: 0.25)",
+        help="Process noise std on quantity per sqrt(day) (default: 0.25)",
     )
     p.add_argument(
         "--sigma-z",
@@ -132,24 +133,32 @@ def parse_args() -> Options:
 
     return Options(
         path=args.file,
-        sigma_r=float(args.sigma_r),
-        sigma_q=float(args.sigma_q),
-        sigma_z=float(args.sigma_z),
-        nsims=int(args.nsims),
-        dt_forward=float(args.dt_forward),
-        max_days=float(args.max_days),
+        sigma_r=args.sigma_r,
+        sigma_q=args.sigma_q,
+        sigma_z=args.sigma_z,
+        nsims=args.nsims,
+        dt_forward=args.dt_forward,
+        max_days=args.max_days,
         seed=args.seed,
-        allow_negative_rate=bool(args.allow_negative_rate),
-        min_rate=float(args.min_rate),
-        bins=int(args.bins),
+        allow_negative_rate=args.allow_negative_rate,
+        min_rate=args.min_rate,
+        bins=args.bins,
         quantiles=qs,
-        drop_same_day_duplicates=bool(args.drop_same_day),
+        drop_same_day_duplicates=args.drop_same_day,
     )
 
 
 def read_data(
     path: str, drop_same_day_duplicates: bool
 ) -> List[Tuple[date, float]]:
+    """
+    Read and parse the input file, returning (date, quantity) pairs sorted by date.
+
+    Lines starting with '#' and blank lines are ignored. Both date and quantity
+    parse errors cause the line to be silently skipped. When
+    drop_same_day_duplicates is True, only the last reading per calendar day
+    is kept.
+    """
     rows: List[Tuple[date, float]] = []
     with open(path, "r", encoding="utf-8") as fh:
         for line in fh:
@@ -159,20 +168,19 @@ def read_data(
             parts = s.split()
             if len(parts) < 2:
                 continue
-            d = datetime.strptime(parts[0], DATE_FMT).date()
             try:
-                q = float(parts[1])
+                d = datetime.strptime(parts[0], DATE_FMT).date()
+                q = float(round(float(parts[1])))  # normalise to integer-like float
             except ValueError:
                 continue
-            rows.append((d, float(int(round(q)))))  # ensure integer-like
+            rows.append((d, q))
     if not rows:
         sys.exit("No valid rows found.")
-    # sort by date
     rows.sort(key=lambda x: x[0])
 
     if drop_same_day_duplicates:
         # keep the last reading per day
-        dedup = {}
+        dedup: dict = {}
         for d, q in rows:
             dedup[d] = q
         rows = sorted(dedup.items(), key=lambda x: x[0])
@@ -183,27 +191,38 @@ def read_data(
 def compute_time_axis(
     rows: List[Tuple[date, float]],
 ) -> Tuple[np.ndarray, np.ndarray]:
-    """Return (t_days, q) arrays, t_days starting at 0."""
+    """
+    Convert (date, quantity) rows to float arrays with time in days from the
+    first observation.
+
+    Returns (t_days, quantities) where t_days[0] == 0.
+    """
     d0 = rows[0][0]
     t_days = np.array([(d - d0).days for (d, _) in rows], dtype=float)
-    q = np.array([q for (_, q) in rows], dtype=float)
-    return t_days, q
+    quantities = np.array([qty for (_, qty) in rows], dtype=float)
+    return t_days, quantities
 
 
 def initial_rate_guess(t: np.ndarray, q: np.ndarray) -> float:
-    """Median of positive per-day decreases over strictly increasing time."""
+    """
+    Estimate a starting consumption rate as the median of positive per-day
+    decreases between consecutive observations.
+
+    Only intervals with net consumption (dq > 0) are included; zero-change or
+    restocking intervals are ignored. Falls back to 1e-6 if no positive rates
+    are found, to avoid downstream divide-by-zero.
+    """
     rates = []
     for i in range(1, len(t)):
         dt = t[i] - t[i - 1]
         if dt <= 0:
             continue
-        dq = q[i - 1] - q[i]  # consumption (positive if decreasing)
+        dq = q[i - 1] - q[i]  # positive when quantity decreases
         r = dq / dt
         if r > 0:
             rates.append(r)
     if rates:
         return float(np.median(rates))
-    # Fallback: tiny rate to avoid divide-by-zero downstream
     return 1e-6
 
 
@@ -215,53 +234,62 @@ def kalman_filter_random_walk_rate(
     sigma_z: float,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
-    Linear Gaussian state: x = [q, r]^T
-      Predict: q_{k+1} = q_k - r_k * dt + w_q;   r_{k+1} = r_k + w_r,  w_r ~ N(0, (sigma_r^2)*dt)
-      Observe: z_k = q_k + v, v ~ N(0, sigma_z^2)
+    Run a linear Kalman filter over the observations and return the posterior
+    mean and covariance at the last time step.
 
-    Returns: (x_T, P_T) for the final time T.
+    State vector: x = [q, r]^T  (quantity, consumption rate)
+
+    Dynamics (continuous-time diffusion, discretised over interval dt):
+        q_{k+1} = q_k - r_k * dt + w_q,   w_q ~ N(0, sigma_q^2 * dt)
+        r_{k+1} = r_k + w_r,               w_r ~ N(0, sigma_r^2 * dt)
+
+    Observation:
+        z_k = q_k + v,   v ~ N(0, sigma_z^2)
+
+    Both process-noise variances scale with dt so that sigma_q and sigma_r
+    are expressed as diffusion coefficients per sqrt(day), consistent with the
+    forward simulation.  The covariance is updated using the Joseph form for
+    numerical stability.  With fewer than two observations the rate cannot be
+    estimated, so a vague prior centred on the initial rate guess is returned.
+
+    Returns (x_T, P_T): posterior mean vector and 2×2 covariance matrix.
     """
     n = len(t)
     if n < 2:
-        # with 1 reading we cannot learn rate; just return q with vague rate
         x = np.array([z[-1], initial_rate_guess(t, z)], dtype=float)
         P = np.diag([10.0**2, 1.0**2])
         return x, P
 
-    # Initialize
     r0 = initial_rate_guess(t, z)
     x = np.array([z[0], r0], dtype=float)
-    P = np.diag([10.0**2, 1.0**2])  # fairly vague
+    P = np.diag([10.0**2, 1.0**2])
 
-    H = np.array([[1.0, 0.0]])  # we observe q only
-    R = np.array([[sigma_z**2]])  # measurement noise
-
+    H = np.array([[1.0, 0.0]])   # observe quantity only
+    R_scalar = sigma_z**2        # measurement variance (scalar)
     I = np.eye(2)
 
     for k in range(1, n):
-        dt = max(t[k] - t[k - 1], 1e-9)  # robust
-        # State transition
+        dt = max(t[k] - t[k - 1], 1e-9)
         F = np.array([[1.0, -dt], [0.0, 1.0]])
-        # Process noise; we allow a small sigma_q plus rate RW scaling with dt
-        Q = np.diag([sigma_q**2, (sigma_r**2) * dt])
+        # Both noise terms scale with dt (diffusion model)
+        Q = np.diag([sigma_q**2 * dt, sigma_r**2 * dt])
 
         # Predict
         x = F @ x
         P = F @ P @ F.T + Q
 
-        # Update with measurement z[k]
-        zk = np.array([[z[k]]])
-        y = zk - (H @ x)  # innovation
-        S = H @ P @ H.T + R
-        K = P @ H.T @ np.linalg.inv(S)  # Kalman gain
-        x = x + (K @ y).reshape(-1)
-        # Joseph form for numerical stability
-        KH = K @ H
-        P = (I - KH) @ P @ (I - KH).T + K @ R @ K.T
+        # Innovation and Kalman gain; S is 1×1 so invert as a scalar
+        S_scalar = float((H @ P @ H.T)[0, 0]) + R_scalar
+        K = (P @ H.T) / S_scalar          # shape (2, 1)
+        y = float(z[k]) - float((H @ x)[0])
+        x = x + K.ravel() * y
 
-    # Enforce non-negative rate mean in the filtered state (model assumes consumption >= 0)
-    if x[1] < 0:
-        x[1] = 0.0
+        # Joseph form: P = (I-KH) P (I-KH)^T + K R K^T
+        KH = K @ H
+        P = (I - KH) @ P @ (I - KH).T + K @ np.array([[R_scalar]]) @ K.T
+
+    # Posterior rate is a consumption model; enforce non-negative mean
+    x[1] = max(x[1], 0.0)
     return x, P
 
 
@@ -277,70 +305,90 @@ def simulate_hitting_time(
     allow_negative_rate: bool,
     min_rate: float,
 ) -> np.ndarray:
-    """Return array of hitting times (days). np.inf if not emptied within max_days."""
-    # Cholesky (fallback to eigen if P not PSD)
+    """
+    Monte-Carlo forward simulation of hitting times (days until quantity <= 0).
+
+    Each simulation draws an initial state from N(x_mean, P) and evolves under
+    independent random-walk dynamics.  Both sigma_r and sigma_q are scaled by
+    sqrt(dt_forward) so that the implied diffusion is consistent across
+    different step sizes.  All nsims paths are advanced in parallel using numpy
+    array operations; paths that have already depleted are excluded from
+    subsequent steps.
+
+    Returns an array of length nsims.  Paths that do not deplete within
+    max_days are recorded as np.inf.
+    """
+    # Decompose P for correlated initial-state sampling
     try:
         L = np.linalg.cholesky(P)
     except np.linalg.LinAlgError:
         vals, vecs = np.linalg.eigh(P)
-        vals[vals < 0] = 0
+        vals = np.maximum(vals, 0.0)
         L = vecs @ np.diag(np.sqrt(vals))
 
+    # Draw all initial (q, r) pairs at once: xi shape (2, nsims)
+    xi = x_mean[:, None] + L @ rng.standard_normal((2, nsims))
+    q = xi[0].copy()
+    r = xi[1].copy()
+    if not allow_negative_rate:
+        np.clip(r, min_rate, None, out=r)
+
     hits = np.full(nsims, np.inf, dtype=float)
+    active = np.ones(nsims, dtype=bool)   # True = not yet depleted
 
-    for s in range(nsims):
-        # Sample initial state
-        xi = x_mean + L @ rng.standard_normal(2)
-        q, r = float(xi[0]), float(xi[1])
+    sqrt_dt = math.sqrt(dt_forward)
+    n_steps = math.ceil(max_days / dt_forward)
+
+    for step in range(1, n_steps + 1):
+        n_active = int(active.sum())
+        if n_active == 0:
+            break
+
+        # Evolve rate: random walk scaled by sqrt(dt)
+        r[active] += rng.normal(0.0, sigma_r * sqrt_dt, size=n_active)
         if not allow_negative_rate:
-            r = max(r, min_rate)
+            r[active] = np.maximum(r[active], min_rate)
 
-        t_accum = 0.0
-        while t_accum < max_days:
-            # Random-walk rate
-            r += rng.normal(0.0, sigma_r * math.sqrt(dt_forward))
-            if not allow_negative_rate:
-                r = max(r, min_rate)
-            # Evolve quantity
-            q += rng.normal(0.0, sigma_q)  # small model wiggle
-            q -= r * dt_forward
-            t_accum += dt_forward
-            if q <= 0.0:
-                hits[s] = t_accum
-                break
+        # Evolve quantity: process noise + deterministic consumption
+        q[active] += rng.normal(0.0, sigma_q * sqrt_dt, size=n_active)
+        q[active] -= r[active] * dt_forward
+
+        # Record paths that just crossed zero
+        newly_hit = active & (q <= 0.0)
+        hits[newly_hit] = step * dt_forward
+        active &= ~newly_hit
 
     return hits
 
 
 def ascii_histogram(data: np.ndarray, bins: int, width: int = 60) -> str:
+    """
+    Render a fixed-width ASCII bar chart of data values.
+
+    Only finite values are plotted; each bar is scaled relative to the tallest
+    bin.  Returns a plain message string if no finite values exist.
+    """
     finite = data[np.isfinite(data)]
     if len(finite) == 0:
         return "(no depletion within horizon for any simulation)"
     counts, edges = np.histogram(finite, bins=bins)
-    peak = counts.max() if counts.size else 1
+    peak = counts.max()
     lines = []
     for i in range(len(counts)):
-        left = edges[i]
-        right = edges[i + 1]
         bar_len = int(round(width * counts[i] / peak)) if peak > 0 else 0
         bar = "█" * bar_len
-        lines.append(f"{left:8.1f}–{right:8.1f} d | {bar} {counts[i]}")
+        lines.append(f"{edges[i]:8.1f}–{edges[i + 1]:8.1f} d | {bar} {counts[i]}")
     return "\n".join(lines)
 
 
 def main():
+    """Entry point: parse arguments, run Kalman filter + Monte Carlo, print results."""
     opt = parse_args()
-    if opt.seed is not None:
-        rng = np.random.default_rng(opt.seed)
-    else:
-        rng = np.random.default_rng()
+    rng = np.random.default_rng(opt.seed)
 
-    rows = read_data(
-        opt.path, drop_same_day_duplicates=opt.drop_same_day_duplicates
-    )
+    rows = read_data(opt.path, drop_same_day_duplicates=opt.drop_same_day_duplicates)
     t_days, q_obs = compute_time_axis(rows)
 
-    # Kalman filter to estimate current (q, r) with uncertainty
     xT, PT = kalman_filter_random_walk_rate(
         t_days,
         q_obs,
@@ -351,7 +399,6 @@ def main():
 
     q_now, r_now = float(xT[0]), float(xT[1])
 
-    # Monte-Carlo forward hitting time distribution
     hits = simulate_hitting_time(
         x_mean=xT,
         P=PT,
@@ -369,13 +416,12 @@ def main():
     censored = np.sum(~np.isfinite(hits))
     censored_pct = 100.0 * censored / len(hits)
 
-    # Report
     print("=== Time-to-Empty Forecast (State-space RW rate + Monte Carlo) ===")
     print(
         f"Readings: {len(rows)}  |  Current q_now ≈ {q_now:.2f}  |  Current rate r_now ≈ {r_now:.4f} per day"
     )
     print(
-        f"Model params: sigma_r={opt.sigma_r:.3f}/√day, sigma_q={opt.sigma_q:.3f}, sigma_z={opt.sigma_z:.3f}"
+        f"Model params: sigma_r={opt.sigma_r:.3f}/√day, sigma_q={opt.sigma_q:.3f}/√day, sigma_z={opt.sigma_z:.3f}"
     )
     print(
         f"Simulations: {opt.nsims}  |  step={opt.dt_forward} day  |  horizon={opt.max_days} days"
@@ -397,10 +443,7 @@ def main():
     )
     print("Quantiles:", qlabels)
 
-    # Simple probabilities over some thresholds (auto-picked from quantiles)
-    thresholds = sorted(
-        set(float(round(v / 10) * 10) for v in qs)
-    )  # rounded days
+    thresholds = sorted(set(float(round(v / 10) * 10) for v in qs))
     if thresholds:
         probs = []
         for th in thresholds:
@@ -411,13 +454,12 @@ def main():
     print("\nHistogram of time-to-empty (days):")
     print(ascii_histogram(finite, bins=opt.bins))
 
-    # Friendly concluding line
     med = float(np.median(finite))
     lo = float(np.quantile(finite, 0.25))
     hi = float(np.quantile(finite, 0.75))
     print(
         f"\nSummary: median ≈ {med:.1f} days (IQR {lo:.1f}–{hi:.1f}), "
-        f"{'with long tail' if censored_pct>0 else 'finite for nearly all sims'}."
+        f"{'with long tail' if censored_pct > 0 else 'finite for nearly all sims'}."
     )
 
 
