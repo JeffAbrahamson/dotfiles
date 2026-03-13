@@ -71,6 +71,7 @@ class FileResult:
     finite: np.ndarray
     censored: int
     censored_pct: float
+    already_empty: bool = False   # True when q_now <= 0 at forecast time
 
 
 # ---------------------------------------------------------------------------
@@ -454,13 +455,35 @@ def process_file(
     opt: Options,
     rng: np.random.Generator,
 ) -> FileResult:
-    """Run the Kalman filter and Monte Carlo simulation for a single data file."""
+    """Run the Kalman filter and (if not already empty) Monte Carlo simulation.
+
+    When the Kalman-filtered quantity estimate is at or below zero the item is
+    already depleted; the simulation is skipped and already_empty is set on the
+    returned result.
+    """
     rows = read_data(path, drop_same_day_duplicates=opt.drop_same_day_duplicates)
     t_days, q_obs = compute_time_axis(rows)
     xT, PT = kalman_filter_random_walk_rate(
         t_days, q_obs,
         sigma_r=opt.sigma_r, sigma_q=opt.sigma_q, sigma_z=opt.sigma_z,
     )
+    q_now = float(xT[0])
+    r_now = float(xT[1])
+
+    if q_now <= 0.0:
+        empty_arr = np.array([], dtype=float)
+        return FileResult(
+            label=label,
+            n_rows=len(rows),
+            q_now=q_now,
+            r_now=r_now,
+            hits=empty_arr,
+            finite=empty_arr,
+            censored=0,
+            censored_pct=0.0,
+            already_empty=True,
+        )
+
     hits = simulate_hitting_time(
         x_mean=xT, P=PT, nsims=opt.nsims, sigma_r=opt.sigma_r,
         sigma_q=opt.sigma_q, dt_forward=opt.dt_forward,
@@ -472,8 +495,8 @@ def process_file(
     return FileResult(
         label=label,
         n_rows=len(rows),
-        q_now=float(xT[0]),
-        r_now=float(xT[1]),
+        q_now=q_now,
+        r_now=r_now,
         hits=hits,
         finite=finite,
         censored=censored,
@@ -557,6 +580,11 @@ def _print_single(result: FileResult, opt: Options) -> None:
         f"  |  Current q_now ≈ {result.q_now:.2f}"
         f"  |  Current rate r_now ≈ {result.r_now:.4f} per day"
     )
+
+    if result.already_empty:
+        print("Already empty (q_now ≤ 0); no forecast produced.")
+        sys.exit(0)
+
     print(
         f"Model params: sigma_r={opt.sigma_r:.3f}/√day,"
         f" sigma_q={opt.sigma_q:.3f}/√day, sigma_z={opt.sigma_z:.3f}"
@@ -625,6 +653,9 @@ def _print_file_section(result: FileResult, opt: Options) -> None:
         f"  |  q_now ≈ {result.q_now:.2f}"
         f"  |  rate ≈ {result.r_now:.4f}/day"
     )
+    if result.already_empty:
+        print("Already empty (q_now ≤ 0).\n")
+        return
     if result.censored > 0:
         print(
             f"Note: {result.censored} sims"
@@ -643,8 +674,8 @@ def _print_file_section(result: FileResult, opt: Options) -> None:
 
 
 def _median_sort_key(result: FileResult) -> float:
-    """Return the median hitting time for sorting; inf if no finite hits."""
-    if len(result.finite) == 0:
+    """Return the median hitting time for sorting; inf if already empty or no finite hits."""
+    if result.already_empty or len(result.finite) == 0:
         return float("inf")
     return float(np.median(result.finite))
 
@@ -654,11 +685,15 @@ def _print_summary_table(results: List[FileResult], opt: Options) -> None:
     Print the quantile summary table, sorted by median in descending order
     (most time remaining first).  Files with no finite hits appear at the end.
     """
-    # Descending: negate finite medians; keep inf (no hits) at the end
-    sorted_results = sorted(
-        results,
-        key=lambda r: -_median_sort_key(r) if len(r.finite) > 0 else float("inf"),
-    )
+    # Descending: negate finite medians; already-empty and no-hits go to the end
+    def _sort_key(r: FileResult) -> Tuple[int, float]:
+        if r.already_empty:
+            return (2, 0.0)
+        if len(r.finite) == 0:
+            return (1, 0.0)
+        return (0, -_median_sort_key(r))
+
+    sorted_results = sorted(results, key=_sort_key)
 
     q_headers = [f"P{int(100*q)}" for q in opt.quantiles]
     name_w = max(4, max(len(r.label) for r in results))
@@ -674,7 +709,12 @@ def _print_summary_table(results: List[FileResult], opt: Options) -> None:
 
     for r in sorted_results:
         row = f"{r.label:{name_w}s}"
-        if len(r.finite) == 0:
+        if r.already_empty:
+            tag = "empty"
+            for _ in q_headers:
+                row += f"  {tag:>{val_w}s}"
+                tag = ""
+        elif len(r.finite) == 0:
             for _ in q_headers:
                 row += f"  {'—':>{val_w}s}"
         else:

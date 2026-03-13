@@ -717,6 +717,57 @@ class TestIntegration(unittest.TestCase):
         )
         self.assertEqual(r1.stdout, r2.stdout)
 
+    # -----------------------------------------------------------------------
+    # Already-empty detection
+    # -----------------------------------------------------------------------
+
+    ZERO_DATA = """\
+2025-03-01   120
+2025-03-09     0
+2025-03-15     0
+"""
+
+    def test_already_empty_single_file_exits_zero(self):
+        r = run_script("--seed", "42", "--nsims", "500", data=self.ZERO_DATA)
+        self.assertEqual(r.returncode, 0)
+
+    def test_already_empty_single_file_no_histogram(self):
+        r = run_script("--seed", "42", "--nsims", "500", data=self.ZERO_DATA)
+        self.assertNotIn("Histogram", r.stdout)
+
+    def test_already_empty_single_file_message(self):
+        r = run_script("--seed", "42", "--nsims", "500", data=self.ZERO_DATA)
+        self.assertIn("Already empty", r.stdout)
+
+    def test_already_empty_multi_file_section_message(self):
+        r = self._run_multi(
+            {"zero": self.ZERO_DATA, "normal": SAMPLE_DATA},
+            "--seed", "42", "--nsims", "500",
+        )
+        self.assertEqual(r.returncode, 0, msg=r.stderr)
+        self.assertIn("Already empty", r.stdout)
+
+    def test_already_empty_multi_file_summary_shows_empty_tag(self):
+        r = self._run_multi(
+            {"zero": self.ZERO_DATA, "normal": SAMPLE_DATA},
+            "--seed", "42", "--nsims", "500",
+        )
+        # "empty" should appear somewhere in the summary table row for zero
+        summary_start = r.stdout.index("Summary")
+        self.assertIn("empty", r.stdout[summary_start:])
+
+    def test_already_empty_sorted_last(self):
+        # The already-empty file should appear after the normal file in the table
+        r = self._run_multi(
+            {"zero": self.ZERO_DATA, "normal": SAMPLE_DATA},
+            "--seed", "42", "--nsims", "500",
+        )
+        summary_start = r.stdout.index("Summary")
+        normal_pos = r.stdout.index("normal", summary_start)
+        zero_pos = r.stdout.index("zero", summary_start)
+        self.assertLess(normal_pos, zero_pos,
+                        msg="'normal' should appear before 'zero' in the summary table")
+
 
 # ---------------------------------------------------------------------------
 
