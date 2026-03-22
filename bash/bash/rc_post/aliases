@@ -474,6 +474,18 @@ git-log-table() {
 git-log-table_old() { git log --pretty=format:'%C(yellow)%h|%Cred%ad|%Cblue%an|%Cgreen%d %Creset%s' --date=short $*; }
 alias glt=git-log-table
 
+_git_log_table_completion() {
+  local cur="${COMP_WORDS[COMP_CWORD]}"
+
+  # Complete branch-like refs from the current repo, including remote branches.
+  local refs
+  refs="$(git for-each-ref --format='%(refname:short)' refs/heads refs/remotes 2>/dev/null | grep -v '/HEAD$')"
+  COMPREPLY=( $(compgen -W "$refs" -- "$cur") )
+}
+
+complete -F _git_log_table_completion git-log-table
+complete -F _git_log_table_completion glt
+
 # git config --global alias.lg "log --color --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit"
 
 gh-issue() {
