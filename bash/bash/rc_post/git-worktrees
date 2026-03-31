@@ -16,11 +16,17 @@ __git_toplevel() {
 }
 
 # Standard location + naming scheme for worktrees:
-#   <repo-toplevel>/.git/worktrees-local/<branch-sanitized>
+#   <main-git-dir>/worktrees-local/<branch-sanitized>
+# Uses --git-common-dir so this works correctly from inside a linked worktree
+# (where --show-toplevel points to the worktree root and .git is a file, not a dir).
 __git_wt_base() {
-  local top
-  top="$(__git_toplevel)" || return 1
-  printf '%s/.git/worktrees-local\n' "$top"
+  local common_dir
+  common_dir="$(git rev-parse --git-common-dir 2>/dev/null)" || return 1
+  # --git-common-dir may return a relative path; make it absolute.
+  if [[ "$common_dir" != /* ]]; then
+    common_dir="$(cd "$common_dir" && pwd -P)" || return 1
+  fi
+  printf '%s/worktrees-local\n' "$common_dir"
 }
 
 # Sanitize branch name for filesystem paths (keeps it readable).
@@ -110,6 +116,51 @@ gwt() {
 
   # Create the worktree.
   git worktree add "$wt_path" "$branch" || return 1
+
+  if [[ $no_cd -eq 0 ]]; then
+    cd "$wt_path" || return 1
+  fi
+}
+
+# gwtb <wt-name> <new-branch> [--no-cd]
+# Creates a new worktree named <wt-name> on a new branch <new-branch> from the current HEAD.
+# Unlike gwt, the worktree directory name is independent of the branch name.
+# Fails if <new-branch> already exists.
+gwtb() {
+  local wt_name="$1" branch="$2" no_cd=0
+  if [[ -z "$wt_name" || -z "$branch" ]]; then
+    echo "Usage: gwtb <wt-name> <new-branch> [--no-cd]"
+    return 2
+  fi
+  if [[ "${3:-}" == "--no-cd" ]]; then
+    no_cd=1
+  fi
+
+  local top
+  top="$(__git_toplevel)"
+  if [[ -z "$top" ]]; then
+    echo "Not in a git repo."
+    return 1
+  fi
+
+  local base
+  base="$(__git_wt_base)" || return 1
+  mkdir -p "$base" || return 1
+
+  local wt_path
+  wt_path="$base/$(__git_wt_sanitize_branch "$wt_name")"
+
+  if git show-ref --verify --quiet "refs/heads/$branch"; then
+    echo "Branch already exists: $branch"
+    return 1
+  fi
+
+  if [[ -e "$wt_path" ]]; then
+    echo "Worktree path already exists: $wt_path"
+    return 1
+  fi
+
+  git worktree add -b "$branch" "$wt_path" HEAD || return 1
 
   if [[ $no_cd -eq 0 ]]; then
     cd "$wt_path" || return 1
@@ -211,7 +262,19 @@ __complete_gwrm() {
   COMPREPLY=( $(compgen -W "$items" -- "$cur") )
 }
 
+__complete_gwtb() {
+  local cur="${COMP_WORDS[COMP_CWORD]}"
+  local top="$(__git_toplevel)"
+  [[ -z "$top" ]] && return 0
+  # arg1: new wt name — nothing useful to complete
+  # arg2: new branch name — offer existing branches as a starting point
+  if [[ "${COMP_CWORD}" -ge 2 ]]; then
+    COMPREPLY=( $(compgen -W "$(__git_wt_list_branches)" -- "$cur") )
+  fi
+}
+
 complete -F __complete_gwt gwt
+complete -F __complete_gwtb gwtb
 complete -F __complete_gwrm gwrm
 
 # Extra helper functions.
