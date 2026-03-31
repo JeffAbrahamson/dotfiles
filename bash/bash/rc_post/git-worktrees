@@ -116,15 +116,18 @@ gwt() {
   fi
 }
 
-# gwrm <branch|path>
+# gwtrm [<branch|path>] [-f]
 # Removes a worktree by branch name (preferred) or by path.
-# By default uses "git worktree remove". Add -f to force.
+# With no arguments, removes the worktree you are currently inside.
+# Add -f to force removal of a worktree with uncommitted changes.
 gwtrm() {
-  local target="$1"
-  if [[ -z "$target" ]]; then
-    echo "Usage: gwrm <branch|path> [-f]"
-    return 2
-  fi
+  local target="" force=""
+  for arg in "$@"; do
+    case "$arg" in
+      -f|--force) force="--force" ;;
+      *)          [[ -z "$target" ]] && target="$arg" ;;
+    esac
+  done
 
   local top
   top="$(__git_toplevel)"
@@ -133,9 +136,19 @@ gwtrm() {
     return 1
   fi
 
-  local force=""
-  if [[ "${2:-}" == "-f" || "${2:-}" == "--force" ]]; then
-    force="--force"
+  # No target given: use the worktree we're currently inside.
+  if [[ -z "$target" ]]; then
+    local main_wt cur_wt
+    main_wt="$(git worktree list --porcelain 2>/dev/null | awk '$1=="worktree"{print $2; exit}')"
+    cur_wt="$(__git_wt_list_worktrees | awk -F'\t' -v p="$PWD" '
+      { wt=$1; if (wt==p || index(p, wt "/")==1) if (length(wt)>length(best)) best=wt }
+      END { print best }
+    ')"
+    if [[ -z "$cur_wt" || "$cur_wt" == "$main_wt" ]]; then
+      echo "Not inside a (non-main) worktree."
+      return 1
+    fi
+    target="$cur_wt"
   fi
 
   local path=""
@@ -159,20 +172,15 @@ gwtrm() {
     return 1
   fi
 
-  # If we're inside the worktree being removed, move somewhere safe first
+  # If we're inside the worktree being removed, move to the main worktree first.
   local pwd_real path_real
   pwd_real="$(cd "$PWD" 2>/dev/null && pwd -P)"
   path_real="$(cd "$path" 2>/dev/null && pwd -P)"
 
   if [[ -n "$pwd_real" && -n "$path_real" && "$pwd_real" == "$path_real"* ]]; then
-    # Prefer repo root; fall back to HOME
-    local top
-    top="$(git rev-parse --show-toplevel 2>/dev/null)"
-    if [[ -n "$top" ]]; then
-      cd "$top" || cd "$HOME"
-    else
-      cd "$HOME"
-    fi
+    local dest
+    dest="$(git worktree list --porcelain 2>/dev/null | awk '$1=="worktree"{print $2; exit}')"
+    cd "${dest:-$HOME}" || cd "$HOME"
     pwd
   fi
 
