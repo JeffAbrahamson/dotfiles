@@ -759,10 +759,110 @@ pav-todo-print() { pav-todo | _todo_print false; }
 # Jellybooks personal.
 
 jb-a() { cd "$HOME/src/jellybooks/analytics"; }
+jb-a-logs() {
+    local env="${1:-s}"
+    local host
+    local base_dir="$HOME/src/jellybooks/analytics"
+    local remote_dir="/var/log/jellybooks/"
+    local short_host
+    local local_dir
+
+    case "$env" in
+        s) host="fra-dulcia-staging-2.jellybooks.com" ;;
+        p) host="fra-dulcia-prod-3.jellybooks.com" ;;
+        *)
+            echo "Usage: jb-a-logs [s|p]"
+            return 1
+            ;;
+    esac
+
+    short_host="${host%%.*}"
+    local_dir="$base_dir/logs/$short_host"
+    mkdir -p "$local_dir" &&
+        sshfs "$host:$remote_dir" "$local_dir"
+}
+jb-a-logs-umount() {
+    local env="${1:-s}"
+    local host
+    local short_host
+    local local_dir
+
+    case "$env" in
+        s) host="fra-dulcia-staging-2.jellybooks.com" ;;
+        p) host="fra-dulcia-prod-3.jellybooks.com" ;;
+        *)
+            echo "Usage: jb-a-logs-umount [s|p]"
+            return 1
+            ;;
+    esac
+
+    short_host="${host%%.*}"
+    local_dir="$HOME/src/jellybooks/analytics/logs/$short_host"
+    fusermount -u "$local_dir"
+}
 jb-d() { cd "$HOME/src/jellybooks/danube"; }
 jb-di() { cd "$HOME/src/jellybooks/discovery_ingest"; }
 jb-i() { cd "$HOME/src/jellybooks/infrastructure"; }
 jb-j() { cd "$HOME/src/jellybooks/jellybooks-ng"; }
+jb-j-logs() {
+    local env="${1:-s}"
+    local base_dir="$HOME/src/jellybooks/jellybooks-ng/logs"
+    local remote_dir="/var/log/jellybooks"
+    local hosts
+    local host
+    local short_host
+    local local_dir
+
+    case "$env" in
+        s)
+            hosts="fra-railswebapp-staging-en-2.jellybooks.com"
+            ;;
+        p)
+            hosts="fra-railswebapp-prod-en-2.jellybooks.com \
+fra-railswebapp-prod-en-3.jellybooks.com \
+fra-railswebapp-prod-de-4.jellybooks.de"
+            ;;
+        *)
+            echo "Usage: jb-j-logs [s|p]"
+            return 1
+            ;;
+    esac
+
+    mkdir -p "$base_dir" || return 1
+    for host in $hosts; do
+        short_host="${host%%.*}"
+        local_dir="$base_dir/$short_host"
+        mkdir -p "$local_dir" || return 1
+        sshfs "$host:$remote_dir" "$local_dir" || return 1
+    done
+}
+jb-j-logs-umount() {
+    local env="${1:-s}"
+    local base_dir="$HOME/src/jellybooks/jellybooks-ng/logs"
+    local hosts
+    local host
+    local short_host
+
+    case "$env" in
+        s)
+            hosts="fra-railswebapp-staging-en-2.jellybooks.com"
+            ;;
+        p)
+            hosts="fra-railswebapp-prod-en-2.jellybooks.com \
+fra-railswebapp-prod-en-3.jellybooks.com \
+fra-railswebapp-prod-de-4.jellybooks.de"
+            ;;
+        *)
+            echo "Usage: jb-j-logs-umount [s|p]"
+            return 1
+            ;;
+    esac
+
+    for host in $hosts; do
+        short_host="${host%%.*}"
+        fusermount -u "$base_dir/$short_host" || return 1
+    done
+}
 jb-p() { cd "$HOME/src/jellybooks/production"; }
 jb-s() { cd "$HOME/src/jellybooks/streamer-js-web"; }
 nux() {
