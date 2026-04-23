@@ -24,15 +24,18 @@ else
 fi
 
 logfile=$HOME/.sway/sway-power-monitor.log
+mkdir -p "$(dirname "$logfile")"
+
 log_message() {
-    if [ "X$logging" = X1 ]; then
-	echo "$(date)   $*" >> $logfile;
-    fi
+    echo "$(date)   $*" >> $logfile;
 }
 log_cat() {
-    if [ "X$logging" = X1 ]; then
-	log_message "Long message:"
-	sed -e 's/^/  /;' >> $logfile;
+    log_message "Long message:"
+    sed -e 's/^/  /;' >> $logfile;
+}
+reset_log_if_ephemeral() {
+    if [ "X$logging" != X1 ]; then
+	: > $logfile
     fi
 }
 
@@ -96,6 +99,7 @@ main()
 	    check_status
 	    $HOME/bin/sway-power-status > $HOME/.power-status # For swaystatus bar.
 	    sleep 60
+	    reset_log_if_ephemeral
 	    if [ ! -e /proc/$sway_pid ]; then
 		return
 	    fi
