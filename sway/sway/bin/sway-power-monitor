@@ -3,6 +3,16 @@
 PATH=/usr/bin:/bin
 renice -n 19 $$
 
+logfile=$HOME/.sway/sway-power-monitor.log
+mkdir -p "$(dirname "$logfile")"
+
+if [ $# -eq 0 ]; then
+    if [ -f "$logfile" ]; then
+        tail -n 100 "$logfile"
+    fi
+    exit 0
+fi
+
 # Below what time (to empty) when discharging should we display battery status?
 threshold=$1
 
@@ -22,9 +32,6 @@ if [ "X$3" = "Xverbose" ]; then
 else
     logging=
 fi
-
-logfile=$HOME/.sway/sway-power-monitor.log
-mkdir -p "$(dirname "$logfile")"
 
 log_message() {
     echo "$(date)   $*" >> $logfile;
