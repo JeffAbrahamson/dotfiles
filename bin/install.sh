@@ -8,8 +8,11 @@ if [ "${1:-}" = "test" ]; then
     (
         cd ..
         python3 -m black --check --line-length 79 \
-            bin/bin/tsd-plot.py src/tsd_plot tests
-        python3 -m flake8 bin/bin/tsd-plot.py src/tsd_plot tests
+            bin/bin/tsd-plot.py bin/bin/tsd-season-plot.py \
+            src/tsd_plot tests
+        python3 -m flake8 \
+            bin/bin/tsd-plot.py bin/bin/tsd-season-plot.py \
+            src/tsd_plot tests
         PYTHONPATH=src python3 -m pytest
     )
     exit 0
@@ -21,11 +24,14 @@ maybe_mkdir "$dest"
     cd bin
     for f in *; do
         [[ -f "$f" && "${f: -1}" != "~" ]] || continue
-        if [ "$f" = "tsd-plot.py" ]; then
-            copy_to "$f" "$dest/tsd-plot"
-        else
-            copy_to "$f" "$dest"
-        fi
+        case "$f" in
+            tsd-plot.py|tsd-season-plot.py)
+                copy_to "$f" "$dest/${f%.py}"
+                ;;
+            *)
+                copy_to "$f" "$dest"
+                ;;
+        esac
     done
 )
 

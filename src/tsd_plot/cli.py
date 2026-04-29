@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import datetime as _dt
+import os
 import statistics
 from dataclasses import dataclass
 from pathlib import Path
@@ -108,6 +109,16 @@ def read_series(filename: str, label: str, base_dir: Path) -> SeriesData:
                 raise ValueError(message) from exc
             points.append((date, value))
     return SeriesData(label=label, filename=filename, points=points)
+
+
+def resolve_tsd_dir() -> Path:
+    """Return the directory holding TSD files."""
+
+    for env_name in ("TSD", "TSD_DIR"):
+        value = os.environ.get(env_name)
+        if value:
+            return Path(value).expanduser()
+    return Path.home() / "tsd"
 
 
 def sum_series(series: Sequence[SeriesData]) -> SeriesData:
@@ -375,7 +386,7 @@ def main(argv: Sequence[str] | None = None) -> None:
 
     file_specs = [parse_filespec(value) for value in args.files]
     filenames = [name for name, _ in file_specs]
-    base_dir = Path.home() / "tsd"
+    base_dir = resolve_tsd_dir()
     log(f"Reading data from base directory: {base_dir}")
 
     series = [

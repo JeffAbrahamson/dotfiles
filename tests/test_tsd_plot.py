@@ -87,7 +87,8 @@ def test_sum_and_bin_series(tmp_path, monkeypatch, capsys):
         encoding="utf8",
     )
 
-    monkeypatch.setattr(cli.Path, "home", lambda: tmp_path)
+    monkeypatch.setenv("TSD", str(data_dir))
+    monkeypatch.delenv("TSD_DIR", raising=False)
 
     main(
         [
