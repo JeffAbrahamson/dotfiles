@@ -161,3 +161,22 @@ def test_bin_series_reducer():
     assert len(binned.points) == 2
     assert binned.points[0][1] == pytest.approx(1.5)
     assert binned.points[1][1] == pytest.approx(4.0)
+
+
+def test_help_mentions_overview_groups_and_defaults(capsys):
+    """Help output should summarize intent, groups, and defaults."""
+
+    with pytest.raises(SystemExit):
+        cli.main(["--help"])
+
+    captured = capsys.readouterr()
+    assert (
+        "Plot TSD time series as ordinary date-based charts." in captured.out
+    )
+    assert "input and grouping:" in captured.out
+    assert "plot appearance:" in captured.out
+    assert "statistics:" in captured.out
+    assert "diagnostics:" in captured.out
+    assert "(default: mean)" in captured.out
+    assert "(default: bar)" in captured.out
+    assert "(default: Value)" in captured.out

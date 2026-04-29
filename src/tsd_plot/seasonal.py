@@ -10,7 +10,6 @@ from dataclasses import dataclass
 from typing import Dict, Iterable, List, Sequence, Tuple
 
 import matplotlib.pyplot as plt
-
 import seaborn as sns
 
 from .cli import (
@@ -45,9 +44,9 @@ week. The y-axis stacks rows by year-like buckets, so repeated vertical bands
 indicate stable seasonality while diagonal trends can reveal drift over time.
 
 Option groups:
-  input and grouping   choose files, period, and summation behavior
+  input and grouping   choose files, period, and summation behaviour
   point appearance     control title, color, dot size, and dot opacity
-  heatmap overlay      add a smoothed background to emphasize seasonal zones
+  heatmap overlay      add a smoothed background to emphasise seasonal zones
   reference guides     control month-boundary guide lines in year view
   diagnostics          print resolved settings and data summaries
 """
@@ -359,7 +358,7 @@ def year_x_limit(dates: Iterable[dt.date]) -> int:
 
 
 def make_row_positions(
-    projected: Sequence[Tuple[str, float, float]]
+    projected: Sequence[Tuple[str, float, float]],
 ) -> Tuple[Dict[str, int], List[str]]:
     """Create top-down y positions for each plotted row."""
     row_labels = sorted({row_key for row_key, _, _ in projected}, reverse=True)

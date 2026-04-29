@@ -29,6 +29,20 @@ BIN_FUNCTIONS: Dict[str, Callable[[Iterable[float]], float]] = {
 PLOT_FORMATS = {"bar", "line", "scatter", "stacked"}
 
 EPOCH = _dt.date(1970, 1, 1)
+HELP_OVERVIEW = """\
+Plot TSD time series as ordinary date-based charts.
+
+This command is for reading one or more TSD files and plotting them against
+calendar time. It can show raw points directly or reduce them into bins before
+plotting. Use it for general time-series inspection; use `tsd-season-plot`
+when you want repeated-period views that emphasise seasonality.
+
+Option groups:
+  input and grouping   choose files, summation, and binning behaviour
+  plot appearance      choose plot format, title, and axis labeling
+  statistics           request derived numeric summaries
+  diagnostics          print resolved settings and data summaries
+"""
 
 
 @dataclass
@@ -290,69 +304,82 @@ def plot_series(
 def create_parser() -> argparse.ArgumentParser:
     """Create the :mod:`argparse` parser for the CLI."""
 
+    class HelpFormatter(
+        argparse.ArgumentDefaultsHelpFormatter,
+        argparse.RawDescriptionHelpFormatter,
+    ):
+        """Formatter combining defaults with wrapped overview text."""
+
     parser = argparse.ArgumentParser(
-        description="Plot time series data from $HOME/tsd files."
+        description=HELP_OVERVIEW,
+        formatter_class=HelpFormatter,
     )
-    parser.add_argument(
+    input_group = parser.add_argument_group("input and grouping")
+    appearance_group = parser.add_argument_group("plot appearance")
+    stats_group = parser.add_argument_group("statistics")
+    diagnostics_group = parser.add_argument_group("diagnostics")
+
+    input_group.add_argument(
         "files",
         nargs="+",
         metavar="FILE[:LABEL]",
         help=(
-            "Input file names located in $HOME/tsd. Append :LABEL to "
-            "customise the legend entry."
+            "Input file names located in $TSD, $TSD_DIR, or $HOME/tsd. "
+            "Append :LABEL to customise the legend entry."
         ),
     )
-    parser.add_argument(
+    input_group.add_argument(
         "--sum",
         action="store_true",
         help="Sum values from all files sharing the same date.",
     )
-    parser.add_argument(
+    input_group.add_argument(
         "--bin",
         action="store_true",
         help="Group dates into bins before plotting.",
     )
-    parser.add_argument(
+    input_group.add_argument(
         "--bin-width",
         type=parse_bin_width,
         help=(
-            "Number of days per bin. Accepts integers or prefixes of "
-            "week (7), month (30) and year (365)."
+            "Number of days per bin. Integers are accepted directly; "
+            "unambiguous abbreviations of week, month, and year are "
+            "also accepted."
         ),
     )
-    parser.add_argument(
+    input_group.add_argument(
         "--bin-function",
         default="mean",
         help=(
-            "Aggregation used within each bin. Accepts prefixes of mean, "
-            "median and sum. Defaults to mean."
+            "Aggregation used within each bin. Allowed values: mean, "
+            "median, sum. Unambiguous abbreviations are accepted."
         ),
     )
-    parser.add_argument(
+    appearance_group.add_argument(
         "--format",
         default="bar",
         help=(
-            "Plot style. Prefixes of bar, line, stacked and scatter are "
-            "accepted. Defaults to bar."
+            "Plot style. Allowed values: bar, line, stacked, scatter. "
+            "Unambiguous abbreviations are accepted."
         ),
     )
-    parser.add_argument(
+    stats_group.add_argument(
         "--std",
         action="store_true",
         help="Print the sample standard deviation of each plotted series.",
     )
-    parser.add_argument(
+    appearance_group.add_argument(
         "-t",
         "--title",
         help="Title for the plot. Defaults to the space-separated filenames.",
     )
-    parser.add_argument(
+    appearance_group.add_argument(
         "-y",
         "--y-label",
         default="Value",
-        help="Label for the Y axis. Defaults to 'Value'.",
+        help="Label for the Y axis.",
     )
-    parser.add_argument(
+    diagnostics_group.add_argument(
         "-v",
         "--verbose",
         action="store_true",
