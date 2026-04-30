@@ -10,7 +10,7 @@ python_targets=(
 )
 
 run_black() {
-    python3 -m black --check --workers 1 --line-length 79 \
+    python3 -m black --check --required-version 24.2.0 --workers 1 \
         "${python_targets[@]}"
 }
 
