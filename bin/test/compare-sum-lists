@@ -1,11 +1,16 @@
 #!/bin/sh
 
+set -eu
+
 PATH=/usr/bin:/bin
 
-me="/tmp/compare-sum-lists_test_$$"
-../bin/compare-sum-lists csl-A csl-B > $me
-if ! cmp --quiet $me compare-sum-lists_golden; then
-   echo compare-sum-lists: test failed.
-else
-   echo compare-sum-lists: good.
+me="$(mktemp /tmp/compare-sum-lists_test_XXXXXX)"
+trap 'rm -f "$me"' EXIT
+
+../bin/compare-sum-lists csl-A csl-B > "$me"
+if ! cmp --quiet "$me" compare-sum-lists_golden; then
+    echo compare-sum-lists: test failed.
+    diff -u compare-sum-lists_golden "$me" || true
+    exit 1
 fi
+echo compare-sum-lists: good.

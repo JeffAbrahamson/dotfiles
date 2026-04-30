@@ -1,7 +1,7 @@
 Files in csl-A but not in csl-B (or changed)
-  Missing:  file/two
-  Changed:  file/one
+  Changed: file/one
+  Missing: file/two
 
 Files in csl-B but not in csl-A (or changed)
-  Changed:  file/one
-  Missing:  file/four
+  Changed: file/one
+  Missing: file/four

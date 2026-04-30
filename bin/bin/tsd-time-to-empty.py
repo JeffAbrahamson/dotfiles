@@ -44,7 +44,7 @@ DATE_FMT = "%Y-%m-%d"
 @dataclass
 class Options:
     files: List[Tuple[str, str]]  # (label, path) pairs
-    not_found: List[str]          # patterns that had no match in tsd -L
+    not_found: List[str]  # patterns that had no match in tsd -L
     multi_file_mode: bool
     sigma_r: float
     sigma_q: float
@@ -87,7 +87,7 @@ class FileResult:
 def _resolve_name_via_tsd_list(
     pattern: str, tsd_dir: str
 ) -> List[Tuple[str, str]]:
-    """Run ``tsd -L`` and return (name, path) pairs whose name contains pattern."""
+    """Run ``tsd -L`` and return matching ``(name, path)`` pairs."""
     try:
         result = subprocess.run(
             ["tsd.py", "-L"], capture_output=True, text=True, check=True
@@ -107,11 +107,14 @@ def parse_args() -> Options:
     Parse command-line arguments and return a validated Options object.
 
     Files may be supplied either as positional names resolved under $TSD_DIR
-    (enabling multi-file mode with a summary table) or via -f/--file for
-    single-file mode that preserves the classic verbose output.
+    (enabling multi-file mode with a summary table) or via `-f/--file`
+    for single-file mode that preserves the classic verbose output.
     """
     p = argparse.ArgumentParser(
-        description="State-space random-walk rate + Monte-Carlo time-to-empty estimator",
+        description=(
+            "State-space random-walk rate + Monte-Carlo "
+            "time-to-empty estimator"
+        ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
@@ -187,7 +190,10 @@ def parse_args() -> Options:
     mc.add_argument(
         "--allow-negative-rate",
         action="store_true",
-        help="Allow simulated rate to go negative (net gains); default clips to 0",
+        help=(
+            "Allow simulated rate to go negative (net gains); "
+            "default clips to 0"
+        ),
     )
     mc.add_argument(
         "--min-rate",
@@ -208,7 +214,10 @@ def parse_args() -> Options:
         "--quantiles",
         type=str,
         default="0.10,0.25,0.50,0.75,0.90",
-        help="Comma-separated quantiles to report (default: 0.10,0.25,0.50,0.75,0.90)",
+        help=(
+            "Comma-separated quantiles to report "
+            "(default: 0.10,0.25,0.50,0.75,0.90)"
+        ),
     )
     disp.add_argument(
         "--fractional",
@@ -219,12 +228,18 @@ def parse_args() -> Options:
         "--hist-min",
         type=float,
         default=0.0,
-        help="Earliest day shown in histogram (default: 0); ignored with --auto-size",
+        help=(
+            "Earliest day shown in histogram (default: 0); "
+            "ignored with --auto-size"
+        ),
     )
     disp.add_argument(
         "--auto-size",
         action="store_true",
-        help="Fit histogram x-axis to where the data has mass; overrides --hist-min",
+        help=(
+            "Fit histogram x-axis to where the data has mass; "
+            "overrides --hist-min"
+        ),
     )
 
     args = p.parse_args()
@@ -307,7 +322,7 @@ def read_data(
     path: str, drop_same_day_duplicates: bool
 ) -> List[Tuple[date, float]]:
     """
-    Read and parse the input file, returning (date, quantity) pairs sorted by date.
+    Read and parse the input file into sorted ``(date, quantity)`` pairs.
 
     Lines starting with '#' and blank lines are ignored. Both date and quantity
     parse errors cause the line to be silently skipped. When
@@ -428,7 +443,7 @@ def kalman_filter_random_walk_rate(
 
     H = np.array([[1.0, 0.0]])  # observe quantity only
     R_scalar = sigma_z**2  # measurement variance (scalar)
-    I = np.eye(2)
+    identity = np.eye(2)
 
     for k in range(1, n):
         dt = max(t[k] - t[k - 1], 1e-9)
@@ -448,7 +463,9 @@ def kalman_filter_random_walk_rate(
 
         # Joseph form: P = (I-KH) P (I-KH)^T + K R K^T
         KH = K @ H
-        P = (I - KH) @ P @ (I - KH).T + K @ np.array([[R_scalar]]) @ K.T
+        P = (identity - KH) @ P @ (identity - KH).T + K @ np.array(
+            [[R_scalar]]
+        ) @ K.T
 
     # Posterior rate is a consumption model; enforce non-negative mean
     x[1] = max(x[1], 0.0)
@@ -531,8 +548,14 @@ def simulate_hitting_time(
 def _make_error_result(label: str, msg: str) -> FileResult:
     empty = np.array([], dtype=float)
     return FileResult(
-        label=label, n_rows=0, q_now=0.0, r_now=0.0,
-        hits=empty, finite=empty, censored=0, censored_pct=0.0,
+        label=label,
+        n_rows=0,
+        q_now=0.0,
+        r_now=0.0,
+        hits=empty,
+        finite=empty,
+        censored=0,
+        censored_pct=0.0,
         error=msg,
     )
 
@@ -550,7 +573,9 @@ def process_file(
     returned result.
     """
     try:
-        rows = read_data(path, drop_same_day_duplicates=opt.drop_same_day_duplicates)
+        rows = read_data(
+            path, drop_same_day_duplicates=opt.drop_same_day_duplicates
+        )
     except OSError as e:
         return _make_error_result(label, str(e))
 
@@ -649,7 +674,10 @@ def ascii_histogram(
             lo = min(float(hist_min), data_max)
             hist_range = (lo, data_max)
         counts, edges = np.histogram(finite, bins=bins, range=hist_range)
-        fmt = lambda v: f"{v:.1f}"
+
+        def fmt(value: float) -> str:
+            return f"{value:.1f}"
+
     else:
         if auto_size:
             lo = int(math.floor(float(np.min(finite))))
@@ -659,7 +687,9 @@ def ascii_histogram(
         bin_width = max(1, math.ceil((hi - lo) / bins))
         bin_edges = np.arange(lo, hi + bin_width, bin_width, dtype=float)
         counts, edges = np.histogram(finite, bins=bin_edges)
-        fmt = lambda v: f"{int(round(v))}"
+
+        def fmt(value: float) -> str:
+            return f"{int(round(value))}"
 
     peak = counts.max()
     lines = []
@@ -711,7 +741,8 @@ def _print_single(result: FileResult, opt: Options) -> None:
 
     if len(result.finite) == 0:
         print(
-            "No depletion expected within the chosen horizon given current model/settings."
+            "No depletion expected within the chosen horizon "
+            "given current model/settings."
         )
         sys.exit(0)
 
@@ -722,10 +753,11 @@ def _print_single(result: FileResult, opt: Options) -> None:
     )
     print("Quantiles:", qlabels)
 
-    thresholds = sorted(set(float(round(v / 10) * 10) for v in qs))
+    thresholds = sorted({float(round(v / 10) * 10) for v in qs})
     if thresholds:
         probs = [
-            f"P[T ≥ {fmt_days(th, opt.fractional)} d] = {100.0*(result.finite >= th).mean():5.1f}%"
+            f"P[T ≥ {fmt_days(th, opt.fractional)} d] = "
+            f"{100.0 * (result.finite >= th).mean():5.1f}%"
             for th in thresholds
         ]
         print("Threshold survival:", " | ".join(probs))
@@ -744,9 +776,13 @@ def _print_single(result: FileResult, opt: Options) -> None:
     med = fmt_days(float(np.median(result.finite)), opt.fractional)
     lo = fmt_days(float(np.quantile(result.finite, 0.25)), opt.fractional)
     hi = fmt_days(float(np.quantile(result.finite, 0.75)), opt.fractional)
+    tail_summary = (
+        "with long tail"
+        if result.censored_pct > 0
+        else "finite for nearly all sims"
+    )
     print(
-        f"\nSummary: median ≈ {med} days (IQR {lo}–{hi}),"
-        f" {'with long tail' if result.censored_pct > 0 else 'finite for nearly all sims'}."
+        f"\nSummary: median ≈ {med} days (IQR {lo}–{hi})," f" {tail_summary}."
     )
 
 
@@ -797,7 +833,7 @@ def _print_file_section(result: FileResult, opt: Options) -> None:
 
 
 def _median_sort_key(result: FileResult) -> float:
-    """Return the median hitting time for sorting; inf if already empty, error, or no finite hits."""
+    """Return the median hitting time for sorting."""
     if result.error or result.already_empty or len(result.finite) == 0:
         return float("inf")
     return float(np.median(result.finite))
@@ -809,7 +845,8 @@ def _print_summary_table(results: List[FileResult], opt: Options) -> None:
     (most time remaining first).  Files with no finite hits appear at the end.
     """
 
-    # Descending: negate finite medians; already-empty and no-hits go to the end; errors last
+    # Descending: negate finite medians; already-empty and no-hits go to
+    # the end; errors last.
     def _sort_key(r: FileResult) -> Tuple[int, float]:
         if r.error:
             return (3, 0.0)
@@ -862,7 +899,7 @@ def _print_summary_table(results: List[FileResult], opt: Options) -> None:
 
 
 def main() -> None:
-    """Parse arguments, run Kalman filter + Monte Carlo for each file, print results."""
+    """Parse arguments, run forecasting, and print results."""
     opt = parse_args()
     rng = np.random.default_rng(opt.seed)
 
@@ -870,7 +907,11 @@ def main() -> None:
     for label, path in opt.files:
         results.append(process_file(label, path, opt, rng))
     for name in opt.not_found:
-        results.append(_make_error_result(name, f"no series matching {name!r} found in tsd -L"))
+        results.append(
+            _make_error_result(
+                name, f"no series matching {name!r} found in tsd -L"
+            )
+        )
 
     if opt.multi_file_mode:
         print(

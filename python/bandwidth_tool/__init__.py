@@ -331,6 +331,10 @@ def render_stats_graphical(
         raise RuntimeError(
             "Matplotlib is required for graphical statistics"
         ) from exc
+    if "agg" in plt.get_backend().lower():
+        raise RuntimeError(
+            "A graphical matplotlib backend is required for statistics"
+        )
 
     uploads = _collect_values(measurements, "upload")
     downloads = _collect_values(measurements, "download")

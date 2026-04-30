@@ -1,9 +1,11 @@
 #!/bin/bash
 
-echo 'bin test.sh not yet implemented for most scripts.'
+set -euo pipefail
+
+echo 'Running bin smoke tests.'
 for file in *; do
-    if [ -x "$file" -a "$file" != test.sh -a "${file: -1}" != "~" ]; then
-	echo "  Running $file."
-	./$file
+    if [ -f "$file" ] && [ -x "$file" ] && [ "$file" != test.sh ] && [ "${file: -1}" != "~" ]; then
+        echo "  Running $file."
+        ./$file
     fi
 done

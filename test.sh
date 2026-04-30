@@ -1,9 +1,15 @@
 #!/bin/bash
 
-(cd bash && ./test.sh)
-(cd emacs && ./test.sh)
-(cd i3 && ./test.sh)
-(cd bin && ./test.sh)
-(cd ratpoison && ./test.sh)
-(cd notion && ./test.sh)
-(cd mutt && ./test.sh)
+set -euo pipefail
+
+for dir in */; do
+    test_script="${dir%/}/test.sh"
+    if [ -x "$test_script" ]; then
+        (
+            cd "${dir%/}"
+            ./test.sh
+        )
+    fi
+done
+
+./script/python-checks.sh all

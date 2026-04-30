@@ -1,4 +1,5 @@
 #!/bin/bash
 
-(cd test && ./test.sh)
+set -euo pipefail
 
+(cd test && ./test.sh)

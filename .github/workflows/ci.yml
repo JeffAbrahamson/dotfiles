@@ -26,11 +26,11 @@ jobs:
           pip install black flake8
 
       - name: Check formatting with black
-        run: black --check --verbose --line-length 79 bin/bin/tsd-plot.py src/tsd_plot tests python
+        run: ./script/python-checks.sh black
 
       - name: Lint with flake8
         run: |
-          flake8 --tee --output-file flake8.report bin/bin/tsd-plot.py src/tsd_plot tests python
+          ./script/python-checks.sh flake8 | tee flake8.report
 
       - name: Upload flake8 report
         if: always()
@@ -57,4 +57,4 @@ jobs:
           pip install pytest
 
       - name: Run pytest
-        run: pytest
+        run: ./script/python-checks.sh pytest

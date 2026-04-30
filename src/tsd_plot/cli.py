@@ -208,7 +208,7 @@ def prepare_plot_data(
     )
     value_map: Dict[str, Dict[_dt.date, float]] = {}
     for series in series_list:
-        mapping = {date: value for date, value in series.points}
+        mapping = dict(series.points)
         value_map[series.label] = mapping
     return all_dates, value_map
 
