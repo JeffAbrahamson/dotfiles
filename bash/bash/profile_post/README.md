@@ -1,0 +1,8 @@
+# Bash Profile Post Hooks
+
+This directory contains hook snippets sourced after the main login-shell profile logic.
+
+## Contents
+
+* [`.present`](.present) is a marker file used by the surrounding bash configuration layout.
+* [`ibus`](ibus) configures input-method behavior during login-shell startup.

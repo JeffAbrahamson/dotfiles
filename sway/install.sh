@@ -65,4 +65,7 @@ maybe_mkdir $dest
 
 bash_dest=$HOME/.dotfiles/bash/rc_post/
 maybe_mkdir $bash_dest
-rsync -av bash/ $bash_dest/
+rsync -av \
+    --exclude 'README' \
+    --exclude 'README.*' \
+    bash/ $bash_dest/

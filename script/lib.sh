@@ -8,6 +8,12 @@
 copy_to()
 {
     _src_name="$1"
+    case "$(basename "$_src_name")" in
+	README|README.*)
+	    unset _src_name
+	    return 0
+	    ;;
+    esac
     if [ -d "$2" ]; then
 	_dst_name="$2/$1"
     else
