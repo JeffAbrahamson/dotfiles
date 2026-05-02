@@ -13,5 +13,5 @@ This directory collects standalone command-line tools plus their tests and suppo
 ## More complex tools
 
 * [`bin/bandwidth`](bin/bandwidth) reads recorded network measurements and renders either compact tables or richer summary views, which makes it easier to inspect connection quality over time.
-* [`bin/tsd-plot.py`](bin/tsd-plot.py), [`bin/tsd-season-plot.py`](bin/tsd-season-plot.py), [`bin/tsd-time-to-empty.py`](bin/tsd-time-to-empty.py), [`bin/tsd-bicycle`](bin/tsd-bicycle), and [`bin/tsd-sleep`](bin/tsd-sleep) are data-analysis tools built around time-series data; they help turn personal logs into plots, seasonal views, or forecasts instead of forcing one-off notebook work.
+* [`bin/tsd-bicycle`](bin/tsd-bicycle) and [`bin/tsd-sleep`](bin/tsd-sleep) are personal data-analysis tools for bicycle and sleep logs; general tsd plotting is now part of the `tsd` package.
 * [`bin/bandwidth_history.py`](bin/bandwidth_history.py) is an older plotting-oriented bandwidth tool for historical datasets and complements the newer library-backed `bandwidth` CLI.
