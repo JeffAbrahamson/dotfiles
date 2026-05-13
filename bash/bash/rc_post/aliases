@@ -493,6 +493,80 @@ gh-pr() {
         --jq .
 }
 
+# Rename the primary branch of the current repo from master to main.
+# Requires gh CLI for the GitHub default-branch update.
+git-rename-master-to-main() {
+    if ! git rev-parse --git-dir >/dev/null 2>&1; then
+        echo "Not in a git repo." >&2
+        return 1
+    fi
+
+    local repo
+    repo="$(git rev-parse --show-toplevel)"
+
+    # Bail if master doesn't exist.
+    if ! git show-ref --verify --quiet refs/heads/master; then
+        echo "$repo: no local 'master' branch." >&2
+        return 1
+    fi
+
+    # Bail if main already exists (local or remote).
+    if git show-ref --verify --quiet refs/heads/main; then
+        echo "$repo: local 'main' already exists." >&2
+        return 1
+    fi
+    if git show-ref --verify --quiet refs/remotes/origin/main; then
+        echo "$repo: remote 'origin/main' already exists." >&2
+        return 1
+    fi
+
+    # Require a clean working tree.
+    if ! git diff --quiet || ! git diff --cached --quiet; then
+        echo "$repo: uncommitted changes present; stash or commit first." >&2
+        return 1
+    fi
+
+    # Switch to master if not already there.
+    local current_branch
+    current_branch="$(git symbolic-ref --short HEAD 2>/dev/null)"
+    if [[ "$current_branch" != "master" ]]; then
+        echo "Switching to master (was on '$current_branch')..."
+        git checkout master || return 1
+    fi
+
+    # Pull latest from remote, if master has an upstream.
+    local has_upstream
+    has_upstream="$(git for-each-ref --format='%(upstream)' refs/heads/master)"
+    if [[ -n "$has_upstream" ]]; then
+        echo "Pulling latest master..."
+        git pull --ff-only || return 1
+    fi
+
+    local has_remote=0
+    git show-ref --verify --quiet refs/remotes/origin/master && has_remote=1
+
+    # Rename locally.
+    echo "Renaming master -> main..."
+    git branch -m master main || return 1
+
+    if [[ $has_remote -eq 1 ]]; then
+        echo "Pushing main to origin and setting upstream..."
+        git push -u origin main || return 1
+
+        echo "Updating GitHub default branch to main..."
+        gh repo edit --default-branch main || return 1
+
+        echo "Deleting remote master..."
+        git push origin --delete master || return 1
+
+        git fetch --prune
+    else
+        echo "No remote 'origin/master' found — local rename done, skipping remote steps."
+    fi
+
+    echo "Done. Primary branch is now 'main'."
+}
+
 # From https://stackoverflow.com/a/3452888/833300
 pip-update-all() {
     pip list --outdated --format=freeze | \
