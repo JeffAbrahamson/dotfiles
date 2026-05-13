@@ -3,7 +3,20 @@
 	name = Jeff Abrahamson
 [color]
 	ui = auto
+[merge]
+	ff = only
+[rebase]
+	autosquash = true
+[pull]
+	rebase = true
+[rerere]
+	enabled = true
 [push]
 	default = simple
+[diff]
+	colorMoved = zebra
+	algorithm = histogram
+[fetch]
+	prune = true
 [branch]
 	autosetuprebase = always
