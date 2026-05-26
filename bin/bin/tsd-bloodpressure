@@ -1,0 +1,155 @@
+#!/usr/bin/env python3
+"""tsd-bloodpressure — Blood pressure time series visualiser.
+
+Reads $TSD_DIR/{bloodpressure-cuff-systolic,bloodpressure-cuff-diastolic,
+bloodpressure-cuff-heartbeat} and plots two panels with a shared x-axis:
+
+  Top panel   : barbell lines from diastolic to systolic per reading,
+                monthly-median trend lines, shaded normal-range band
+  Bottom panel: heart rate scatter + monthly-median trend line
+"""
+
+import os
+import sys
+from pathlib import Path
+
+import matplotlib.dates as mdates
+import matplotlib.pyplot as plt
+import pandas as pd
+
+# ── TSD directory discovery ───────────────────────────────────────────────────
+
+_TSD_CANDIDATES = [
+    os.environ.get("TSD_DIR"),
+    Path.home() / "tsd",
+    Path.home() / "common" / "data" / "tsd",
+    Path.home() / "data" / "tsd",
+]
+
+
+def find_tsd_dir() -> Path:
+    for p in _TSD_CANDIDATES:
+        if p and Path(p).is_dir():
+            return Path(p)
+    sys.exit("Cannot find TSD directory. Set $TSD_DIR or create ~/tsd.")
+
+
+# ── Data loading ──────────────────────────────────────────────────────────────
+
+def load_tsd(tsd_dir: Path, name: str) -> pd.DataFrame:
+    path = tsd_dir / name
+    if not path.exists():
+        sys.exit(f"File not found: {path}")
+    df = pd.read_csv(
+        path, sep=r"\s+", header=None, names=["date", "value"],
+        parse_dates=["date"],
+        comment="#",
+    )
+    df = df.dropna()
+    df = df.sort_values("date").reset_index(drop=True)
+    return df
+
+
+def monthly_median(df: pd.DataFrame) -> pd.DataFrame:
+    """Resample to one median value per non-empty calendar month."""
+    return (
+        df.set_index("date")["value"]
+        .resample("M")
+        .median()
+        .dropna()
+        .reset_index()
+        .rename(columns={"date": "date", "value": "value"})
+    )
+
+
+# ── Plot ──────────────────────────────────────────────────────────────────────
+
+def plot(tsd_dir: Path) -> None:
+    sys_df = load_tsd(tsd_dir, "bloodpressure-cuff-systolic")
+    dia_df = load_tsd(tsd_dir, "bloodpressure-cuff-diastolic")
+    hr_df  = load_tsd(tsd_dir, "bloodpressure-cuff-heartbeat")
+
+    # Merge systolic + diastolic on date for barbell drawing.
+    bp = pd.merge(
+        sys_df.rename(columns={"value": "sys"}),
+        dia_df.rename(columns={"value": "dia"}),
+        on="date", how="inner",
+    )
+
+    fig, (ax_bp, ax_hr) = plt.subplots(
+        2, 1, figsize=(14, 8), sharex=True,
+        gridspec_kw={"height_ratios": [2, 1]},
+    )
+    fig.suptitle("Blood pressure & heart rate", fontsize=13)
+
+    # ── Top panel: barbell lines ──────────────────────────────────────────────
+
+    # Shaded normal-range band (sys ≤ 120, dia ≤ 80).
+    y_min = min(bp["dia"].min(), 40)
+    ax_bp.axhspan(y_min, 80,  color="palegreen", alpha=0.25, zorder=0)
+    ax_bp.axhline(80,  color="seagreen", ls="--", lw=0.8, alpha=0.6)
+    ax_bp.axhline(120, color="seagreen", ls="--", lw=0.8, alpha=0.6)
+
+    # One barbell per reading: vertical line + endpoint dots.
+    for _, row in bp.iterrows():
+        ax_bp.plot(
+            [row["date"], row["date"]], [row["dia"], row["sys"]],
+            color="slategray", lw=1, alpha=0.5, zorder=1,
+        )
+    ax_bp.scatter(
+        bp["date"], bp["sys"],
+        s=18, color="crimson", alpha=0.7, zorder=2, label="Systolic",
+    )
+    ax_bp.scatter(
+        bp["date"], bp["dia"],
+        s=18, color="steelblue", alpha=0.7, zorder=2, label="Diastolic",
+    )
+
+    # Monthly-median trend lines.
+    sys_med = monthly_median(sys_df)
+    dia_med = monthly_median(dia_df)
+    ax_bp.plot(
+        sys_med["date"], sys_med["value"],
+        color="darkred", lw=1.8, zorder=3, label="Systolic (monthly median)",
+    )
+    ax_bp.plot(
+        dia_med["date"], dia_med["value"],
+        color="navy", lw=1.8, zorder=3, label="Diastolic (monthly median)",
+    )
+
+    ax_bp.set_ylabel("mmHg")
+    ax_bp.set_title("Blood pressure")
+    ax_bp.legend(fontsize=8, loc="upper left")
+
+    # ── Bottom panel: heart rate ──────────────────────────────────────────────
+
+    ax_hr.scatter(
+        hr_df["date"], hr_df["value"],
+        s=18, color="seagreen", alpha=0.6, label="Heart rate",
+    )
+    hr_med = monthly_median(hr_df)
+    ax_hr.plot(
+        hr_med["date"], hr_med["value"],
+        color="darkgreen", lw=1.8, label="Heart rate (monthly median)",
+    )
+
+    ax_hr.set_ylabel("bpm")
+    ax_hr.set_title("Heart rate")
+    ax_hr.legend(fontsize=8, loc="upper left")
+
+    # ── Shared x-axis formatting ──────────────────────────────────────────────
+
+    ax_hr.xaxis.set_major_locator(mdates.YearLocator())
+    ax_hr.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
+    for ax in (ax_bp, ax_hr):
+        plt.setp(ax.xaxis.get_majorticklabels(), visible=True)
+
+    fig.tight_layout()
+    plt.show()
+
+
+# ── Entry point ───────────────────────────────────────────────────────────────
+
+if __name__ == "__main__":
+    tsd_dir = find_tsd_dir()
+    plot(tsd_dir)
