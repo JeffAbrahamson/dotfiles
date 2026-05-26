@@ -5,4 +5,4 @@ This directory contains small configuration files that do not justify their own 
 ## Contents
 
 * [`misc/`](misc/README.md) holds the installed payload.
-* [`install.sh`](install.sh) installs the misc files.
+* [`Makefile`](Makefile) provides the `install` target for the misc files.

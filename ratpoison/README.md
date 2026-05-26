@@ -5,5 +5,4 @@ This directory contains configuration for the Ratpoison window manager and the s
 ## Contents
 
 * [`ratpoison/`](ratpoison/README.md) holds the actual config files and helper scripts.
-* [`install.sh`](install.sh) installs the Ratpoison setup.
-* [`test.sh`](test.sh) runs Ratpoison-specific checks.
+* [`Makefile`](Makefile) provides the `install` and `test` targets for the Ratpoison setup.

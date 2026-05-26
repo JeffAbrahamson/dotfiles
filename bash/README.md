@@ -6,5 +6,4 @@ This directory holds the shell startup files and the fragments they are assemble
 
 * [`bash/`](bash/README.md) contains the actual shell fragments and generated include files.
 * [`bash_logout-include`](bash_logout-include), [`bash_profile-include`](bash_profile-include), and [`bashrc-include`](bashrc-include) are the top-level files installed into the home directory.
-* [`install.sh`](install.sh) installs the bash configuration.
-* [`test.sh`](test.sh) runs bash-specific checks.
+* [`Makefile`](Makefile) provides the `install` and `test` targets for the bash configuration.

@@ -16,7 +16,7 @@ services:
     image: dotfiles-dev
     command: >
       /bin/bash -c "
-      ./test.sh && pytest"
+      make test"
 
   dev-sh:
     extends: dev-base

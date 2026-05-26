@@ -10,4 +10,4 @@ install:
 	maybe_append .emacs .dotfiles/elisp/emacs.el emacs-include
 
 test:
-	@echo emacs test.sh not yet implemented.
+	@echo emacs tests not yet implemented.

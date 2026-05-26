@@ -6,4 +6,4 @@ This directory contains Readline configuration.
 
 * [`readline/`](readline/README.md) holds the actual installed files.
 * [`readline-include`](readline-include) is the include file installed into the home directory.
-* [`install.sh`](install.sh) installs the Readline config.
+* [`Makefile`](Makefile) provides the `install` target for the Readline config.

@@ -7,8 +7,7 @@ This directory collects standalone command-line tools plus their tests and suppo
 * [`bin/`](bin/README.md) contains the executable programs.
 * [`config/`](config/README.md) stores small support data files used by some scripts.
 * [`test/`](test/README.md) contains fixture data and script-level tests.
-* [`install.sh`](install.sh) installs the executables.
-* [`test.sh`](test.sh) runs the bin-specific test suite.
+* [`Makefile`](Makefile) provides the `install` and `test` targets for the executables and their test suite.
 
 ## More complex tools
 

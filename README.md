@@ -31,8 +31,8 @@ Run this:
 ```sh
 git clone https://github.com/JeffAbrahamson/dotfiles.git
 cd dotfiles
-./test.sh
-./install.sh
+make test
+make install
 ```
 
 
@@ -41,7 +41,7 @@ cd dotfiles
 The code is organized by topic.  The directory scripts/ is purely
 administrative, everything else does about what you'd expect it to.  I
 mostly strip the leading dot from file names so that I can see
-everything easily when working on my dotfiles.  The install scripts
+everything easily when working on my dotfiles.  The Makefile targets
 sort out those details.
 
 Each topic directory has its own tiny README, in case what I think is
@@ -72,7 +72,7 @@ I'd like this to be clean and elegant and to mostly work for everyone.
 That said, I don't often test as people who aren't me, and this is a
 background utility project, so goodness knows if it will really work
 for you out of the box.  I'm pretty sure it won't hurt, up to
-overwriting some of your dotfiles if you run install.sh.
+overwriting some of your dotfiles if you run `make install`.
 
 If you see problems or opportunities for improvement, please [open an
 issue](https://github.com/JeffAbrahamson/dotfiles/issues) on this

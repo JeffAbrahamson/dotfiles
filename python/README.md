@@ -8,7 +8,7 @@ This directory contains Python-specific support files, shared library code, and 
 * [`bash/`](bash/README.md) contains shell helpers for Python environment setup.
 * [`new-project-template/`](new-project-template/README.md) contains starter dependency files for new Python projects.
 * [`python/`](python/README.md) holds Python tool configuration such as Flake8 settings.
-* [`install.sh`](install.sh) installs Python-related shell/config pieces.
+* [`Makefile`](Makefile) provides the `install` target for Python-related shell and config pieces.
 
 ## Notes
 

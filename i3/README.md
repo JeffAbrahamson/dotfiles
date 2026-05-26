@@ -5,5 +5,4 @@ This directory contains the configuration for the i3 window manager plus helper 
 ## Contents
 
 * [`i3/`](i3/README.md) contains the main config files and helper scripts.
-* [`install.sh`](install.sh) installs the i3 configuration.
-* [`test.sh`](test.sh) runs i3-specific checks.
+* [`Makefile`](Makefile) provides the `install` and `test` targets for the i3 configuration.

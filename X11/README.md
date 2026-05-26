@@ -5,4 +5,4 @@ This directory contains X11-specific configuration that is installed into the us
 ## Contents
 
 * [`Xdefaults`](Xdefaults) defines X resource settings such as colors, fonts, and per-application defaults.
-* [`install.sh`](install.sh) copies the X11 configuration into place as part of the repo-wide installation flow.
+* [`Makefile`](Makefile) provides the `install` target used to copy the X11 configuration into place.

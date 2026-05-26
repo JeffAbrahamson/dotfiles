@@ -5,4 +5,4 @@ This directory contains Tmux configuration.
 ## Contents
 
 * [`tmux/`](tmux/README.md) holds the actual Tmux config files.
-* [`install.sh`](install.sh) installs the Tmux setup.
+* [`Makefile`](Makefile) provides the `install` target for the Tmux setup.
