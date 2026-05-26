@@ -1,14 +1,6 @@
 #!/bin/bash
 
-. ../script/lib.sh
+set -euo pipefail
 
-dest=$HOME/.dotfiles/elisp/
-maybe_mkdir $dest
-(
-    cd elisp
-    for f in *; do
-	copy_to $f $dest
-    done
-)
-
-maybe_append .emacs .dotfiles/elisp/emacs.el emacs-include
+cd "$(dirname "$0")"
+exec make install

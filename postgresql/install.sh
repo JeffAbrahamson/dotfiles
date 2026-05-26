@@ -1,6 +1,6 @@
 #!/bin/bash
 
-. ../script/lib.sh
+set -euo pipefail
 
-dest=$HOME/.psqlrc
-copy_to postgresql/rc $dest
+cd "$(dirname "$0")"
+exec make install

@@ -1,5 +1,6 @@
 #!/bin/bash
 
-. ../script/lib.sh
+set -euo pipefail
 
-(cd git && copy_to gitconfig $HOME/.gitconfig)
+cd "$(dirname "$0")"
+exec make install

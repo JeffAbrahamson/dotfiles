@@ -1,11 +1,6 @@
 #!/bin/bash
 
-. ../script/lib.sh
+set -euo pipefail
 
-if [ "X$HOSTNAME" = Xvogel ]; then
-    # dpi=144
-    dpi=108
-else
-    dpi=96
-fi
-cat Xdefaults  | sed -e "s/{% dpi %}/$dpi/;" > $HOME/.Xdefaults
+cd "$(dirname "$0")"
+exec make install

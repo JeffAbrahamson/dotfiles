@@ -1,8 +1,6 @@
 #!/bin/bash
 
-. ../script/lib.sh
+set -euo pipefail
 
-dest=$HOME/.config/touchegg/
-maybe_mkdir $(dirname $dest)
-copy_to touchegg/touchegg.conf $dest/touchegg.conf
-
+cd "$(dirname "$0")"
+exec make install

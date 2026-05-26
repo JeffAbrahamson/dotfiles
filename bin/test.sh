@@ -2,4 +2,5 @@
 
 set -euo pipefail
 
-(cd test && ./test.sh)
+cd "$(dirname "$0")"
+exec make test

@@ -1,3 +1,6 @@
 #!/bin/bash
 
-echo git config is not being tested.
+set -euo pipefail
+
+cd "$(dirname "$0")"
+exec make test

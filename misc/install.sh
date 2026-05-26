@@ -1,8 +1,6 @@
 #!/bin/bash
 
-. ../script/lib.sh
+set -euo pipefail
 
-rg_dest=$HOME/.config/ripgrep
-maybe_mkdir "${rg_dest}"
-
-cp misc/rgignore "${rg_dest}/ignore"
+cd "$(dirname "$0")"
+exec make install

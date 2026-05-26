@@ -1,6 +1,6 @@
 #!/bin/bash
 
-. ../script/lib.sh
+set -euo pipefail
 
-dest=$HOME/.tmux.conf
-copy_to tmux/tmux.conf $dest
+cd "$(dirname "$0")"
+exec make install

@@ -1,15 +1,6 @@
 #!/bin/bash
 
-. ../script/lib.sh
+set -euo pipefail
 
-dest=$HOME/.dotfiles/readline/
-maybe_mkdir $dest
-(
-    cd readline
-    for f in *; do
-	copy_to $f $dest
-    done
-)
-
-maybe_append .inputrc .dotfiles/readline/inputrc readline-include
-
+cd "$(dirname "$0")"
+exec make install

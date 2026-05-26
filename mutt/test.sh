@@ -1,3 +1,6 @@
 #!/bin/bash
 
-echo No test for mutt.
+set -euo pipefail
+
+cd "$(dirname "$0")"
+exec make test

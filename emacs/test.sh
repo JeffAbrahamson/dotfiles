@@ -1,3 +1,6 @@
 #!/bin/bash
 
-echo emacs test.sh not yet implemented.
+set -euo pipefail
+
+cd "$(dirname "$0")"
+exec make test
