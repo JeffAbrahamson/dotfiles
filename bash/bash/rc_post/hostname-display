@@ -1,0 +1,4 @@
+# Map canonical hostnames (short, no dots) to display names shown in the prompt.
+# The canonical name continues to appear in the window title (TITLEBAR).
+declare -A _hostname_display_names
+_hostname_display_names[xinghan]="星汉"

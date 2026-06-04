@@ -128,17 +128,19 @@ line_zero_format() {
 }
 
 setup_prompt() {
+    local _h="${HOSTNAME%%.*}"
+    prompt_host_="${_hostname_display_names[$_h]:-$_h}"
     case $TERM in
 	xterm*|screen|rxvt*)
             TITLEBAR='\[\033]0;\u@\h:\w\007\]'
 	    PS1="${TITLEBAR}\
-$zero_\[$exit_color_\]$one_prefix_\${exit_status_indicator_}${screen_indicator_}\[$fg_green\]\${display_indicator_}\${script_indicator_}\$space_\[$fg_magenta\]\u@\h:\[$fg_red\]\W \[$fg_cyan\\]$ \[$fg_black\]"
+$zero_\[$exit_color_\]$one_prefix_\${exit_status_indicator_}${screen_indicator_}\[$fg_green\]\${display_indicator_}\${script_indicator_}\$space_\[$fg_magenta\]\u@${prompt_host_}:\[$fg_red\]\W \[$fg_cyan\\]$ \[$fg_black\]"
 	    PS2='\[$fg_magenta\]> \[$BLACK\]'
 	    PS4='\[$fg_magenta\]+ \[$BLACK\]'
             ;;
 	*)
             TITLEBAR=""
-	    PS1='\u@\h:\W \$ '
+	    PS1="\u@${prompt_host_}:\W \$ "
             ;;
     esac
 }
