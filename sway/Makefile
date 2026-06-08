@@ -11,6 +11,7 @@ install:
 	if [ -r "$$host_specific_sway_config" ]; then
 	    cat sway/config_base "$$host_specific_sway_config" > "$$sway_config"
 	else
+	    echo "Warning: no host-specific sway config found at $$host_specific_sway_config; using sway/config_base only." >&2
 	    cat sway/config_base > "$$sway_config"
 	fi
 	sway_config_dest_dir="$$HOME/.config/sway"

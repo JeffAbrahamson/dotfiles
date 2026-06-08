@@ -44,7 +44,7 @@ exec --no-startup-id sway-network-status
 
 # Pick a random image from my desktop image files.
 # The '/*' is necessary to force a full path on output.
-output * bg $(/bin/ls /home/jeff/.desktop-images/* | shuf | head -1) fill
+output * bg $(/bin/ls /home/jeff/.desktop-images/*.png /home/jeff/.desktop-images/*.jpg | shuf | head -1) fill
 
 # Cf. https://wiki.archlinux.org/title/Sway (3.5: Input Devices)
 input type:touchpad {
