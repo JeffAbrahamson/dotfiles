@@ -33,7 +33,7 @@ install:
 	        bar_font_size=12
 	        mako_font_size=16
 	        ;;
-	    tau-ceti)
+	    tau-ceti|xinghan)
 	        kitty_font_size=11.0
 	        window_title_font_size=8.0
 	        bar_font_size=9
@@ -46,6 +46,7 @@ install:
 	        unset mako_font_size
 	        ;;
 	    *)
+	        echo "Warning: no host-specific display settings found for '$$hostname_short'; using defaults and not copying mako-config." >&2
 	        kitty_font_size=11.0
 	        window_title_font_size=8.0
 	        bar_font_size=9
@@ -58,7 +59,7 @@ install:
 	if [ "$${mako_font_size+set}" = set ]; then
 	    sed -e "s/{% fontsize %}/$$mako_font_size/;" < sway/mako-config > "$$HOME/.config/mako/config"
 	else
-	    echo "Unrecognized host '$$hostname_short', not copying mako-config."
+	    echo "Warning: no mako font size configured for host '$$hostname_short'; not copying mako-config." >&2
 	fi
 	dest="$$HOME/bin/"
 	maybe_mkdir "$$dest"
