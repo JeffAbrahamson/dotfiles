@@ -286,22 +286,50 @@ internet() {
 wifi-on() { nmcli radio wifi on; }
 WIFI-restart() { sudo /bin/systemctl restart network-manager.service; }
 wifi-ls() { nmcli device wifi list; }
-wifi-ssids() { nmcli --fields SSID device wifi list | tail +2; }
+wifi-ssids() { nmcli --get-values SSID device wifi list | awk 'NF'; }
 wifi-connect() {
-    if [ "X$2" = X ]; then
-	nmcli device wifi connect "$1";
-    else
-	nmcli device wifi connect "$1" password "$2";
+    local ssid password
+
+    if [ "$#" -eq 0 ]; then
+        echo "Usage: wifi-connect <ssid> [password]" >&2
+        return 2
     fi
+
+    if [ "$#" -eq 1 ]; then
+        nmcli device wifi connect "$1"
+        return $?
+    fi
+
+    ssid="$*"
+    if nmcli device wifi connect "$ssid" 2>/dev/null; then
+        return 0
+    fi
+
+    password="${!#}"
+    ssid="${*:1:$(($# - 1))}"
+    echo "Invalid SSID, retrying with SSID '$ssid' and provided password..." >&2
+    nmcli device wifi connect "$ssid" password "$password"
 }
 # Bash completion rule on the first argument:
 # Dynamic bash completion function for wifi-connect.
 _wifi_connect_completions() {
-    COMPREPLY=($(compgen -W "$(wifi-ssids)" -- "${COMP_WORDS[COMP_CWORD]}"))
+    local current ssid
+
+    current="${COMP_WORDS[COMP_CWORD]}"
+    COMPREPLY=()
+
+    while IFS= read -r ssid; do
+        [ -n "$ssid" ] || continue
+        case "$ssid" in
+            "$current"*)
+                COMPREPLY+=("$ssid")
+                ;;
+        esac
+    done < <(wifi-ssids)
 }
 
 # Register the dynamic completion function.
-complete -F _wifi_connect_completions wifi-connect
+complete -o filenames -o nospace -F _wifi_connect_completions wifi-connect
 
 bandwidth-stats() {
     ssid="$1"			# Fragment of SSID.
