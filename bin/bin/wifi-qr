@@ -3,9 +3,13 @@ set -euo pipefail
 
 # Requirements: nmcli (NetworkManager), qrencode, imv-wayland
 
-if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
-  cat <<'EOF'
-Usage: wifi-qr [connection-name]
+verbose=0
+args=()
+for arg in "$@"; do
+  case "$arg" in
+    -h|--help)
+      cat <<'EOF'
+Usage: wifi-qr [-v] [connection-name]
 
 Display a QR code for a Wi-Fi connection so that other devices can
 join the same network by scanning it.
@@ -16,13 +20,19 @@ Otherwise, use the currently active Wi-Fi connection.
 The SSID and password are read from NetworkManager (nmcli) and encoded
 in the standard WIFI: QR format.
 
+Options:
+  -v    Verbose: include the password (or "no password") in output.
+
 Requirements: nmcli, qrencode, imv-wayland
 EOF
-  exit 0
-fi
+      exit 0 ;;
+    -v) verbose=1 ;;
+    *)  args+=("$arg") ;;
+  esac
+done
 
-if [[ -n "${1:-}" ]]; then
-  con_name="$1"
+if [[ -n "${args[0]:-}" ]]; then
+  con_name="${args[0]}"
 else
   con_name=$(nmcli -t -f NAME,TYPE connection show --active | grep ':802-11-wireless$' | head -1 | sed 's/:802-11-wireless$//')
 fi
@@ -96,6 +106,13 @@ qrencode -s 10 -o "$tmp_png" "$qr_payload"
 
 echo "SSID: $ssid"
 echo "Security: $sec"
+if [[ "$verbose" -eq 1 ]]; then
+  if [[ "$sec" == "nopass" ]]; then
+    echo "Password: (none)"
+  else
+    echo "Password: $psk"
+  fi
+fi
 echo "QR code written to: $tmp_png"
 
 # Display with imv-wayland
