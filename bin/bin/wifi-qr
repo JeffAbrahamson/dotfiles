@@ -3,12 +3,7 @@ set -euo pipefail
 
 # Requirements: nmcli (NetworkManager), qrencode, imv-wayland
 
-# Find active Wi-Fi connection name (NM "connection" name, not necessarily same as SSID)
-# con_name=$(nmcli -t -f NAME,TYPE,DEVICE connection show --active \
-#   | awk -F: '$2=="wifi"{print $1; exit}')
-
-# This will fail if the SSID contains a space...
-con_name=$(nmcli connection show --active | grep wifi | awk '{print $1}')
+con_name=$(nmcli -t -f NAME,TYPE connection show --active | grep ':802-11-wireless$' | head -1 | sed 's/:802-11-wireless$//')
 
 if [[ -z "${con_name:-}" ]]; then
   echo "No active Wi-Fi connection found." >&2
