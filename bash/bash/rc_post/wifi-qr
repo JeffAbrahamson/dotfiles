@@ -1,0 +1,19 @@
+# Bash completion for wifi-qr: completes saved 802-11-wireless NM connections.
+
+_wifi_qr_completions() {
+    local current con_name
+    current="${COMP_WORDS[COMP_CWORD]}"
+    COMPREPLY=()
+    while IFS= read -r con_name; do
+        [ -n "$con_name" ] || continue
+        case "$con_name" in
+            "$current"*)
+                COMPREPLY+=("$con_name")
+                ;;
+        esac
+    done < <(nmcli -t -f NAME,TYPE connection show \
+        | grep ':802-11-wireless$' \
+        | sed 's/:802-11-wireless$//')
+}
+
+complete -o filenames -o nospace -F _wifi_qr_completions wifi-qr

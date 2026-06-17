@@ -3,7 +3,29 @@ set -euo pipefail
 
 # Requirements: nmcli (NetworkManager), qrencode, imv-wayland
 
-con_name=$(nmcli -t -f NAME,TYPE connection show --active | grep ':802-11-wireless$' | head -1 | sed 's/:802-11-wireless$//')
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  cat <<'EOF'
+Usage: wifi-qr [connection-name]
+
+Display a QR code for a Wi-Fi connection so that other devices can
+join the same network by scanning it.
+
+If connection-name is given, use that saved NetworkManager connection.
+Otherwise, use the currently active Wi-Fi connection.
+
+The SSID and password are read from NetworkManager (nmcli) and encoded
+in the standard WIFI: QR format.
+
+Requirements: nmcli, qrencode, imv-wayland
+EOF
+  exit 0
+fi
+
+if [[ -n "${1:-}" ]]; then
+  con_name="$1"
+else
+  con_name=$(nmcli -t -f NAME,TYPE connection show --active | grep ':802-11-wireless$' | head -1 | sed 's/:802-11-wireless$//')
+fi
 
 if [[ -z "${con_name:-}" ]]; then
   echo "No active Wi-Fi connection found." >&2
