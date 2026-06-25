@@ -1,0 +1,167 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+pdf_engine=xelatex
+fallback_viewer=xdg-open
+pdf_cleanup_delay=${PDF_CLEANUP_DELAY:-3600}
+
+usage() {
+    cat <<EOF
+Usage:
+    md2pdf [OPTIONS] FILE
+    md2pdf [OPTIONS] -
+
+Convert Markdown to PDF using pandoc.
+
+Arguments:
+    FILE          Markdown file
+    -             Read Markdown from stdin
+
+Options:
+    -o FILE       Output PDF filename
+    -h, --help    Show this help
+    PANDOC_OPT    Any other option is passed through to pandoc
+
+Note:
+    Pandoc options go before the input file.
+
+Examples:
+    md2pdf report.md
+    md2pdf -o report.pdf notes.md
+    md2pdf --toc --variable geometry:margin=1in report.md
+    cat notes.md | md2pdf
+    md2pdf -
+EOF
+}
+
+die() {
+    printf '%s\n' "$*" >&2
+    exit 1
+}
+
+output=""
+pandoc_args=()
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+    usage
+    exit 0
+fi
+
+if [[ $# -eq 0 ]]; then
+    input="-"
+else
+    input="${@: -1}"
+    set -- "${@:1:$(($# - 1))}"
+fi
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        -o)
+            [[ $# -ge 2 ]] || die "Missing argument to -o"
+            output=$2
+            shift 2
+            ;;
+        --)
+            shift
+            pandoc_args+=("$@")
+            break
+            ;;
+        -*)
+            pandoc_args+=("$1")
+            shift
+            ;;
+        *)
+            pandoc_args+=("$1")
+            shift
+            ;;
+    esac
+done
+
+cleanup() {
+    [[ -n "${tmp_md:-}" ]] && rm -f "$tmp_md"
+    [[ -n "${tmp_pdf:-}" ]] && rm -f "$tmp_pdf"
+}
+
+viewer() {
+    if [[ -n "${PDF_VIEWER:-}" ]]; then
+        read -r -a selected_viewer <<<"$PDF_VIEWER"
+    elif command -v evince >/dev/null 2>&1; then
+        selected_viewer=(evince)
+    else
+        selected_viewer=("$fallback_viewer")
+    fi
+}
+
+delayed_pdf_cleanup() {
+    local pdf=$1
+
+    (
+        sleep "$pdf_cleanup_delay"
+        rm -f "$pdf"
+    ) >/dev/null 2>&1 &
+}
+
+default_output() {
+    local input_path=$1
+    local input_dir input_base output_base
+
+    input_dir=$(dirname -- "$input_path")
+    input_base=$(basename -- "$input_path")
+    output_base=$input_base
+
+    if [[ "$input_base" == *.* && "$input_base" != .* ]]; then
+        output_base=${input_base%.*}
+    fi
+
+    if [[ "$input_dir" == "." ]]; then
+        printf '%s.pdf\n' "$output_base"
+    else
+        printf '%s/%s.pdf\n' "$input_dir" "$output_base"
+    fi
+}
+
+if [[ "$input" == "-" ]]; then
+    tmp_md=$(mktemp --suffix=.md)
+    tmp_pdf=$(mktemp --suffix=.pdf)
+    trap cleanup EXIT
+
+    selected_viewer=()
+    viewer
+
+    cat >"$tmp_md"
+
+    pandoc \
+        --pdf-engine="$pdf_engine" \
+        "${pandoc_args[@]}" \
+        "$tmp_md" \
+        -o "$tmp_pdf"
+
+    trap - EXIT
+    if ! "${selected_viewer[@]}" "$tmp_pdf"; then
+        cleanup
+        exit 1
+    fi
+    rm -f "$tmp_md"
+    delayed_pdf_cleanup "$tmp_pdf"
+
+    exit 0
+fi
+
+[[ -f "$input" ]] || die "No such file: $input"
+
+if [[ -z "$output" ]]; then
+    output=$(default_output "$input")
+fi
+
+pandoc \
+    --pdf-engine="$pdf_engine" \
+    "${pandoc_args[@]}" \
+    "$input" \
+    -o "$output"
+
+printf 'Wrote %s\n' "$output"
