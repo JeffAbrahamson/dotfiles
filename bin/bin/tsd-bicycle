@@ -7,12 +7,15 @@ summary statistics and plots.
 Commands:
   year             List km per year across all bikes
   bike             List km per bike (total)
-  plot-year        Bar chart: km per month, grouped by year
   plot-bike        Bar chart: km per month, grouped by bicycle
   plot-cumulative  Cumulative km by year, starting at zero each year
+  plot-density     Smooth Gaussian km rate by year
 
-Options for plot-cumulative:
+Options for plot-cumulative, plot-density:
   --comparison-year YEAR    Highlight this year in red
+
+Options for plot-density:
+  --sigma DAYS              Gaussian smoothing width in days (default: 30)
 """
 
 import argparse
@@ -84,40 +87,6 @@ def cmd_bike(records):
 
 # ── Plot commands ─────────────────────────────────────────────────────────────
 
-def cmd_plot_year(records):
-    import matplotlib.pyplot as plt
-    import numpy as np
-
-    by_year_month = defaultdict(lambda: defaultdict(float))
-    for _bike, d, km in records:
-        by_year_month[d.year][d.month] += km
-
-    years = sorted(by_year_month)
-    months = list(range(1, 13))
-    month_names = [calendar.month_abbr[m] for m in months]
-
-    n_years = len(years)
-    x = np.arange(12)
-    bar_width = 0.8 / max(n_years, 1)
-
-    fig, ax = plt.subplots(figsize=(14, 6))
-    colors = plt.cm.tab10(np.linspace(0, 1, max(n_years, 1)))
-
-    for i, year in enumerate(years):
-        data = [by_year_month[year].get(m, 0) for m in months]
-        offset = (i - n_years / 2 + 0.5) * bar_width
-        ax.bar(x + offset, data, bar_width, label=str(year), color=colors[i])
-
-    ax.set_xlabel("Month")
-    ax.set_ylabel("km")
-    ax.set_title("Bicycle distance by month and year")
-    ax.set_xticks(x)
-    ax.set_xticklabels(month_names)
-    ax.legend()
-    plt.tight_layout()
-    plt.show()
-
-
 def cmd_plot_bike(records):
     import matplotlib.pyplot as plt
     import numpy as np
@@ -152,30 +121,38 @@ def cmd_plot_bike(records):
     plt.show()
 
 
+def _year_style(year, current_year, comparison_year=None):
+    """Return matplotlib line kwargs for a given year."""
+    if year == current_year:
+        return dict(color="#2563EB", linewidth=2.5, zorder=10, alpha=1.0)
+    if year == comparison_year:
+        return dict(color="#DC2626", linewidth=2.2, zorder=9, alpha=1.0)
+    age = current_year - year
+    gray = min(0.12 + (age - 1) * 0.10, 0.72)
+    lw = max(1.8 - (age - 1) * 0.15, 0.7)
+    return dict(color=str(gray), linewidth=lw, zorder=max(8 - age, 1), alpha=1.0)
+
+
+def _sorted_legend(ax):
+    """Reorder legend: current/most-recent year first, descending."""
+    handles, labels = ax.get_legend_handles_labels()
+    pairs = sorted(zip(labels, handles), key=lambda lh: -int(lh[0]))
+    if pairs:
+        sl, sh = zip(*pairs)
+        ax.legend(sh, sl, loc="upper left")
+
+
 def cmd_plot_cumulative(records, comparison_year=None):
     import matplotlib.pyplot as plt
 
     today = date.today()
     current_year = today.year
 
-    # Group rides by year, sorted by day-of-year.
     by_year = defaultdict(list)
     for _bike, d, km in records:
         by_year[d.year].append((d.timetuple().tm_yday, km))
 
     years = sorted(by_year)
-
-    def year_style(year):
-        """Return matplotlib line kwargs for a given year."""
-        if year == current_year:
-            return dict(color="#2563EB", linewidth=2.5, zorder=10, alpha=1.0)
-        if year == comparison_year:
-            return dict(color="#DC2626", linewidth=2.2, zorder=9, alpha=1.0)
-        # Gray scale: age=1 (last year) is nearly black; older => lighter gray.
-        age = current_year - year
-        gray = min(0.12 + (age - 1) * 0.10, 0.72)
-        lw = max(1.8 - (age - 1) * 0.15, 0.7)
-        return dict(color=str(gray), linewidth=lw, zorder=max(8 - age, 1), alpha=1.0)
 
     fig, ax = plt.subplots(figsize=(14, 7))
 
@@ -200,25 +177,56 @@ def cmd_plot_cumulative(records, comparison_year=None):
         doys.append(end_doy)
         cumkm.append(total)
 
-        style = year_style(year)
+        style = _year_style(year, current_year, comparison_year)
         ax.step(doys, cumkm, where="post", label=str(year), **style)
 
-    # Month tick marks on x-axis (using a non-leap reference year).
     month_doys = [date(2001, m, 1).timetuple().tm_yday for m in range(1, 13)]
     ax.set_xticks(month_doys)
     ax.set_xticklabels([calendar.month_abbr[m] for m in range(1, 13)])
     ax.set_xlim(0, 366)
-
     ax.set_ylabel("Cumulative km")
     ax.set_title("Cumulative bicycle distance by year")
+    _sorted_legend(ax)
+    plt.tight_layout()
+    plt.show()
 
-    # Legend: current year first, then descending.
-    handles, labels = ax.get_legend_handles_labels()
-    pairs = list(zip(labels, handles))
-    pairs.sort(key=lambda lh: -int(lh[0]))
-    sorted_labels, sorted_handles = zip(*pairs) if pairs else ([], [])
-    ax.legend(sorted_handles, sorted_labels, loc="upper left")
 
+def cmd_plot_density(records, comparison_year=None, sigma=30.0):
+    import math
+    import matplotlib.pyplot as plt
+
+    today = date.today()
+    current_year = today.year
+    today_doy = today.timetuple().tm_yday
+
+    by_year = defaultdict(list)
+    for _bike, d, km in records:
+        by_year[d.year].append((d.timetuple().tm_yday, km))
+
+    years = sorted(by_year)
+    # Scale so output is in km/month regardless of sigma.
+    scale = 30.0 / (sigma * math.sqrt(2 * math.pi))
+
+    fig, ax = plt.subplots(figsize=(14, 7))
+
+    for year in years:
+        rides = by_year[year]
+        end_doy = today_doy if year == current_year else 365
+        doys = list(range(1, end_doy + 1))
+        values = [
+            scale * sum(km * math.exp(-0.5 * ((d - doy) / sigma) ** 2) for doy, km in rides)
+            for d in doys
+        ]
+        style = _year_style(year, current_year, comparison_year)
+        ax.plot(doys, values, label=str(year), **style)
+
+    month_doys = [date(2001, m, 1).timetuple().tm_yday for m in range(1, 13)]
+    ax.set_xticks(month_doys)
+    ax.set_xticklabels([calendar.month_abbr[m] for m in range(1, 13)])
+    ax.set_xlim(1, 365)
+    ax.set_ylabel("km / month")
+    ax.set_title("Bicycle distance density by year")
+    _sorted_legend(ax)
     plt.tight_layout()
     plt.show()
 
@@ -234,19 +242,27 @@ def main():
 
     sub.add_parser("year", help="List km per year across all bikes")
     sub.add_parser("bike", help="List total km per bike, sorted by distance")
-    sub.add_parser("plot-year", help="Bar chart: km per month, grouped by year")
     sub.add_parser("plot-bike", help="Bar chart: km per month, grouped by bicycle")
+
+    _cy_kwargs = dict(type=int, metavar="YEAR", help="Highlight this year in red")
 
     p_cum = sub.add_parser(
         "plot-cumulative",
-        help="Cumulative km by year (starting at zero each year); "
-             "use --comparison-year YEAR to highlight a year in red",
+        help="Cumulative km by year (starting at zero each year)",
     )
-    p_cum.add_argument(
-        "--comparison-year",
-        type=int,
-        metavar="YEAR",
-        help="Highlight this year in red",
+    p_cum.add_argument("--comparison-year", **_cy_kwargs)
+
+    p_dens = sub.add_parser(
+        "plot-density",
+        help="Smooth Gaussian km rate by year",
+    )
+    p_dens.add_argument("--comparison-year", **_cy_kwargs)
+    p_dens.add_argument(
+        "--sigma",
+        type=float,
+        metavar="DAYS",
+        default=30.0,
+        help="Gaussian smoothing width in days (default: 30)",
     )
 
     args = parser.parse_args()
@@ -261,17 +277,17 @@ def main():
     if not records:
         sys.exit("No bicycle data found in " + str(tsd_dir))
 
+    comparison = getattr(args, "comparison_year", None)
     if args.command == "year":
         cmd_year(records)
     elif args.command == "bike":
         cmd_bike(records)
-    elif args.command == "plot-year":
-        cmd_plot_year(records)
     elif args.command == "plot-bike":
         cmd_plot_bike(records)
     elif args.command == "plot-cumulative":
-        comparison = getattr(args, "comparison_year", None)
         cmd_plot_cumulative(records, comparison_year=comparison)
+    elif args.command == "plot-density":
+        cmd_plot_density(records, comparison_year=comparison, sigma=args.sigma)
 
 
 if __name__ == "__main__":

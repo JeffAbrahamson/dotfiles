@@ -26,12 +26,12 @@ _tsd_bicycle() {
         cword=$COMP_CWORD
     }
 
-    local commands="year bike plot-year plot-bike plot-cumulative"
+    local commands="year bike plot-bike plot-cumulative plot-density"
     local subcommand=""
     local i
     for (( i=1; i<cword; i++ )); do
         case "${words[$i]}" in
-            year|bike|plot-year|plot-bike|plot-cumulative)
+            year|bike|plot-bike|plot-cumulative|plot-density)
                 subcommand="${words[$i]}"
                 break
                 ;;
@@ -42,8 +42,7 @@ _tsd_bicycle() {
         plot-cumulative)
             case "$prev" in
                 --comparison-year)
-                    local tsd_dir
-                    local years
+                    local tsd_dir years
                     tsd_dir="$(_tsd_bicycle_find_tsd_dir)" || return 0
                     years=$(awk '{print substr($1, 1, 4)}' "$tsd_dir"/bicycle-* 2>/dev/null | sort -u)
                     COMPREPLY=( $(compgen -W "$years" -- "$cur") )
@@ -51,6 +50,22 @@ _tsd_bicycle() {
                     ;;
             esac
             COMPREPLY=( $(compgen -W "--comparison-year" -- "$cur") )
+            return 0
+            ;;
+        plot-density)
+            case "$prev" in
+                --comparison-year)
+                    local tsd_dir years
+                    tsd_dir="$(_tsd_bicycle_find_tsd_dir)" || return 0
+                    years=$(awk '{print substr($1, 1, 4)}' "$tsd_dir"/bicycle-* 2>/dev/null | sort -u)
+                    COMPREPLY=( $(compgen -W "$years" -- "$cur") )
+                    return 0
+                    ;;
+                --sigma)
+                    return 0
+                    ;;
+            esac
+            COMPREPLY=( $(compgen -W "--comparison-year --sigma" -- "$cur") )
             return 0
             ;;
         "")
