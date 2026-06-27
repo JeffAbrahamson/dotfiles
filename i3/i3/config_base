@@ -28,14 +28,12 @@ bindsym $mod+Control+L exec i3-lock-suspend
 bindsym $mod+Control+M exec i3-lock-suspend sleep
 bindsym $mod+Control+P exec i3-lock-suspend suspend
 
-bindsym XF86AudioLowerVolume exec amixer -D pulse set Master 5%-
-bindsym XF86AudioRaiseVolume exec amixer -D pulse set Master 5%+
-bindsym XF86AudioMute exec amixer -D pulse set Master toggle
+bindsym XF86AudioLowerVolume exec sndctl down
+bindsym XF86AudioRaiseVolume exec sndctl up
+bindsym XF86AudioMute exec sndctl mute
 
-# This is only meaningful on starshine, and even there light seems no
-# longer to work.
-bindsym XF86MonBrightnessUp exec "light -A 5"
-bindsym XF86MonBrightnessDown exec "light -U 5"
+bindsym XF86MonBrightnessUp exec backlightctl-jma up
+bindsym XF86MonBrightnessDown exec backlightctl-jma down
 
 bindsym $mod+Tab mode "i3"
 

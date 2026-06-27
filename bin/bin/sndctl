@@ -1,0 +1,45 @@
+#!/bin/bash
+
+set -e
+
+usage() {
+    echo "Usage: sndctl up|down|mute|status" >&2
+    exit 2
+}
+
+cmd="${1:-}"
+case "$cmd" in
+    up|down|mute|status) ;;
+    *) usage ;;
+esac
+
+if command -v wpctl >/dev/null 2>&1; then
+    case "$cmd" in
+        up) exec wpctl set-volume --limit 1.0 @DEFAULT_AUDIO_SINK@ 5%+ ;;
+        down) exec wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%- ;;
+        mute) exec wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle ;;
+        status) exec wpctl get-volume @DEFAULT_AUDIO_SINK@ ;;
+    esac
+fi
+
+if command -v pactl >/dev/null 2>&1; then
+    sink="@DEFAULT_SINK@"
+    case "$cmd" in
+        up) exec pactl set-sink-volume "$sink" +5% ;;
+        down) exec pactl set-sink-volume "$sink" -5% ;;
+        mute) exec pactl set-sink-mute "$sink" toggle ;;
+        status) exec pactl get-sink-volume "$sink" ;;
+    esac
+fi
+
+if command -v amixer >/dev/null 2>&1; then
+    case "$cmd" in
+        up) exec amixer -D pulse set Master 5%+ ;;
+        down) exec amixer -D pulse set Master 5%- ;;
+        mute) exec amixer -D pulse set Master toggle ;;
+        status) exec amixer scontrols ;;
+    esac
+fi
+
+echo "sndctl: no supported audio control command found" >&2
+exit 1

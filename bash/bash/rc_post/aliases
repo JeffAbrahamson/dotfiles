@@ -761,10 +761,10 @@ nse() {
 ###########################################################################
 # X / ratpoison / i3
 
-sndq() { amixer scontrols; }
-snddn() { amixer -D pulse set Master 5%-; }
-sndup() { amixer -D pulse set Master 5%+; }
-sndmute() { amixer -D pulse set Master toggle; }
+sndq() { sndctl status; }
+snddn() { sndctl down; }
+sndup() { sndctl up; }
+sndmute() { sndctl mute; }
 
 undisp() { if [ $DISPLAY ]; then DISPLAY_WAS="$DISPLAY"; unset DISPLAY; fi; }
 redisp() {

@@ -74,14 +74,12 @@ bindsym $mod+Control+M exec sway-desktop-idle-suspendable
 # bindsym $mod+Control+M exec "swaylock & (sleep .2; swaymsg 'output * dpms off')"
 bindsym $mod+Control+P exec "swaylock & (sleep .2; systemctl suspend)"
 
-bindsym XF86AudioLowerVolume exec amixer -D pulse set Master 5%-
-bindsym XF86AudioRaiseVolume exec amixer -D pulse set Master 5%+
-bindsym XF86AudioMute exec amixer -D pulse set Master toggle
+bindsym XF86AudioLowerVolume exec sndctl down
+bindsym XF86AudioRaiseVolume exec sndctl up
+bindsym XF86AudioMute exec sndctl mute
 
-# This is only meaningful on starshine, and even there light seems no
-# longer to work.
-bindsym XF86MonBrightnessUp exec "light -A 5"
-bindsym XF86MonBrightnessDown exec "light -U 5"
+bindsym XF86MonBrightnessUp exec backlightctl-jma up
+bindsym XF86MonBrightnessDown exec backlightctl-jma down
 
 bindsym $mod+Tab mode "sway"
 

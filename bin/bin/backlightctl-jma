@@ -1,0 +1,62 @@
+#!/bin/bash
+
+set -e
+
+usage() {
+    echo "Usage: backlightctl-jma up|down" >&2
+    exit 2
+}
+
+cmd="${1:-}"
+case "$cmd" in
+    up|down) ;;
+    *) usage ;;
+esac
+
+step="${BACKLIGHT_STEP:-5}"
+
+if command -v brightnessctl >/dev/null 2>&1; then
+    case "$cmd" in
+        up) exec brightnessctl set "${step}%+" ;;
+        down) exec brightnessctl set "${step}%-" ;;
+    esac
+fi
+
+if command -v light >/dev/null 2>&1; then
+    case "$cmd" in
+        up) exec light -A "$step" ;;
+        down) exec light -U "$step" ;;
+    esac
+fi
+
+if command -v busctl >/dev/null 2>&1 && [ -d /sys/class/backlight ]; then
+    device=""
+    for path in /sys/class/backlight/*; do
+        [ -e "$path" ] || continue
+        device="${path##*/}"
+        break
+    done
+
+    if [ -n "$device" ]; then
+        current=$(cat "/sys/class/backlight/$device/brightness")
+        max=$(cat "/sys/class/backlight/$device/max_brightness")
+        delta=$((max * step / 100))
+        [ "$delta" -gt 0 ] || delta=1
+
+        case "$cmd" in
+            up) next=$((current + delta)) ;;
+            down) next=$((current - delta)) ;;
+        esac
+
+        [ "$next" -ge 1 ] || next=1
+        [ "$next" -le "$max" ] || next="$max"
+
+        exec busctl call org.freedesktop.login1 \
+            /org/freedesktop/login1/session/auto \
+            org.freedesktop.login1.Session SetBrightness \
+            ssu backlight "$device" "$next"
+    fi
+fi
+
+echo "backlightctl-jma: no supported backlight control command found" >&2
+exit 1
