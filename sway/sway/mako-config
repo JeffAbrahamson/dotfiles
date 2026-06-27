@@ -20,36 +20,22 @@ default-timeout=20000
 ignore-timeout=1
 max-history=20
 
-# Base colors (will be overridden by urgency/app styles below if matched)
-background-color=#222222EE
-text-color=#EEEEEE
+# Default style.  Some clients send non-standard urgency values (such as 255),
+# so this must also be the normal style rather than a fallback appearance.
+background-color=#CC4488
+text-color=#FFFFFF
 border-color=#444444
 progress-color=#999999
 
 # === Urgency-specific ===
 [urgency=low]
 default-timeout=10000
-background-color=#CC4488
-text-color=#FFFFFF
-
-[urgency=normal]
-default-timeout=20000
-background-color=#CC4488
-text-color=#FFFFFF
 
 [urgency=critical]
-default-timeout=20000
-background-color=#CC4488
-text-color=#FFFFFF
 border-color=#801515
 
 # === App-specific ===
-[app-name=kitty]
-default-timeout=20000
-background-color=#CC4488
-text-color=#FFFFFF
-
-[app-name=firefox]
+[app-name=Firefox]
 default-timeout=10000
 background-color=#99FF33
 text-color=#000000
