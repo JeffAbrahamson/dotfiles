@@ -786,8 +786,48 @@ xal() { xal-disable; banner '' xautolock off " "; read -p 'Press any key to re-e
 ###########################################################################
 # Wayland / sway
 
-wal-disable() { pgrep swayidle && pkill -USR1 swayidle; }
-wal-enable() { pgrep swayidle && pkill -USR2 swayidle; }
+wal-inhibit-pid-file() {
+    echo "${XDG_RUNTIME_DIR:-/tmp}/wal-inhibit.pid"
+}
+
+wal-disable() {
+    local pid_file pid
+
+    pkill -u "$LOGNAME" swayidle 2>/dev/null
+
+    pid_file=$(wal-inhibit-pid-file)
+    if [ -r "$pid_file" ]; then
+        pid=$(cat "$pid_file")
+        if kill -0 "$pid" 2>/dev/null; then
+            return 0
+        fi
+        rm -f "$pid_file"
+    fi
+
+    systemd-inhibit \
+        --who=wal-disable \
+        --why="wal-disable: prevent screen idle and system sleep" \
+        --what=idle:sleep \
+        --mode=block \
+        sleep infinity &
+    echo $! > "$pid_file"
+}
+
+wal-enable() {
+    local pid_file pid
+
+    pid_file=$(wal-inhibit-pid-file)
+    if [ -r "$pid_file" ]; then
+        pid=$(cat "$pid_file")
+        if kill -0 "$pid" 2>/dev/null; then
+            kill "$pid"
+        fi
+        rm -f "$pid_file"
+    fi
+
+    "$HOME/bin/sway-desktop-idle-active" >/dev/null 2>&1 &
+}
+
 wal() {
     wal-disable
     banner '' swayidle off " "
