@@ -14,8 +14,10 @@ height=200
 
 # Behaviour
 # markup=1                 # allow Pango markup like <b>…</b>
-# default-timeout=10000    # fallback timeout when client doesn't set one
-# ignore-timeout=false     # respect app-provided timeouts
+# Use a finite timeout even when clients request sticky notifications.
+# default-timeout values are milliseconds.
+default-timeout=20000
+ignore-timeout=1
 max-history=20
 
 # Base colors (will be overridden by urgency/app styles below if matched)
@@ -36,11 +38,17 @@ background-color=#CC4488
 text-color=#FFFFFF
 
 [urgency=critical]
-#ignore-timeout=true      # sticky until dismissed (like dunst timeout=0)
-background-color=#801515
-text-color=#D46A6A
+default-timeout=20000
+background-color=#CC4488
+text-color=#FFFFFF
+border-color=#801515
 
 # === App-specific ===
+[app-name=kitty]
+default-timeout=20000
+background-color=#CC4488
+text-color=#FFFFFF
+
 [app-name=firefox]
 default-timeout=10000
 background-color=#99FF33
