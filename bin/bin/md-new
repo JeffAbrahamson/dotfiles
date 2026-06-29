@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+usage() {
+    cat <<EOF
+Usage:
+    md-new [OPTIONS] WORD [WORD ...]
+
+Create YYYYMMDD_WORD[-WORD...].md in the current directory, then open
+it in \$EDITOR.
+
+Options:
+    -n, --no-edit   Create the file but don't open an editor
+    -h, --help      Show this help
+EOF
+}
+
+die() {
+    printf '%s\n' "$*" >&2
+    exit 1
+}
+
+no_edit=0
+words=()
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        -n|--no-edit)
+            no_edit=1
+            shift
+            ;;
+        -*)
+            die "Unknown option: $1"
+            ;;
+        *)
+            words+=("$1")
+            shift
+            ;;
+    esac
+done
+
+[[ ${#words[@]} -gt 0 ]] || die "Usage: md-new WORD [WORD ...]"
+
+filename="$(date +%Y%m%d)_$(IFS=-; printf '%s' "${words[*]}").md"
+
+[[ ! -e "$filename" ]] || die "File already exists: $filename"
+
+touch "$filename"
+printf 'Created %s\n' "$filename"
+
+if [[ "$no_edit" -eq 0 ]]; then
+    "${EDITOR:-vi}" "$filename"
+fi
