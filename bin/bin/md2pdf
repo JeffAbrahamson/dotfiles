@@ -15,16 +15,16 @@ Usage:
 Convert Markdown to PDF using pandoc.
 
 Arguments:
-    FILE          Markdown file
-    -             Read Markdown from stdin
+    FILE              Markdown file
+    -                 Read Markdown from stdin
 
 Options:
-    -o FILE       Output PDF filename
-    -h, --help    Show this help
-    PANDOC_OPT    Any other option is passed through to pandoc
-
-Note:
-    Pandoc options go before the input file.
+    -f, --force       Regenerate PDF even if it is up-to-date
+    -n, --no-pdf      Read FILE but don't save a PDF (view only, like stdin mode)
+    -D, --no-display  Don't launch the PDF viewer
+    -o FILE           Output PDF filename
+    -h, --help        Show this help
+    PANDOC_OPT        Any other option is passed through to pandoc
 
 Examples:
     md2pdf report.md
@@ -42,24 +42,29 @@ die() {
 
 output=""
 pandoc_args=()
+force=0
+no_pdf=0
+no_display=0
 
-if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
-    usage
-    exit 0
-fi
-
-if [[ $# -eq 0 ]]; then
-    input="-"
-else
-    input="${@: -1}"
-    set -- "${@:1:$(($# - 1))}"
-fi
+positional=()
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
         -h|--help)
             usage
             exit 0
+            ;;
+        -f|--force)
+            force=1
+            shift
+            ;;
+        -n|--no-pdf)
+            no_pdf=1
+            shift
+            ;;
+        -D|--no-display)
+            no_display=1
+            shift
             ;;
         -o)
             [[ $# -ge 2 ]] || die "Missing argument to -o"
@@ -76,11 +81,19 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         *)
-            pandoc_args+=("$1")
+            positional+=("$1")
             shift
             ;;
     esac
 done
+
+if [[ ${#positional[@]} -eq 0 ]]; then
+    input="-"
+elif [[ ${#positional[@]} -eq 1 ]]; then
+    input="${positional[0]}"
+else
+    die "Too many input files: ${positional[*]}"
+fi
 
 cleanup() {
     [[ -n "${tmp_md:-}" ]] && rm -f "$tmp_md"
@@ -125,7 +138,7 @@ default_output() {
     fi
 }
 
-if [[ "$input" == "-" ]]; then
+if [[ "$input" == "-" || "$no_pdf" -eq 1 ]]; then
     tmp_md=$(mktemp --suffix=.md)
     tmp_pdf=$(mktemp --suffix=.pdf)
     trap cleanup EXIT
@@ -133,21 +146,29 @@ if [[ "$input" == "-" ]]; then
     selected_viewer=()
     viewer
 
-    cat >"$tmp_md"
+    if [[ "$input" == "-" ]]; then
+        cat >"$tmp_md"
+    else
+        [[ -f "$input" ]] || die "No such file: $input"
+        cp "$input" "$tmp_md"
+    fi
 
     pandoc \
         --pdf-engine="$pdf_engine" \
+        --variable geometry:margin=1in \
         "${pandoc_args[@]}" \
         "$tmp_md" \
         -o "$tmp_pdf"
 
-    trap - EXIT
-    if ! "${selected_viewer[@]}" "$tmp_pdf"; then
-        cleanup
-        exit 1
+    if [[ "$no_display" -eq 0 ]]; then
+        trap - EXIT
+        if ! "${selected_viewer[@]}" "$tmp_pdf"; then
+            cleanup
+            exit 1
+        fi
+        rm -f "$tmp_md"
+        delayed_pdf_cleanup "$tmp_pdf"
     fi
-    rm -f "$tmp_md"
-    delayed_pdf_cleanup "$tmp_pdf"
 
     exit 0
 fi
@@ -158,10 +179,20 @@ if [[ -z "$output" ]]; then
     output=$(default_output "$input")
 fi
 
-pandoc \
-    --pdf-engine="$pdf_engine" \
-    "${pandoc_args[@]}" \
-    "$input" \
-    -o "$output"
+if [[ "$force" -eq 0 && -f "$output" && "$output" -nt "$input" ]]; then
+    printf 'Using existing %s\n' "$output"
+else
+    pandoc \
+        --pdf-engine="$pdf_engine" \
+        --variable geometry:margin=1in \
+        "${pandoc_args[@]}" \
+        "$input" \
+        -o "$output"
+    printf 'Wrote %s\n' "$output"
+fi
 
-printf 'Wrote %s\n' "$output"
+if [[ "$no_display" -eq 0 ]]; then
+    selected_viewer=()
+    viewer
+    "${selected_viewer[@]}" "$output"
+fi
