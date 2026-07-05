@@ -12,9 +12,10 @@ current branch when BRANCH is omitted.
               and require a pull request with passing checks
   -h, --help  Show this help
 
-When --set-main is used, existing protection settings are preserved. Existing
-required checks are reused; otherwise checks found on the branch HEAD become
-required. No settings are changed if no checks have run.
+When --set-main is used, existing protection settings are preserved except
+that approving reviews are not required. Existing required checks are reused;
+otherwise checks found on the branch HEAD become required. No settings are
+changed if no checks have run.
 EOF
         return 0
     fi
@@ -127,7 +128,7 @@ EOF
                     if $old.required_pull_request_reviews == null then {
                         dismiss_stale_reviews: false,
                         require_code_owner_reviews: false,
-                        required_approving_review_count: 1,
+                        required_approving_review_count: 0,
                         require_last_push_approval: false
                     } else ({
                         dismissal_restrictions:
@@ -135,11 +136,9 @@ EOF
                         dismiss_stale_reviews:
                             $old.required_pull_request_reviews.dismiss_stale_reviews,
                         require_code_owner_reviews:
-                            $old.required_pull_request_reviews.require_code_owner_reviews,
-                        required_approving_review_count:
-                            ([$old.required_pull_request_reviews.required_approving_review_count, 1] | max),
-                        require_last_push_approval:
-                            ($old.required_pull_request_reviews.require_last_push_approval // false),
+                            false,
+                        required_approving_review_count: 0,
+                        require_last_push_approval: false,
                         bypass_pull_request_allowances:
                             actors($old.required_pull_request_reviews.bypass_pull_request_allowances)
                     } | with_entries(select(.value != null))) end),
@@ -183,4 +182,3 @@ EOF
 }
 
 git-branch-properties "$@"
-
