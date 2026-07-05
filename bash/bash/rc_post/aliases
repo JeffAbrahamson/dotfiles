@@ -522,7 +522,8 @@ gh-pr() {
 }
 
 # Rename the primary branch of the current repo from master to main.
-# Requires gh CLI for the GitHub default-branch update.
+# Requires gh CLI when origin/master exists on GitHub.  GitHub's branch rename
+# API also moves the default branch and preserves its protection policies.
 git-rename-master-to-main() {
     if ! git rev-parse --git-dir >/dev/null 2>&1; then
         echo "Not in a git repo." >&2
@@ -573,22 +574,29 @@ git-rename-master-to-main() {
     local has_remote=0
     git show-ref --verify --quiet refs/remotes/origin/master && has_remote=1
 
-    # Rename locally.
-    echo "Renaming master -> main..."
-    git branch -m master main || return 1
-
     if [[ $has_remote -eq 1 ]]; then
-        echo "Pushing main to origin and setting upstream..."
-        git push -u origin main || return 1
+        if ! command -v gh >/dev/null 2>&1; then
+            echo "$repo: gh is required to rename origin/master on GitHub." >&2
+            return 1
+        fi
 
-        echo "Updating GitHub default branch to main..."
-        gh repo edit --default-branch main || return 1
+        # Do this on GitHub instead of pushing main and deleting master.
+        # Besides working for protected branches, the rename carries the whole
+        # protection policy over (linear history, reviews, status checks, etc.).
+        echo "Renaming origin/master -> origin/main on GitHub..."
+        gh api --method POST 'repos/{owner}/{repo}/branches/master/rename' \
+            -f new_name=main --silent || return 1
 
-        echo "Deleting remote master..."
-        git push origin --delete master || return 1
+        echo "Renaming local master -> main..."
+        git branch -m master main || return 1
 
-        git fetch --prune
+        echo "Updating local remote references..."
+        git fetch --prune origin || return 1
+        git branch --set-upstream-to=origin/main main || return 1
+        git remote set-head origin -a >/dev/null || return 1
     else
+        echo "Renaming local master -> main..."
+        git branch -m master main || return 1
         echo "No remote 'origin/master' found — local rename done, skipping remote steps."
     fi
 
