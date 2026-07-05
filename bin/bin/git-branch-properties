@@ -1,0 +1,186 @@
+#!/usr/bin/env bash
+
+git-branch-properties() {
+    if [[ "${1-}" == "-h" || "${1-}" == "--help" ]]; then
+        cat <<'EOF'
+Usage: git-branch-properties [BRANCH | --set-main]
+
+Show classic GitHub branch-protection properties for BRANCH, or for the
+current branch when BRANCH is omitted.
+
+  --set-main  Protect the default main/master branch, require linear history,
+              and require a pull request with passing checks
+  -h, --help  Show this help
+
+When --set-main is used, existing protection settings are preserved. Existing
+required checks are reused; otherwise checks found on the branch HEAD become
+required. No settings are changed if no checks have run.
+EOF
+        return 0
+    fi
+
+    if ! git rev-parse --git-dir >/dev/null 2>&1; then
+        echo "Not in a git repo." >&2
+        return 1
+    fi
+    if ! command -v gh >/dev/null 2>&1 || ! command -v jq >/dev/null 2>&1; then
+        echo "git-branch-properties requires gh and jq." >&2
+        return 1
+    fi
+
+    local branch set_main=0
+    case "${1-}" in
+        --set-main)
+            set_main=1
+            if [[ $# -ne 1 ]]; then
+                echo "Usage: git-branch-properties [BRANCH | --set-main]" >&2
+                return 1
+            fi
+            branch="$(gh repo view --json defaultBranchRef \
+                --jq '.defaultBranchRef.name')" || return 1
+            if [[ "$branch" != "main" && "$branch" != "master" ]]; then
+                echo "Default branch is '$branch', not main or master." >&2
+                return 1
+            fi
+            ;;
+        -*)
+            echo "Usage: git-branch-properties [BRANCH | --set-main]" >&2
+            return 1
+            ;;
+        *)
+            if [[ $# -gt 1 ]]; then
+                echo "Usage: git-branch-properties [BRANCH | --set-main]" >&2
+                return 1
+            fi
+            branch="${1:-$(git branch --show-current)}"
+            if [[ -z "$branch" ]]; then
+                echo "Detached HEAD; specify a branch name." >&2
+                return 1
+            fi
+            ;;
+    esac
+
+    local encoded_branch
+    encoded_branch="$(jq -rn --arg branch "$branch" '$branch | @uri')"
+
+    local branch_json
+    if ! branch_json="$(gh api \
+        "repos/{owner}/{repo}/branches/$encoded_branch" 2>/dev/null)"; then
+        echo "GitHub branch '$branch' was not found." >&2
+        return 1
+    fi
+
+    local protection_json=""
+    if [[ "$(jq -r '.protected' <<<"$branch_json")" == "true" ]]; then
+        protection_json="$(gh api \
+            "repos/{owner}/{repo}/branches/$encoded_branch/protection")" || return 1
+    fi
+
+    if [[ $set_main -eq 1 ]]; then
+        local checks_json
+        if [[ -n "$protection_json" ]] &&
+            [[ "$(jq '.required_status_checks != null' \
+                <<<"$protection_json")" == "true" ]]; then
+            checks_json="$(jq '
+                if (.required_status_checks.checks // [] | length) > 0 then
+                    [.required_status_checks.checks[] |
+                        {context: .context, app_id: .app_id}]
+                else
+                    [.required_status_checks.contexts[] |
+                        {context: ., app_id: -1}]
+                end' <<<"$protection_json")"
+        else
+            local sha check_runs statuses
+            sha="$(jq -r '.commit.sha' <<<"$branch_json")"
+            check_runs="$(gh api "repos/{owner}/{repo}/commits/$sha/check-runs" \
+                --jq '[.check_runs[].name]')" || return 1
+            statuses="$(gh api "repos/{owner}/{repo}/commits/$sha/status" \
+                --jq '[.statuses[].context]')" || return 1
+            checks_json="$(jq -cn --argjson checks "$check_runs" \
+                --argjson statuses "$statuses" \
+                '[$checks[], $statuses[]] | unique |
+                 map({context: ., app_id: -1})')"
+        fi
+
+        if [[ "$(jq 'length' <<<"$checks_json")" -eq 0 ]]; then
+            echo "No checks have run on '$branch'; protection was not changed." >&2
+            echo "Run the repository's test workflow, then retry --set-main." >&2
+            return 1
+        fi
+
+        local payload
+        payload="$(jq -cn --argjson old "${protection_json:-null}" \
+            --argjson checks "$checks_json" '
+            def actors($value):
+                if $value == null then null else {
+                    users: [$value.users[]?.login],
+                    teams: [$value.teams[]?.slug],
+                    apps: [$value.apps[]?.slug]
+                } end;
+            {
+                required_status_checks: {
+                    strict: ($old.required_status_checks.strict // true),
+                    checks: $checks
+                },
+                enforce_admins: true,
+                required_pull_request_reviews: (
+                    if $old.required_pull_request_reviews == null then {
+                        dismiss_stale_reviews: false,
+                        require_code_owner_reviews: false,
+                        required_approving_review_count: 1,
+                        require_last_push_approval: false
+                    } else ({
+                        dismissal_restrictions:
+                            actors($old.required_pull_request_reviews.dismissal_restrictions),
+                        dismiss_stale_reviews:
+                            $old.required_pull_request_reviews.dismiss_stale_reviews,
+                        require_code_owner_reviews:
+                            $old.required_pull_request_reviews.require_code_owner_reviews,
+                        required_approving_review_count:
+                            ([$old.required_pull_request_reviews.required_approving_review_count, 1] | max),
+                        require_last_push_approval:
+                            ($old.required_pull_request_reviews.require_last_push_approval // false),
+                        bypass_pull_request_allowances:
+                            actors($old.required_pull_request_reviews.bypass_pull_request_allowances)
+                    } | with_entries(select(.value != null))) end),
+                restrictions: actors($old.restrictions),
+                required_linear_history: true,
+                allow_force_pushes: false,
+                allow_deletions: false,
+                block_creations: ($old.block_creations.enabled // false),
+                required_conversation_resolution:
+                    ($old.required_conversation_resolution.enabled // false),
+                lock_branch: ($old.lock_branch.enabled // false),
+                allow_fork_syncing: ($old.allow_fork_syncing.enabled // false)
+            }')" || return 1
+
+        echo "Protecting '$branch' with PR, status-check, and linear-history requirements..."
+        gh api --method PUT \
+            "repos/{owner}/{repo}/branches/$encoded_branch/protection" \
+            --input - --silent <<<"$payload" || return 1
+        protection_json="$(gh api \
+            "repos/{owner}/{repo}/branches/$encoded_branch/protection")" || return 1
+    fi
+
+    local default_branch
+    default_branch="$(gh repo view --json defaultBranchRef \
+        --jq '.defaultBranchRef.name')" || return 1
+
+    jq -r --arg branch "$branch" --arg default_branch "$default_branch" '
+        def yn($value): if $value then "yes" else "no" end;
+        "Branch:                  \($branch)" +
+            (if $branch == $default_branch then " (default)" else "" end),
+        "Protected:               \(. != null | yn(.))",
+        "Linear history:          \(.required_linear_history.enabled // false | yn(.))",
+        "Pull request required:   \(.required_pull_request_reviews != null | yn(.))",
+        "Passing checks required: \(.required_status_checks != null | yn(.))",
+        (if .required_status_checks != null then
+            "Required checks:         " +
+            ([.required_status_checks.checks[]?.context,
+              .required_status_checks.contexts[]?] | unique | join(", "))
+         else empty end)
+    ' <<<"${protection_json:-null}"
+}
+
+git-branch-properties "$@"
+
