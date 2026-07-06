@@ -1,0 +1,107 @@
+#!/usr/bin/env python3
+"""Add dynamically coloured temperature readings to i3status output."""
+
+import json
+import os
+import subprocess
+import sys
+from typing import Dict, List, Optional
+
+BLUE = "#73b6e5"
+RED = "#dc322f"
+STATUS_PATH = os.path.expanduser("~/.temperature-status")
+
+
+def temperature_blocks(status_path: str) -> List[Dict[str, object]]:
+    """Convert env-stats' temperature snapshot into i3bar blocks."""
+    blocks: List[Dict[str, object]] = []
+    try:
+        with open(status_path, encoding="utf-8") as status_file:
+            lines = status_file.readlines()
+    except OSError:
+        return blocks
+
+    for line in lines:
+        fields = line.rstrip("\n").split("\t")
+        if len(fields) != 5:
+            continue
+        name, value_text, _max_text, crit_text, state = fields
+        try:
+            float(value_text)
+            critical: Optional[float] = float(crit_text) if crit_text else None
+        except ValueError:
+            continue
+
+        if state not in ("normal", "max", "critical"):
+            continue
+        above_max = state in ("max", "critical")
+        above_critical = state == "critical"
+        display_value = value_text
+        if above_max and critical is not None:
+            display_value += f" (< {crit_text})"
+
+        blocks.extend(
+            [
+                {
+                    "name": "temperature_label",
+                    "instance": name,
+                    "full_text": f"{name} ",
+                    "color": BLUE,
+                    "separator": False,
+                    "separator_block_width": 0,
+                },
+                {
+                    "name": "temperature_value",
+                    "instance": name,
+                    "full_text": display_value,
+                    "color": RED if above_max else BLUE,
+                    "urgent": above_critical,
+                },
+            ]
+        )
+    return blocks
+
+
+def add_temperatures(
+    blocks: List[Dict[str, object]], temperatures: List[Dict[str, object]]
+) -> None:
+    """Insert temperatures after the existing power-status block."""
+    position = 0
+    for index, block in enumerate(blocks):
+        if block.get("instance") == "power_status":
+            position = index + 1
+            break
+    for temperature in reversed(temperatures):
+        blocks.insert(position, temperature)
+
+
+def main() -> int:
+    if len(sys.argv) != 2:
+        print(f"Usage: {sys.argv[0]} I3STATUS_CONFIG", file=sys.stderr)
+        return 2
+
+    process = subprocess.Popen(
+        ["i3status", "-c", os.path.expanduser(sys.argv[1])],
+        stdout=subprocess.PIPE,
+        text=True,
+    )
+    assert process.stdout is not None
+    for line in process.stdout:
+        stripped = line.rstrip("\n")
+        prefix = "," if stripped.startswith(",") else ""
+        payload = stripped[1:] if prefix else stripped
+        try:
+            blocks = json.loads(payload)
+        except json.JSONDecodeError:
+            print(stripped, flush=True)
+            continue
+        if isinstance(blocks, list):
+            add_temperatures(blocks, temperature_blocks(STATUS_PATH))
+            print(prefix + json.dumps(blocks, ensure_ascii=False), flush=True)
+        else:
+            print(stripped, flush=True)
+    return process.wait()
+
+
+if __name__ == "__main__":
+    sys.exit(main())

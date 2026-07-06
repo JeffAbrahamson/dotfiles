@@ -20,8 +20,8 @@ record_temperatures()
     status_file="$2"
     now=$(date +%s)
     status=""
+    fallback_status=""
     maximum=""
-    maximum_name=""
 
     mkdir -p "$series_base"
     for input in /sys/class/hwmon/hwmon*/temp*_input; do
@@ -35,18 +35,37 @@ record_temperatures()
 	channel=${input%_input}
 	chip=$(cat "$hwmon_dir/name" 2>/dev/null || basename "$hwmon_dir")
 	label=$(cat "${channel}_label" 2>/dev/null || basename "$channel")
+	name="$chip:$label"
 	series_name=$(printf '%s-%s' "$chip" "$label" |
 	    tr '[:upper:] ' '[:lower:]_' | tr -cd '[:alnum:]_.-')
 	degrees=$(awk -v value="$value" 'BEGIN { printf "%.1f", value / 1000 }')
 	printf '%s %s\n' "$now" "$degrees" >> "$series_base/temperature-$series_name"
+	max=$(cat "${channel}_max" 2>/dev/null || true)
+	crit=$(cat "${channel}_crit" 2>/dev/null || true)
+	max_degrees=""
+	crit_degrees=""
+	case "$max" in
+	    ''|*[!0-9-]*) ;;
+	    *) max_degrees=$(awk -v value="$max" 'BEGIN { printf "%.1f", value / 1000 }') ;;
+	esac
+	case "$crit" in
+	    ''|*[!0-9-]*) ;;
+	    *) crit_degrees=$(awk -v value="$crit" 'BEGIN { printf "%.1f", value / 1000 }') ;;
+	esac
+	state=normal
+	[ -n "$max_degrees" ] && [ "$value" -ge "$max" ] && state=max
+	[ -n "$crit_degrees" ] && [ "$value" -ge "$crit" ] && state=critical
+	status_line=$(printf '%s\t%s\t%s\t%s\t%s' \
+	    "$name" "$degrees" "$max_degrees" "$crit_degrees" "$state")
 
 	if [ -z "$maximum" ] || [ "$value" -gt "$maximum" ]; then
 	    maximum=$value
-	    maximum_name=$label
+	    fallback_status=$status_line
 	fi
 	case "$label" in
 	    *Package*|*Tctl*|*Tdie*|*Composite*|edge)
-		status="$status${status:+ }$label ${degrees}°C"
+		status="$status${status:+
+}$status_line"
 		;;
 	esac
     done
@@ -54,12 +73,11 @@ record_temperatures()
     # Some drivers only expose generic tempN labels.  Showing the maximum is
     # more useful than either a long list or an empty status block.
     if [ -z "$status" ] && [ -n "$maximum" ]; then
-	degrees=$(awk -v value="$maximum" 'BEGIN { printf "%.1f", value / 1000 }')
-	status="$maximum_name ${degrees}°C"
+	status=$fallback_status
     fi
 
     status_tmp="$status_file.new"
-    printf '%s' "$status" > "$status_tmp"
+    printf '%s\n' "$status" > "$status_tmp"
     mv "$status_tmp" "$status_file"
 }
 
