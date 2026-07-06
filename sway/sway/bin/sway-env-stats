@@ -11,6 +11,58 @@ log_to_file sway-env-stats.log
 PATH=$HOME/bin:/usr/bin:/bin
 renice -n 19 $$
 
+# Record all temperature channels exported by the kernel's hwmon interface.
+# lm-sensors uses the same interface, but reading it directly avoids depending
+# on the presentation and localisation of the `sensors` command's output.
+record_temperatures()
+{
+    series_base="$1"
+    status_file="$2"
+    now=$(date +%s)
+    status=""
+    maximum=""
+    maximum_name=""
+
+    mkdir -p "$series_base"
+    for input in /sys/class/hwmon/hwmon*/temp*_input; do
+	[ -r "$input" ] || continue
+	value=$(cat "$input")
+	case "$value" in
+	    ''|*[!0-9-]*) continue ;;
+	esac
+
+	hwmon_dir=$(dirname "$input")
+	channel=${input%_input}
+	chip=$(cat "$hwmon_dir/name" 2>/dev/null || basename "$hwmon_dir")
+	label=$(cat "${channel}_label" 2>/dev/null || basename "$channel")
+	series_name=$(printf '%s-%s' "$chip" "$label" |
+	    tr '[:upper:] ' '[:lower:]_' | tr -cd '[:alnum:]_.-')
+	degrees=$(awk -v value="$value" 'BEGIN { printf "%.1f", value / 1000 }')
+	printf '%s %s\n' "$now" "$degrees" >> "$series_base/temperature-$series_name"
+
+	if [ -z "$maximum" ] || [ "$value" -gt "$maximum" ]; then
+	    maximum=$value
+	    maximum_name=$label
+	fi
+	case "$label" in
+	    *Package*|*Tctl*|*Tdie*|*Composite*|edge)
+		status="$status${status:+ }$label ${degrees}°C"
+		;;
+	esac
+    done
+
+    # Some drivers only expose generic tempN labels.  Showing the maximum is
+    # more useful than either a long list or an empty status block.
+    if [ -z "$status" ] && [ -n "$maximum" ]; then
+	degrees=$(awk -v value="$maximum" 'BEGIN { printf "%.1f", value / 1000 }')
+	status="$maximum_name ${degrees}°C"
+    fi
+
+    status_tmp="$status_file.new"
+    printf '%s' "$status" > "$status_tmp"
+    mv "$status_tmp" "$status_file"
+}
+
 # Functions to monitor disk usage.
 # This is a bit hard-coded.  It's also largely copied from disk-usage.sh.
 
@@ -62,10 +114,14 @@ record_disk_usage() {
 log_line "Starting..."
 sway_pid=$(pidof sway)
 SERIES_BASE=$HOME/data/hosts/$(hostname -s)/disk-
+TEMPERATURE_SERIES_DIR=$HOME/data/hosts/$(hostname -s)
+TEMPERATURE_STATUS=$HOME/.temperature-status
 record_frequency_minutes=11
 # time_delta=$(( $record_frequency_minutes * 60 ))
 log_line "SWAY pid = $sway_pid"
 log_line "Log frequency = $record_frequency_minutes minutes."
+# Temperature collection is cheap and gives swaybar useful data immediately.
+record_temperatures "$TEMPERATURE_SERIES_DIR" "$TEMPERATURE_STATUS"
 # First recording should not be immediate.  On session start, we may
 # not have a network connection.  In addition, it's annoying for
 # starting daemons immediately to monopolise resources.
@@ -89,6 +145,7 @@ while true; do
     loop_index=$record_frequency_minutes
     while [[ $loop_index -gt 0 ]]; do
 	up-monitor
+	record_temperatures "$TEMPERATURE_SERIES_DIR" "$TEMPERATURE_STATUS"
 	# Sleep a bit less than a minute : 45 seconds plus 0-9 seconds
 	# more to avoid any synchronisation issues.  RANDOM is an
 	# integer in [0, 32767].

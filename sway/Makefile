@@ -17,6 +17,7 @@ install:
 	sway_config_dest_dir="$$HOME/.config/sway"
 	maybe_mkdir "$$sway_config_dest_dir"
 	sway_config_dest="$$sway_config_dest_dir/config"
+	(cd sway && copy_to i3status.conf "$$sway_config_dest_dir/i3status.conf")
 	swaylock_dest_dir="$$HOME/.swaylock"
 	maybe_mkdir "$$swaylock_dest_dir"
 	(cd sway && copy_to swaylock_config "$$swaylock_dest_dir/config")
