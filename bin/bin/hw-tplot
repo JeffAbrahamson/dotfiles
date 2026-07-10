@@ -1,0 +1,674 @@
+#!/usr/bin/python3
+
+"""Plot hardware temperature time series."""
+
+import argparse
+import datetime as dt
+import json
+import math
+import re
+import socket
+import statistics
+import subprocess
+import sys
+from pathlib import Path
+
+
+COLORBLIND_FRIENDLY_COLORS = [
+    "#0072B2",  # blue
+    "#E69F00",  # orange
+    "#56B4E9",  # sky blue
+    "#CC79A7",  # reddish purple
+    "#F0E442",  # yellow
+    "#000000",  # black
+    "#999999",  # grey
+    "#D55E00",  # vermillion
+]
+
+HIDPI_FONT_SIZES = {
+    "font.size": 14,
+    "axes.titlesize": 18,
+    "axes.labelsize": 16,
+    "xtick.labelsize": 13,
+    "ytick.labelsize": 13,
+    "legend.fontsize": 12,
+}
+
+DEFAULT_PEAK_WINDOW_SECONDS = 24 * 60 * 60
+
+RELATIVE_RE = re.compile(
+    r"^(?P<sign>[+-])?(?P<amount>\d+(?:\.\d+)?)(?P<unit>[smhdw])$"
+)
+
+
+def parse_duration(spec):
+    """Return a duration in seconds."""
+    match = RELATIVE_RE.match(spec)
+    if not match:
+        raise ValueError("expected a duration like 30m, 12h, 2d, or 1w")
+
+    amount = float(match.group("amount"))
+    unit = match.group("unit")
+    multipliers = {
+        "s": 1,
+        "m": 60,
+        "h": 60 * 60,
+        "d": 24 * 60 * 60,
+        "w": 7 * 24 * 60 * 60,
+    }
+    return amount * multipliers[unit]
+
+
+def parse_time(spec, now=None):
+    """Parse an absolute or relative time expression to epoch seconds."""
+    if spec is None:
+        return None
+    if now is None:
+        now = dt.datetime.now().timestamp()
+
+    spec = spec.strip()
+    if spec == "":
+        raise ValueError("empty time")
+    if spec == "now":
+        return now
+
+    relative = RELATIVE_RE.match(spec)
+    if relative:
+        sign = relative.group("sign")
+        seconds = parse_duration(spec.lstrip("+-"))
+        if sign == "+":
+            return now + seconds
+        return now - seconds
+
+    try:
+        return float(spec)
+    except ValueError:
+        pass
+
+    date_text = spec
+    if date_text.endswith("Z"):
+        date_text = date_text[:-1] + "+00:00"
+    try:
+        parsed = dt.datetime.fromisoformat(date_text)
+    except ValueError as exc:
+        raise ValueError(
+            "expected a unix timestamp, YYYY-MM-DD, "
+            "YYYY-MM-DDTHH:MM[:SS], or a relative duration"
+        ) from exc
+
+    if isinstance(parsed, dt.datetime):
+        if parsed.tzinfo is None:
+            return parsed.timestamp()
+        return parsed.astimezone().timestamp()
+    return dt.datetime.combine(parsed, dt.time()).timestamp()
+
+
+def host_data_dir(host):
+    """Return the data directory for host."""
+    return Path.home() / "data" / "hosts" / host
+
+
+def discover_temperature_files(data_dir):
+    """Return temperature series files in data_dir."""
+    return sorted(
+        path
+        for path in data_dir.glob("*temperature*")
+        if path.is_file() and not path.name.endswith("~")
+    )
+
+
+def series_name(path):
+    """Return the display name for a temperature series path."""
+    return path.name.removeprefix("temperature-")
+
+
+def describe_series(name):
+    """Return a human-readable annotation for a hwmon temperature series."""
+    lower = name.lower()
+    if lower.startswith("k10temp-"):
+        if "tctl" in lower:
+            return "CPU control temperature"
+        if "tdie" in lower:
+            return "CPU die temperature"
+        return "AMD CPU temperature"
+    if lower.startswith("coretemp-"):
+        if "package" in lower:
+            return "Intel CPU package temperature"
+        if "core" in lower:
+            return "Intel CPU core temperature"
+        return "Intel CPU temperature"
+    if lower.startswith("amdgpu-"):
+        if "edge" in lower:
+            return "GPU edge temperature"
+        if "junction" in lower or "hotspot" in lower:
+            return "GPU hotspot temperature"
+        if "mem" in lower:
+            return "GPU memory temperature"
+        return "AMD GPU temperature"
+    if lower.startswith("nvme-"):
+        if "composite" in lower:
+            return "NVMe SSD composite temperature"
+        return "NVMe SSD temperature"
+    if lower.startswith("acpitz-"):
+        return "ACPI thermal zone"
+    if "mt7921" in lower or "phy" in lower or "wifi" in lower:
+        return "Wi-Fi adapter temperature"
+    return "hardware temperature"
+
+
+def series_label(name):
+    """Return a legend label with both kernel and readable names."""
+    return f"{name} ({describe_series(name)})"
+
+
+def matches_series(path, selected):
+    """Return whether path matches one selected series name."""
+    name = series_name(path)
+    return selected in (name, path.name, str(path))
+
+
+def select_temperature_files(filenames, selected):
+    """Filter temperature files by selected series names."""
+    if not selected:
+        return filenames
+    selected_files = []
+    missing = []
+    for name in selected:
+        matches = [path for path in filenames if matches_series(path, name)]
+        if matches:
+            selected_files.extend(matches)
+        else:
+            missing.append(name)
+    if missing:
+        available = ", ".join(series_name(path) for path in filenames)
+        missing_text = ", ".join(missing)
+        raise ValueError(
+            f"unknown temperature series: {missing_text}. "
+            f"Available series: {available}"
+        )
+    return sorted(set(selected_files))
+
+
+def read_series(path, start_time, end_time):
+    """Read one temperature series from path."""
+    points = []
+    with path.open(encoding="utf-8") as handle:
+        for lineno, line in enumerate(handle, 1):
+            parts = line.split()
+            if len(parts) < 2:
+                continue
+            try:
+                timestamp = float(parts[0])
+                value = float(parts[1])
+            except ValueError:
+                print(
+                    f"Skipping malformed row in {path}:{lineno}: "
+                    f"{line.rstrip()}",
+                    file=sys.stderr,
+                )
+                continue
+            if start_time is not None and timestamp < start_time:
+                continue
+            if end_time is not None and timestamp > end_time:
+                continue
+            points.append((timestamp, value))
+    points.sort()
+    return points
+
+
+def read_series_metadata(path):
+    """Return count, first timestamp, last timestamp, min, and max."""
+    count = 0
+    first = None
+    last = None
+    minimum = None
+    maximum = None
+    with path.open(encoding="utf-8") as handle:
+        for line in handle:
+            parts = line.split()
+            if len(parts) < 2:
+                continue
+            try:
+                timestamp = float(parts[0])
+                value = float(parts[1])
+            except ValueError:
+                continue
+            count += 1
+            if first is None or timestamp < first:
+                first = timestamp
+            if last is None or timestamp > last:
+                last = timestamp
+            if minimum is None or value < minimum:
+                minimum = value
+            if maximum is None or value > maximum:
+                maximum = value
+    return count, first, last, minimum, maximum
+
+
+def format_time(timestamp):
+    """Format epoch seconds for terminal output."""
+    if timestamp is None:
+        return "-"
+    return dt.datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M")
+
+
+def list_series(filenames):
+    """Print available temperature series."""
+    print(
+        f"{'series':<32} {'description':<32} {'samples':>9}  "
+        f"{'first':<16}  {'last':<16}  range"
+    )
+    for filename in filenames:
+        name = series_name(filename)
+        count, first, last, minimum, maximum = read_series_metadata(filename)
+        if minimum is None or maximum is None:
+            value_range = "-"
+        else:
+            value_range = f"{minimum:.1f}..{maximum:.1f} C"
+        print(
+            f"{name:<32} {describe_series(name):<32} {count:>9}  "
+            f"{format_time(first):<16}  {format_time(last):<16}  "
+            f"{value_range}"
+        )
+
+
+def median_interval(series_by_name):
+    """Estimate normal sampling interval from all loaded series."""
+    intervals = []
+    for points in series_by_name.values():
+        intervals.extend(
+            right[0] - left[0]
+            for left, right in zip(points, points[1:])
+            if right[0] > left[0]
+        )
+    if not intervals:
+        return None
+    return statistics.median(intervals)
+
+
+def automatic_gap_threshold(series_by_name):
+    """Choose a gap threshold large enough to ignore normal jitter."""
+    interval = median_interval(series_by_name)
+    if interval is None:
+        return 30 * 60
+    return max(30 * 60, interval * 4)
+
+
+def split_for_gaps(points, gap_threshold):
+    """Insert NaNs into a line so matplotlib leaves gaps unconnected."""
+    if not points:
+        return [], []
+
+    plot_times = [points[0][0]]
+    plot_values = [points[0][1]]
+    for previous, current in zip(points, points[1:]):
+        if current[0] - previous[0] > gap_threshold:
+            plot_times.append(math.nan)
+            plot_values.append(math.nan)
+        plot_times.append(current[0])
+        plot_values.append(current[1])
+    return plot_times, plot_values
+
+
+def gap_edges(points, gap_threshold):
+    """Return point pairs adjacent to large gaps."""
+    return [
+        (previous, current)
+        for previous, current in zip(points, points[1:])
+        if current[0] - previous[0] > gap_threshold
+    ]
+
+
+def recent_peak_window(series_by_name, preferred_window):
+    """Return the time span to search for recent peaks."""
+    timestamps = [
+        timestamp
+        for points in series_by_name.values()
+        for timestamp, _value in points
+    ]
+    if not timestamps:
+        return preferred_window
+
+    visible_span = max(timestamps) - min(timestamps)
+    if visible_span <= 0:
+        return preferred_window
+    return min(preferred_window, max(visible_span / 4, 60 * 60))
+
+
+def recent_peak(points, window_seconds):
+    """Return the highest point in the recent part of a series."""
+    if not points:
+        return None
+    end_time = points[-1][0]
+    start_time = end_time - window_seconds
+    recent_points = [point for point in points if point[0] >= start_time]
+    if not recent_points:
+        recent_points = [points[-1]]
+    return max(recent_points, key=lambda point: point[1])
+
+
+def format_duration(seconds):
+    """Return a compact human-readable duration."""
+    units = [
+        ("w", 7 * 24 * 60 * 60),
+        ("d", 24 * 60 * 60),
+        ("h", 60 * 60),
+        ("m", 60),
+        ("s", 1),
+    ]
+    for suffix, unit_seconds in units:
+        if seconds >= unit_seconds and seconds % unit_seconds == 0:
+            return f"{int(seconds / unit_seconds)}{suffix}"
+    for suffix, unit_seconds in units:
+        if seconds >= unit_seconds:
+            return f"{seconds / unit_seconds:.1f}{suffix}"
+    return f"{seconds:.0f}s"
+
+
+def annotate_peak(ax, name, peak, color, offset_index):
+    """Add a local text label near a recent peak."""
+    timestamp, value = peak
+    date = dt.datetime.fromtimestamp(timestamp)
+    offset_y = 12 + 10 * (offset_index % 3)
+    label = f"{describe_series(name)}\n{value:.1f} C"
+    ax.scatter([date], [value], marker="o", color=color, s=26, zorder=4)
+    ax.annotate(
+        label,
+        xy=(date, value),
+        xytext=(8, offset_y),
+        textcoords="offset points",
+        color=color,
+        fontsize="small",
+        ha="left",
+        va="bottom",
+        arrowprops={
+            "arrowstyle": "-",
+            "color": color,
+            "alpha": 0.75,
+            "lw": 0.8,
+        },
+        bbox={
+            "boxstyle": "round,pad=0.25",
+            "facecolor": "white",
+            "edgecolor": color,
+            "alpha": 0.80,
+        },
+        zorder=5,
+    )
+
+
+def auto_hidpi():
+    """Return whether the current sway display setup appears to be HiDPI."""
+    try:
+        output = subprocess.run(
+            ["swaymsg", "-t", "get_outputs"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        outputs = json.loads(output.stdout)
+    except (
+        FileNotFoundError,
+        json.JSONDecodeError,
+        subprocess.CalledProcessError,
+    ):
+        return False
+
+    return any(
+        screen.get("active") and float(screen.get("scale", 1.0)) > 1.0
+        for screen in outputs
+    )
+
+
+def configure_fonts(plt, hidpi):
+    """Configure matplotlib font sizes."""
+    if hidpi:
+        plt.rcParams.update(HIDPI_FONT_SIZES)
+
+
+def plot_series(
+    series_by_name,
+    host,
+    gap_threshold,
+    highlight_gaps,
+    peak_labels,
+    peak_window,
+    output,
+    hidpi,
+):
+    """Plot the loaded temperature series."""
+    import matplotlib.dates as mdates
+    import matplotlib.pyplot as plt
+    from cycler import cycler
+
+    configure_fonts(plt, hidpi)
+    fig, ax = plt.subplots(figsize=(12, 7))
+    ax.set_prop_cycle(cycler(color=COLORBLIND_FRIENDLY_COLORS))
+    total_gaps = 0
+    peak_window = recent_peak_window(series_by_name, peak_window)
+
+    for offset_index, (name, points) in enumerate(series_by_name.items()):
+        if not points:
+            continue
+        timestamps, values = split_for_gaps(points, gap_threshold)
+        dates = [
+            mdates.date2num(dt.datetime.fromtimestamp(timestamp))
+            if not math.isnan(timestamp)
+            else timestamp
+            for timestamp in timestamps
+        ]
+        line = ax.plot(dates, values, linewidth=1.0, label=series_label(name))[0]
+
+        if highlight_gaps:
+            color = line.get_color()
+            for before, after in gap_edges(points, gap_threshold):
+                total_gaps += 1
+                before_date = dt.datetime.fromtimestamp(before[0])
+                after_date = dt.datetime.fromtimestamp(after[0])
+                ax.axvspan(before_date, after_date, color=color, alpha=0.05)
+                ax.scatter(
+                    [before_date],
+                    [before[1]],
+                    marker="x",
+                    color=color,
+                    s=35,
+                    zorder=3,
+                )
+                ax.scatter(
+                    [after_date],
+                    [after[1]],
+                    marker="+",
+                    color=color,
+                    s=35,
+                    zorder=3,
+                )
+
+        if peak_labels:
+            peak = recent_peak(points, peak_window)
+            if peak is not None:
+                annotate_peak(ax, name, peak, color, offset_index)
+
+    title = f"Hardware temperatures for {host}"
+    if highlight_gaps:
+        title += (
+            f" ({total_gaps} gaps > {format_duration(gap_threshold)} marked)"
+        )
+    if peak_labels:
+        title += f" [peaks from last {format_duration(peak_window)}]"
+    if hidpi:
+        title += " [HiDPI fonts]"
+    ax.set_title(title)
+    ax.set_xlabel("Time")
+    ax.set_ylabel("Temperature (C)")
+    ax.grid(True, alpha=0.25)
+    ax.legend(loc="best", fontsize="small")
+    ax.xaxis.set_major_formatter(
+        mdates.ConciseDateFormatter(ax.xaxis.get_major_locator())
+    )
+    fig.autofmt_xdate()
+    fig.tight_layout()
+
+    if output:
+        fig.savefig(output)
+    else:
+        plt.show()
+
+
+def parse_args(argv):
+    """Parse command-line arguments."""
+    hostname = socket.gethostname().split(".", 1)[0]
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        epilog=(
+            "Times may be unix timestamps, YYYY-MM-DD, "
+            "YYYY-MM-DDTHH:MM[:SS], now, or relative durations. "
+            "Relative durations without a sign mean the past, so "
+            "'--from=2d' and '--from=-2d' both start two days ago. "
+            "Use '--from=-2d' or '--from=2d' rather than '--from -2d' "
+            "if your shell or argparse treats the value as an option."
+        ),
+    )
+    parser.add_argument(
+        "--host",
+        default=hostname,
+        help="host under $HOME/data/hosts (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--from",
+        "--since",
+        "--start",
+        dest="start_time",
+        help="start time, default is all available data",
+    )
+    parser.add_argument(
+        "--to",
+        "--until",
+        "--end",
+        dest="end_time",
+        help="end time, default is all available data",
+    )
+    parser.add_argument(
+        "--gap",
+        help=(
+            "gap threshold to highlight, such as 30m or 2h "
+            "(default: max 30m or four sample intervals)"
+        ),
+    )
+    parser.add_argument(
+        "--highlight-gaps",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="shade and mark discontinuities (default: yes)",
+    )
+    parser.add_argument(
+        "--output",
+        help="write the plot to this file instead of showing it",
+    )
+    parser.add_argument(
+        "--peak-labels",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="label each series' recent peak (default: yes)",
+    )
+    parser.add_argument(
+        "--peak-window",
+        default="1d",
+        help=(
+            "recent window for peak labels, such as 6h or 2d "
+            "(default: %(default)s)"
+        ),
+    )
+    parser.add_argument(
+        "--list",
+        "--list-series",
+        action="store_true",
+        dest="list_series",
+        help="list available temperature series and exit",
+    )
+    parser.add_argument(
+        "--series",
+        action="append",
+        metavar="NAME",
+        help=(
+            "plot only this series; use the names shown by --list-series "
+            "(may be repeated)"
+        ),
+    )
+    parser.add_argument(
+        "--hidpi",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="use larger plot fonts; default is to auto-detect sway scale",
+    )
+    return parser.parse_args(argv)
+
+
+def main(argv=None):
+    """Run the program."""
+    args = parse_args(argv)
+    try:
+        start_time = parse_time(args.start_time)
+        end_time = parse_time(args.end_time)
+        if args.gap is None:
+            gap_threshold = None
+        else:
+            gap_threshold = parse_duration(args.gap)
+        peak_window = parse_duration(args.peak_window)
+    except ValueError as exc:
+        print(f"hw-tplot: {exc}", file=sys.stderr)
+        return 2
+
+    if (
+        start_time is not None
+        and end_time is not None
+        and start_time > end_time
+    ):
+        print("hw-tplot: start time is after end time", file=sys.stderr)
+        return 2
+
+    data_dir = host_data_dir(args.host)
+    filenames = discover_temperature_files(data_dir)
+    if not filenames:
+        print(f"hw-tplot: no temperature files found in {data_dir}", file=sys.stderr)
+        return 1
+
+    try:
+        filenames = select_temperature_files(filenames, args.series)
+    except ValueError as exc:
+        print(f"hw-tplot: {exc}", file=sys.stderr)
+        return 2
+
+    if args.list_series:
+        list_series(filenames)
+        return 0
+
+    series_by_name = {
+        series_name(filename): read_series(filename, start_time, end_time)
+        for filename in filenames
+    }
+    series_by_name = {
+        name: points for name, points in series_by_name.items() if points
+    }
+    if not series_by_name:
+        print("hw-tplot: no temperature samples in requested range", file=sys.stderr)
+        return 1
+
+    if gap_threshold is None:
+        gap_threshold = automatic_gap_threshold(series_by_name)
+
+    hidpi = auto_hidpi() if args.hidpi is None else args.hidpi
+    plot_series(
+        series_by_name,
+        args.host,
+        gap_threshold,
+        args.highlight_gaps,
+        args.peak_labels,
+        peak_window,
+        args.output,
+        hidpi,
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
