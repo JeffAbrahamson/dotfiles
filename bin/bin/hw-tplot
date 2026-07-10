@@ -35,6 +35,9 @@ HIDPI_FONT_SIZES = {
 }
 
 DEFAULT_PEAK_WINDOW_SECONDS = 24 * 60 * 60
+HIDPI_DPI_THRESHOLD = 150
+HIDPI_WIDTH_THRESHOLD = 3840
+HIDPI_HEIGHT_THRESHOLD = 2160
 
 RELATIVE_RE = re.compile(
     r"^(?P<sign>[+-])?(?P<amount>\d+(?:\.\d+)?)(?P<unit>[smhdw])$"
@@ -319,6 +322,44 @@ def gap_edges(points, gap_threshold):
     ]
 
 
+def shutdown_times(series_by_name, gap_threshold, count=2):
+    """Return the last timestamps immediately before detected gaps."""
+    times = {
+        before[0]
+        for points in series_by_name.values()
+        for before, _after in gap_edges(points, gap_threshold)
+    }
+    return sorted(times)[-count:]
+
+
+def current_last_time(series_by_name):
+    """Return the most recent timestamp in any loaded series."""
+    times = [points[-1][0] for points in series_by_name.values() if points]
+    if not times:
+        return None
+    return max(times)
+
+
+def sample_at_or_before(points, timestamp):
+    """Return the last sample at or before timestamp."""
+    sample = None
+    for point in points:
+        if point[0] > timestamp:
+            break
+        sample = point
+    return sample
+
+
+def temperatures_at(series_by_name, timestamp):
+    """Return labelled temperatures at or before timestamp."""
+    temperatures = []
+    for name, points in series_by_name.items():
+        sample = sample_at_or_before(points, timestamp)
+        if sample is not None:
+            temperatures.append((series_label(name), sample[1]))
+    return temperatures
+
+
 def recent_peak_window(series_by_name, preferred_window):
     """Return the time span to search for recent peaks."""
     timestamps = [
@@ -397,7 +438,105 @@ def annotate_peak(ax, name, peak, color, offset_index):
     )
 
 
-def auto_hidpi():
+def summary_label_width(series_by_name):
+    """Return the label width to use in the stdout summary."""
+    labels = [series_label(name) for name in series_by_name]
+    if not labels:
+        return 0
+    return max(len(label) for label in labels)
+
+
+def print_temperature_checkpoint(
+    label, timestamp, series_by_name, label_width
+):
+    """Print one timestamp and its temperatures as indented bullets."""
+    print(f"  * {label}: {format_time(timestamp)}")
+    for name, value in temperatures_at(series_by_name, timestamp):
+        print(f"    * {name:<{label_width}}  {value:5.1f} C")
+
+
+def print_run_summary(series_by_name, gap_threshold, detected_hidpi, hidpi):
+    """Print shutdown and display summary for a plot run."""
+    label_width = summary_label_width(series_by_name)
+    print("Temperature checkpoints:")
+    shutdowns = shutdown_times(series_by_name, gap_threshold)
+    if shutdowns:
+        for timestamp in reversed(shutdowns):
+            print_temperature_checkpoint(
+                "shutdown before time-series gap",
+                timestamp,
+                series_by_name,
+                label_width,
+            )
+    else:
+        print("  * no time-series shutdowns found")
+
+    last_time = current_last_time(series_by_name)
+    if last_time is not None:
+        print_temperature_checkpoint(
+            "current last recorded time",
+            last_time,
+            series_by_name,
+            label_width,
+        )
+
+    print("Display:")
+    if detected_hidpi is None:
+        detected = "unknown"
+    elif detected_hidpi:
+        detected = "yes"
+    else:
+        detected = "no"
+    accommodated = "yes" if hidpi else "no"
+    print(
+        f"  * HiDPI display detected: {detected}; "
+        f"larger plot fonts applied: {accommodated}"
+    )
+
+
+def output_dpi(output):
+    """Return the approximate diagonal DPI for one compositor output."""
+    mode = output.get("current_mode") or {}
+    width = mode.get("width")
+    height = mode.get("height")
+    physical_width = output.get("physical_width")
+    physical_height = output.get("physical_height")
+    if not all((width, height, physical_width, physical_height)):
+        return None
+    if physical_width <= 0 or physical_height <= 0:
+        return None
+
+    pixel_diagonal = math.hypot(width, height)
+    inch_diagonal = math.hypot(physical_width, physical_height) / 25.4
+    if inch_diagonal <= 0:
+        return None
+    return pixel_diagonal / inch_diagonal
+
+
+def output_is_hidpi(output):
+    """Return whether one compositor output should use HiDPI plot fonts."""
+    if not output.get("active"):
+        return False
+
+    if float(output.get("scale", 1.0)) > 1.0:
+        return True
+
+    mode = output.get("current_mode") or {}
+    width = mode.get("width", 0)
+    height = mode.get("height", 0)
+    if width >= HIDPI_WIDTH_THRESHOLD or height >= HIDPI_HEIGHT_THRESHOLD:
+        return True
+
+    dpi = output_dpi(output)
+    return dpi is not None and dpi >= HIDPI_DPI_THRESHOLD
+
+
+def outputs_are_hidpi(outputs):
+    """Return whether any active output appears to be HiDPI."""
+    return any(output_is_hidpi(output) for output in outputs)
+
+
+def sway_hidpi():
     """Return whether the current sway display setup appears to be HiDPI."""
     try:
         output = subprocess.run(
@@ -412,12 +551,49 @@ def auto_hidpi():
         json.JSONDecodeError,
         subprocess.CalledProcessError,
     ):
-        return False
+        return None
 
-    return any(
-        screen.get("active") and float(screen.get("scale", 1.0)) > 1.0
-        for screen in outputs
-    )
+    return outputs_are_hidpi(outputs)
+
+
+def xrandr_hidpi():
+    """Return whether xrandr reports an active HiDPI output."""
+    try:
+        output = subprocess.run(
+            ["xrandr", "--query"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        return None
+
+    for line in output.stdout.splitlines():
+        if " connected " not in line:
+            continue
+        match = re.search(r"(\d+)x(\d+)\+\d+\+\d+", line)
+        if not match:
+            continue
+        width = int(match.group(1))
+        height = int(match.group(2))
+        if width >= HIDPI_WIDTH_THRESHOLD or height >= HIDPI_HEIGHT_THRESHOLD:
+            return True
+    return False
+
+
+def detected_hidpi():
+    """Return True, False, or None when display probing is unavailable."""
+    results = [sway_hidpi(), xrandr_hidpi()]
+    if any(result is True for result in results):
+        return True
+    if any(result is False for result in results):
+        return False
+    return None
+
+
+def auto_hidpi():
+    """Return whether larger fonts should be used automatically."""
+    return detected_hidpi() is True
 
 
 def configure_fonts(plt, hidpi):
@@ -458,9 +634,9 @@ def plot_series(
             for timestamp in timestamps
         ]
         line = ax.plot(dates, values, linewidth=1.0, label=series_label(name))[0]
+        color = line.get_color()
 
         if highlight_gaps:
-            color = line.get_color()
             for before, after in gap_edges(points, gap_threshold):
                 total_gaps += 1
                 before_date = dt.datetime.fromtimestamp(before[0])
@@ -656,7 +832,9 @@ def main(argv=None):
     if gap_threshold is None:
         gap_threshold = automatic_gap_threshold(series_by_name)
 
-    hidpi = auto_hidpi() if args.hidpi is None else args.hidpi
+    detected = detected_hidpi()
+    hidpi = detected is True if args.hidpi is None else args.hidpi
+    print_run_summary(series_by_name, gap_threshold, detected, hidpi)
     plot_series(
         series_by_name,
         args.host,
