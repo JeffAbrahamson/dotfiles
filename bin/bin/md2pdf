@@ -5,6 +5,7 @@ set -euo pipefail
 pdf_engine=xelatex
 fallback_viewer=xdg-open
 pdf_cleanup_delay=${PDF_CLEANUP_DELAY:-3600}
+pdf_monofont=${PDF_MONOFONT:-DejaVu Sans Mono}
 
 usage() {
     cat <<EOF
@@ -167,6 +168,7 @@ if [[ "$input" == "-" || "$no_pdf" -eq 1 ]]; then
         --pdf-engine="$pdf_engine" \
         --variable geometry:margin=1in \
         --variable CJKmainfont="Noto Serif CJK SC" \
+        --variable monofont="$pdf_monofont" \
         --include-in-header="$tmp_header" \
         "${pandoc_args[@]}" \
         "$tmp_md" \
@@ -200,6 +202,7 @@ else
         --pdf-engine="$pdf_engine" \
         --variable geometry:margin=1in \
         --variable CJKmainfont="Noto Serif CJK SC" \
+        --variable monofont="$pdf_monofont" \
         --include-in-header="$tmp_header" \
         "${pandoc_args[@]}" \
         "$input" \
