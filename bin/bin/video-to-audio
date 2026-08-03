@@ -29,6 +29,16 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         nargs="*",
         help="optional start and end as seconds, MM:SS, or HH:MM:SS",
     )
+    parser.add_argument(
+        "--accurate-seek",
+        action="store_true",
+        help="put seeking after the input and use duration instead of end time",
+    )
+    parser.add_argument(
+        "--matroska",
+        action="store_true",
+        help="write a Matroska audio file (.mka) immediately",
+    )
     args = parser.parse_args(argv)
     if len(args.times) > 2:
         parser.error("at most two time arguments may be given")
@@ -39,7 +49,14 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     try:
         start, end = parse_optional_times(args.times)
-        output_path = extract_audio(args.filename, start, end)
+        output_path = extract_audio(
+            args.filename,
+            start,
+            end,
+            status_func=lambda message: print(message, file=sys.stderr),
+            accurate_seek=args.accurate_seek,
+            matroska=args.matroska,
+        )
     except VideoToAudioError as exc:
         print(exc, file=sys.stderr)
         return 1

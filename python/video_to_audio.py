@@ -140,6 +140,14 @@ def output_path_for(input_path: Path, codec: str) -> Path:
     return output_path
 
 
+def matroska_output_path_for(input_path: Path) -> Path:
+    """Choose a Matroska audio path distinct from the input path."""
+    output_path = input_path.with_suffix(".mka")
+    if output_path == input_path:
+        output_path = input_path.with_name(f"{input_path.stem}.audio.mka")
+    return output_path
+
+
 def confirm_overwrite(
     output_path: Path, input_func: Callable[[str], str] = input
 ) -> bool:
@@ -158,27 +166,87 @@ def build_ffmpeg_command(
     output_path: Path,
     start: Decimal | None,
     end: Decimal | None,
+    accurate_seek: bool = False,
 ) -> list[str]:
     """Build the stream-copy command."""
     command = ["ffmpeg", "-v", "error", "-nostdin"]
-    if start is not None:
-        command.extend(["-ss", format_time(start)])
-    if end is not None:
-        command.extend(["-to", format_time(end)])
+    if not accurate_seek:
+        if start is not None:
+            command.extend(["-ss", format_time(start)])
+        if end is not None:
+            command.extend(["-to", format_time(end)])
+    command.extend(["-i", str(input_path)])
+    if accurate_seek:
+        if start is not None:
+            command.extend(["-ss", format_time(start)])
+        if end is not None:
+            duration = end - (start or Decimal(0))
+            command.extend(["-t", format_time(duration)])
     command.extend(
         [
-            "-i",
-            str(input_path),
             "-map",
             "0:a:0",
             "-vn",
             "-c:a",
             "copy",
-            "-y",
-            str(output_path),
         ]
     )
+    if accurate_seek and start and output_path.suffix == ".mka":
+        command.extend(["-output_ts_offset", format_time(-start)])
+    command.extend(["-y", str(output_path)])
     return command
+
+
+def has_valid_audio_timestamps(output_path: Path) -> bool:
+    """Return whether ffprobe finds a nondecreasing audio packet timeline."""
+    try:
+        result = subprocess.run(
+            [
+                "ffprobe",
+                "-v",
+                "error",
+                "-select_streams",
+                "a:0",
+                "-show_packets",
+                "-show_entries",
+                "packet=dts_time",
+                "-of",
+                "json",
+                str(output_path),
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    except FileNotFoundError as exc:
+        raise VideoToAudioError("ffprobe was not found in PATH") from exc
+
+    if result.returncode != 0:
+        return False
+    try:
+        packets = json.loads(result.stdout)["packets"]
+        timestamps = [Decimal(packet["dts_time"]) for packet in packets]
+    except (
+        InvalidOperation,
+        json.JSONDecodeError,
+        KeyError,
+        TypeError,
+    ):
+        return False
+    return bool(timestamps) and all(
+        timestamp.is_finite()
+        and (index == 0 or timestamp >= timestamps[index - 1])
+        for index, timestamp in enumerate(timestamps)
+    )
+
+
+def run_ffmpeg(command: list[str], output_path: Path) -> bool:
+    """Run ffmpeg and report whether it created a valid packet timeline."""
+    try:
+        result = subprocess.run(command, check=False)
+    except FileNotFoundError as exc:
+        raise VideoToAudioError("ffmpeg was not found in PATH") from exc
+    return result.returncode == 0 and has_valid_audio_timestamps(output_path)
 
 
 def extract_audio(
@@ -186,22 +254,62 @@ def extract_audio(
     start: Decimal | None,
     end: Decimal | None,
     input_func: Callable[[str], str] = input,
+    status_func: Callable[[str], None] | None = None,
+    accurate_seek: bool = False,
+    matroska: bool = False,
 ) -> Path | None:
-    """Validate and extract audio, returning None if overwrite is declined."""
+    """Extract audio, retrying safer seek and container choices as needed."""
     codec = inspect_video(input_path)
-    output_path = output_path_for(input_path, codec)
+    output_path = (
+        matroska_output_path_for(input_path)
+        if matroska
+        else output_path_for(input_path, codec)
+    )
 
-    if output_path.exists() and not confirm_overwrite(output_path, input_func):
-        return None
+    initial_accurate_seek = accurate_seek or matroska
+    attempts = [(output_path, initial_accurate_seek)]
+    if not initial_accurate_seek and (start is not None or end is not None):
+        attempts.append((output_path, True))
+    matroska_path = matroska_output_path_for(input_path)
+    if not matroska and matroska_path != output_path:
+        attempts.append((matroska_path, True))
 
-    command = build_ffmpeg_command(input_path, output_path, start, end)
-    try:
-        result = subprocess.run(command, check=False)
-    except FileNotFoundError as exc:
-        raise VideoToAudioError("ffmpeg was not found in PATH") from exc
-    if result.returncode != 0:
-        raise VideoToAudioError(f"ffmpeg failed while creating {output_path}")
-    return output_path
+    previous_path: Path | None = None
+    for attempt_number, (attempt_path, attempt_accurate) in enumerate(
+        attempts
+    ):
+        if attempt_path != previous_path and attempt_path.exists():
+            if not confirm_overwrite(attempt_path, input_func):
+                return None
+        if attempt_number and status_func is not None:
+            if attempt_path == output_path:
+                status_func(
+                    "Extraction failed or audio timestamps are invalid; "
+                    "retrying with accurate seeking."
+                )
+            else:
+                status_func(
+                    "Extraction failed or audio timestamps are still invalid; "
+                    "retrying in a Matroska container."
+                )
+        command = build_ffmpeg_command(
+            input_path,
+            attempt_path,
+            start,
+            end,
+            accurate_seek=attempt_accurate,
+        )
+        if run_ffmpeg(command, attempt_path):
+            if previous_path is not None and previous_path != attempt_path:
+                previous_path.unlink(missing_ok=True)
+            return attempt_path
+        attempt_path.unlink(missing_ok=True)
+        previous_path = attempt_path
+
+    raise VideoToAudioError(
+        "Could not create output with valid audio timestamps: "
+        f"{attempts[-1][0]}"
+    )
 
 
 def parse_optional_times(

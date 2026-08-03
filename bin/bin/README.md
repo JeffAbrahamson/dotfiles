@@ -21,4 +21,7 @@ This directory contains the actual executables installed from the repository. Mo
 `video-to-audio VIDEO [START [END]]` accepts times as seconds, `MM:SS`, or
 `HH:MM:SS`. It requires `ffmpeg` and `ffprobe`. The output extension follows
 the source audio codec (for example, Opus becomes `.opus`), and unknown codecs
-use the Matroska audio `.mka` container.
+use the Matroska audio `.mka` container. The result's packet timestamps are
+checked automatically. On failure, the command retries with accurate
+output-side seeking and then with a Matroska `.mka` container. Use
+`--accurate-seek` or `--matroska` to select either fallback immediately.
