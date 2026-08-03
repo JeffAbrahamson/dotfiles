@@ -9,8 +9,16 @@ This directory contains the actual executables installed from the repository. Mo
 * File and package comparison: [`compare-file-lists`](compare-file-lists), [`compare-sum-lists`](compare-sum-lists), [`dedup`](dedup), and [`disk-usage.sh`](disk-usage.sh).
 * Git helpers: [`gc`](gc), [`git-this-week`](git-this-week), [`git-update-all.sh`](git-update-all.sh), and [`update-gf`](update-gf).
 * Window-manager and desktop helpers: [`i3-chromium-browser`](i3-chromium-browser), [`signal-desktop`](signal-desktop), [`journal-edit`](journal-edit), and [`journal-read`](journal-read).
+* Media: [`video-to-audio`](video-to-audio) copies a video's first audio
+  stream without re-encoding it and can optionally cut it by start and end
+  time.
 
 ## Notable tools
 
 * [`bandwidth`](bandwidth) is the cleaner current interface for summarizing recorded network quality data, including per-network breakdowns and textual or graphical statistics.
 * [`tsd-bicycle`](tsd-bicycle) focuses on bicycle mileage logs and can report totals or generate year-over-year plots.
+
+`video-to-audio VIDEO [START [END]]` accepts times as seconds, `MM:SS`, or
+`HH:MM:SS`. It requires `ffmpeg` and `ffprobe`. The output extension follows
+the source audio codec (for example, Opus becomes `.opus`), and unknown codecs
+use the Matroska audio `.mka` container.

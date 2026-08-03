@@ -1,0 +1,55 @@
+#!/usr/bin/env python3
+
+"""Copy a video's audio stream, optionally cutting it by time."""
+
+from __future__ import annotations
+
+import argparse
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+PYTHON_DIR = ROOT / "python"
+if str(PYTHON_DIR) not in sys.path:
+    sys.path.insert(0, str(PYTHON_DIR))
+
+from video_to_audio import (  # noqa: E402
+    VideoToAudioError,
+    extract_audio,
+    parse_optional_times,
+)
+
+
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("filename", type=Path, help="input video file")
+    parser.add_argument(
+        "times",
+        metavar="TIME",
+        nargs="*",
+        help="optional start and end as seconds, MM:SS, or HH:MM:SS",
+    )
+    args = parser.parse_args(argv)
+    if len(args.times) > 2:
+        parser.error("at most two time arguments may be given")
+    return args
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = parse_args(argv)
+    try:
+        start, end = parse_optional_times(args.times)
+        output_path = extract_audio(args.filename, start, end)
+    except VideoToAudioError as exc:
+        print(exc, file=sys.stderr)
+        return 1
+
+    if output_path is None:
+        print("Not overwriting existing output.")
+    else:
+        print(output_path)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -11,7 +11,8 @@ install:
 	rsync -av --delete new-project-template/ "$$np_dest/"; \
 	site_packages="$$(python3 -c 'import site; print(site.getusersitepackages())')"; \
 	maybe_mkdir "$$site_packages/bandwidth_tool/"; \
-	rsync -av --delete ./bandwidth_tool/ "$$site_packages/bandwidth_tool/"
+	rsync -av --delete ./bandwidth_tool/ "$$site_packages/bandwidth_tool/"; \
+	/bin/cp -f video_to_audio.py "$$site_packages/video_to_audio.py"
 
 test:
 	@:
