@@ -1,0 +1,571 @@
+#!/usr/bin/env python3
+
+"""List files, including the playing time of audio and video files."""
+
+from __future__ import annotations
+
+import argparse
+import datetime as dt
+import grp
+import json
+import math
+import os
+import pwd
+import shlex
+import stat
+import subprocess
+import sys
+import tempfile
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+CACHE_NAME = ".ls-audio-cache"
+CACHE_VERSION = 1
+MEDIA_SUFFIXES = {
+    ".3g2",
+    ".3gp",
+    ".aac",
+    ".aiff",
+    ".alac",
+    ".ape",
+    ".asf",
+    ".avi",
+    ".flac",
+    ".flv",
+    ".m2ts",
+    ".m4a",
+    ".m4v",
+    ".mka",
+    ".mkv",
+    ".mov",
+    ".mp2",
+    ".mp3",
+    ".mp4",
+    ".mpeg",
+    ".mpg",
+    ".mts",
+    ".ogg",
+    ".ogm",
+    ".ogv",
+    ".opus",
+    ".rm",
+    ".rmvb",
+    ".ts",
+    ".wav",
+    ".webm",
+    ".wma",
+    ".wmv",
+}
+SHELL_METACHARACTERS = frozenset("'\"`$&;|<>*?()[]{}!\\~#")
+
+# Output colours.  Keep these together so the palette is easy to change.
+COLOR_RESET = "\033[0m"
+COLOR_DURATION = "\033[32m"
+COLOR_SIZE = "\033[31m"
+COLOR_DIRECTORY = "\033[34m"
+COLOR_SYMLINK = "\033[36m"
+COLOR_EXECUTABLE = "\033[32m"
+
+
+@dataclass
+class Entry:
+    path: Path
+    display_name: str
+    stat_result: os.stat_result
+    duration: float | None = None
+    media: bool = False
+
+
+class DurationCache:
+
+    def __init__(self, directory: Path, enabled: bool = True) -> None:
+        self.path = directory / CACHE_NAME
+        self.enabled = enabled
+        self.changed = False
+        self.files: dict[str, dict[str, Any]] = {}
+        if enabled:
+            self._load()
+
+    def _load(self) -> None:
+        try:
+            with self.path.open(encoding="utf-8") as cache_file:
+                data = json.load(cache_file)
+            if data.get("version") == CACHE_VERSION:
+                files = data.get("files")
+                if isinstance(files, dict):
+                    self.files = files
+        except (OSError, ValueError, AttributeError):
+            pass
+
+    @staticmethod
+    def fingerprint(result: os.stat_result) -> list[int]:
+        return [
+            result.st_dev,
+            result.st_ino,
+            result.st_size,
+            result.st_mtime_ns,
+            result.st_ctime_ns,
+        ]
+
+    def get(self, name: str, result: os.stat_result) -> tuple[bool, Any]:
+        item = self.files.get(name)
+        if isinstance(item, dict) and item.get("stat") == self.fingerprint(
+            result
+        ):
+            return True, item.get("duration")
+        return False, None
+
+    def put(
+        self, name: str, result: os.stat_result, duration: float | None
+    ) -> None:
+        item = {"stat": self.fingerprint(result), "duration": duration}
+        if self.files.get(name) != item:
+            self.files[name] = item
+            self.changed = True
+
+    def prune(self, names: set[str]) -> None:
+        stale = self.files.keys() - names
+        if stale:
+            for name in stale:
+                del self.files[name]
+            self.changed = True
+
+    def save(self) -> None:
+        if not self.enabled or not self.changed:
+            return
+        temporary_name: str | None = None
+        try:
+            descriptor, temporary_name = tempfile.mkstemp(
+                prefix=f"{CACHE_NAME}.", dir=self.path.parent
+            )
+            with os.fdopen(descriptor, "w", encoding="utf-8") as cache_file:
+                json.dump(
+                    {"version": CACHE_VERSION, "files": self.files},
+                    cache_file,
+                    ensure_ascii=True,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                )
+                cache_file.write("\n")
+            os.replace(temporary_name, self.path)
+        except OSError as error:
+            print(
+                f"ls-audio: cannot update {self.path}: {error}",
+                file=sys.stderr,
+            )
+            if temporary_name is not None:
+                try:
+                    os.unlink(temporary_name)
+                except OSError:
+                    pass
+
+
+def is_media(path: Path) -> bool:
+    return path.suffix.lower() in MEDIA_SUFFIXES
+
+
+def probe_duration(path: Path) -> float | None:
+    try:
+        result = subprocess.run(
+            [
+                "ffprobe",
+                "-v",
+                "error",
+                "-show_entries",
+                "format=duration",
+                "-of",
+                "default=noprint_wrappers=1:nokey=1",
+                "--",
+                os.fspath(path),
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    except FileNotFoundError as error:
+        raise RuntimeError("ffprobe was not found in PATH") from error
+    if result.returncode != 0:
+        return None
+    try:
+        duration = float(result.stdout.strip())
+    except ValueError:
+        return None
+    if not math.isfinite(duration) or duration < 0:
+        return None
+    return duration
+
+
+def add_durations(entries: list[Entry], cache: DurationCache) -> None:
+    for entry in entries:
+        if not entry.media:
+            continue
+        found, duration = cache.get(entry.path.name, entry.stat_result)
+        if not found:
+            duration = probe_duration(entry.path)
+            cache.put(entry.path.name, entry.stat_result, duration)
+        entry.duration = duration
+
+
+def format_duration(entry: Entry) -> str:
+    if not entry.media:
+        return "-"
+    if entry.duration is None:
+        return "?"
+    seconds = int(entry.duration + 0.5)
+    hours, remainder = divmod(seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    if hours:
+        return f"{hours}:{minutes:02d}:{seconds:02d}"
+    return f"{minutes}:{seconds:02d}"
+
+
+def human_size(size: int) -> str:
+    units = ["B", "K", "M", "G", "T", "P"]
+    value = float(size)
+    for unit in units:
+        if abs(value) < 1024 or unit == units[-1]:
+            if unit == "B":
+                return str(size)
+            return f"{value:.1f}{unit}" if value < 10 else f"{value:.0f}{unit}"
+        value /= 1024
+    return str(size)
+
+
+def allocated_size(entry: Entry, human: bool) -> str:
+    bytes_used = entry.stat_result.st_blocks * 512
+    if human:
+        return human_size(bytes_used)
+    return str((entry.stat_result.st_blocks + 1) // 2)
+
+
+def allocated_total(entries: list[Entry], human: bool) -> str:
+    blocks = sum(entry.stat_result.st_blocks for entry in entries)
+    if human:
+        return human_size(blocks * 512)
+    return str((blocks + 1) // 2)
+
+
+def owner_name(user_id: int) -> str:
+    try:
+        return pwd.getpwuid(user_id).pw_name
+    except KeyError:
+        return str(user_id)
+
+
+def group_name(group_id: int) -> str:
+    try:
+        return grp.getgrgid(group_id).gr_name
+    except KeyError:
+        return str(group_id)
+
+
+def quote_name(name: str) -> str:
+    needs_quotes = any(
+        character.isspace()
+        or not character.isprintable()
+        or character in SHELL_METACHARACTERS
+        for character in name
+    )
+    return shlex.quote(name) if needs_quotes else name
+
+
+def colorize(text: str, color: str, enabled: bool) -> str:
+    if not enabled:
+        return text
+    return f"{color}{text}{COLOR_RESET}"
+
+
+def name_color(entry: Entry) -> str | None:
+    mode = entry.stat_result.st_mode
+    if stat.S_ISDIR(mode):
+        return COLOR_DIRECTORY
+    if stat.S_ISLNK(mode):
+        return COLOR_SYMLINK
+    if stat.S_ISREG(mode) and mode & 0o111:
+        return COLOR_EXECUTABLE
+    return None
+
+
+def sort_entries(entries: list[Entry], duration_order: str | None) -> None:
+    if duration_order is None:
+        entries.sort(key=lambda entry: entry.display_name)
+        return
+
+    def duration_key(entry: Entry) -> tuple[bool, float, str]:
+        has_no_duration = not entry.media or entry.duration is None
+        duration = entry.duration or 0.0
+        if duration_order == "descending":
+            duration = -duration
+        return has_no_duration, duration, entry.display_name
+
+    entries.sort(key=duration_key)
+
+
+def print_entries(
+    entries: list[Entry],
+    long: bool,
+    human: bool,
+    show_blocks: bool = False,
+    color: bool = False,
+) -> None:
+    if not entries:
+        return
+    durations = [format_duration(entry) for entry in entries]
+    duration_width = max(len(value) for value in durations)
+    blocks = (
+        [allocated_size(entry, human) for entry in entries]
+        if show_blocks
+        else []
+    )
+    block_width = max((len(value) for value in blocks), default=0)
+    if not long:
+        for index, (entry, duration) in enumerate(zip(entries, durations)):
+            name = quote_name(entry.display_name)
+            name_colour = name_color(entry)
+            if name_colour is not None:
+                name = colorize(name, name_colour, color)
+            fields = []
+            if show_blocks:
+                block = f"{blocks[index]:>{block_width}}"
+                fields.append(colorize(block, COLOR_SIZE, color))
+            duration = f"{duration:>{duration_width}}"
+            fields.append(colorize(duration, COLOR_DURATION, color))
+            print(f"{' '.join(fields)}  {name}")
+        return
+
+    sizes = [
+        (
+            human_size(entry.stat_result.st_size)
+            if human
+            else str(entry.stat_result.st_size)
+        )
+        for entry in entries
+    ]
+    size_width = max(len(value) for value in sizes)
+    for index, (entry, duration, size) in enumerate(
+        zip(entries, durations, sizes)
+    ):
+        result = entry.stat_result
+        timestamp = dt.datetime.fromtimestamp(result.st_mtime).strftime(
+            "%Y-%m-%d %H:%M"
+        )
+        prefix = ""
+        if show_blocks:
+            block = f"{blocks[index]:>{block_width}}"
+            prefix = f"{colorize(block, COLOR_SIZE, color)} "
+        size = colorize(f"{size:>{size_width}}", COLOR_SIZE, color)
+        duration = colorize(
+            f"{duration:>{duration_width}}", COLOR_DURATION, color
+        )
+        name = quote_name(entry.display_name)
+        name_colour = name_color(entry)
+        if name_colour is not None:
+            name = colorize(name, name_colour, color)
+        print(
+            f"{prefix}{stat.filemode(result.st_mode)} {result.st_nlink:3d} "
+            f"{owner_name(result.st_uid):<8} {group_name(result.st_gid):<8} "
+            f"{size} {timestamp} {duration}  {name}"
+        )
+
+
+def directory_entries(
+    directory: Path, show_all: bool
+) -> tuple[list[Entry], set[str]]:
+    entries: list[Entry] = []
+    all_names: set[str] = set()
+    with os.scandir(directory) as iterator:
+        for item in iterator:
+            all_names.add(item.name)
+            if not show_all and item.name.startswith("."):
+                continue
+            result = item.stat(follow_symlinks=False)
+            path = directory / item.name
+            entries.append(
+                Entry(
+                    path,
+                    item.name,
+                    result,
+                    media=is_media(path) and stat.S_ISREG(result.st_mode),
+                )
+            )
+    return entries, all_names
+
+
+def explicit_entry(path: Path) -> Entry:
+    result = path.lstat()
+    return Entry(
+        path,
+        os.fspath(path),
+        result,
+        media=is_media(path) and stat.S_ISREG(result.st_mode),
+    )
+
+
+def list_directory(
+    directory: Path,
+    show_all: bool,
+    long: bool,
+    human: bool,
+    cache: bool,
+    duration_order: str | None = None,
+    show_blocks: bool = False,
+    color: bool = False,
+) -> None:
+    entries, all_names = directory_entries(directory, show_all)
+    duration_cache = DurationCache(directory, cache)
+    add_durations(entries, duration_cache)
+    duration_cache.prune(all_names)
+    duration_cache.save()
+    sort_entries(entries, duration_order)
+    if show_blocks:
+        total = colorize(allocated_total(entries, human), COLOR_SIZE, color)
+        print(f"total {total}")
+    print_entries(entries, long, human, show_blocks, color)
+
+
+def color_enabled(setting: str) -> bool:
+    if setting == "always":
+        return True
+    if setting == "never":
+        return False
+    return sys.stdout.isatty()
+
+
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        add_help=False,
+        description=(
+            "list files with audio/video playing times; durations are cached "
+            f"in {CACHE_NAME} in each directory"
+        ),
+    )
+    parser.add_argument(
+        "--help", action="help", help="show this help message and exit"
+    )
+    parser.add_argument(
+        "-a", "--all", action="store_true", help="show hidden files"
+    )
+    parser.add_argument(
+        "-l", action="store_true", help="use a long listing format"
+    )
+    parser.add_argument(
+        "-s",
+        "--size",
+        action="store_true",
+        help="print the allocated size of each file, in 1K blocks",
+    )
+    parser.add_argument(
+        "-h",
+        "--human-readable",
+        action="store_true",
+        help="with -s or -l, print human-readable sizes",
+    )
+    parser.add_argument(
+        "-d",
+        "--directory",
+        action="store_true",
+        help="list directories themselves, not their contents",
+    )
+    parser.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="do not read or write cache files",
+    )
+    parser.add_argument(
+        "--color",
+        nargs="?",
+        const="always",
+        choices=("always", "auto", "never"),
+        default="auto",
+        help="color the output: always, auto, or never (default: auto)",
+    )
+    duration_sort = parser.add_mutually_exclusive_group()
+    duration_sort.add_argument(
+        "--duration-ascending",
+        "--sort-duration",
+        "--asc",
+        dest="duration_order",
+        action="store_const",
+        const="ascending",
+        help="sort media from shortest to longest",
+    )
+    duration_sort.add_argument(
+        "--duration-descending",
+        "--sort-duration-descending",
+        "--desc",
+        dest="duration_order",
+        action="store_const",
+        const="descending",
+        help="sort media from longest to shortest",
+    )
+    parser.add_argument("paths", metavar="FILE", nargs="*", default=["."])
+    return parser.parse_args(argv)
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = parse_args(argv)
+    use_color = color_enabled(args.color)
+    paths = [Path(path) for path in args.paths]
+    failures = 0
+    explicit: list[Entry] = []
+    directories: list[Path] = []
+
+    for path in paths:
+        try:
+            if path.is_dir() and not args.directory:
+                directories.append(path)
+            else:
+                explicit.append(explicit_entry(path))
+        except OSError as error:
+            print(f"ls-audio: cannot access {path}: {error}", file=sys.stderr)
+            failures = 1
+
+    try:
+        by_parent: dict[Path, list[Entry]] = {}
+        for entry in explicit:
+            by_parent.setdefault(entry.path.parent, []).append(entry)
+        for parent, entries in by_parent.items():
+            duration_cache = DurationCache(parent, not args.no_cache)
+            add_durations(entries, duration_cache)
+            duration_cache.save()
+        sort_entries(explicit, args.duration_order)
+        print_entries(
+            explicit,
+            args.l,
+            args.human_readable,
+            args.size,
+            use_color,
+        )
+
+        show_headers = len(directories) + bool(explicit) > 1
+        for index, directory in enumerate(directories):
+            if explicit or index:
+                print()
+            if show_headers:
+                print(f"{directory}:")
+            try:
+                list_directory(
+                    directory,
+                    args.all,
+                    args.l,
+                    args.human_readable,
+                    not args.no_cache,
+                    args.duration_order,
+                    args.size,
+                    use_color,
+                )
+            except OSError as error:
+                print(
+                    f"ls-audio: cannot open {directory}: {error}",
+                    file=sys.stderr,
+                )
+                failures = 1
+    except RuntimeError as error:
+        print(f"ls-audio: {error}", file=sys.stderr)
+        return 2
+    return failures
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
