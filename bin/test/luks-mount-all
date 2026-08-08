@@ -1,0 +1,126 @@
+#!/bin/bash
+
+set -eu
+
+script_dir=$(cd "$(dirname "$0")" && pwd)
+program="$script_dir/../bin/luks-mount-all"
+test_dir=$(mktemp -d /tmp/luks-mount-all-test_XXXXXX)
+trap 'rm -rf "$test_dir"' EXIT
+
+mkdir "$test_dir/bin" "$test_dir/home"
+cat > "$test_dir/bin/lsblk" <<'EOF'
+#!/bin/sh
+
+case "$*" in
+    '-nrpo NAME,FSTYPE,UUID')
+        echo '/dev/nvme0n1p3 crypto_LUKS 99999999-8888-7777-6666-555555555555'
+        echo '/dev/sdz1 crypto_LUKS 11111111-2222-3333-4444-555555555555'
+        if [ "${LSBLK_MULTIPLE:-}" = 1 ]; then
+            echo '/dev/sdy1 crypto_LUKS aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'
+        fi
+        ;;
+    '-nrpo TYPE /dev/nvme0n1p3')
+        printf 'part\ncrypt\n'
+        ;;
+    '-nrpo TYPE /dev/sdz1'|'-nrpo TYPE /dev/sdy1')
+        echo part
+        ;;
+    *)
+        echo "Unexpected lsblk arguments: $*" >&2
+        exit 1
+        ;;
+esac
+EOF
+cat > "$test_dir/bin/sudo" <<'EOF'
+#!/bin/sh
+
+echo "$*" >> "$TEST_COMMAND_LOG"
+EOF
+chmod +x "$test_dir/bin/lsblk" "$test_dir/bin/sudo"
+export TEST_COMMAND_LOG="$test_dir/commands"
+
+if ! "$program" --help | grep -q -- '--update-config POINT'; then
+    echo 'luks-mount-all: help test failed.' >&2
+    exit 1
+fi
+
+PATH="$test_dir/bin:$PATH" HOME="$test_dir/home" \
+    "$program" --update-config /tmp > "$test_dir/output"
+if ! grep -q '^11111111-2222-3333-4444-555555555555 /tmp$' \
+        "$test_dir/home/.luksmountrc"; then
+    echo 'luks-mount-all: add test failed.' >&2
+    exit 1
+fi
+if [ "$(stat -c %a "$test_dir/home/.luksmountrc")" != 600 ]; then
+    echo 'luks-mount-all: config permissions test failed.' >&2
+    exit 1
+fi
+if ! grep -q 'Opening LUKS volume 11111111-2222-3333-4444-555555555555' \
+        "$test_dir/output"; then
+    echo 'luks-mount-all: UUID announcement test failed.' >&2
+    exit 1
+fi
+if ! grep -q '^cryptsetup open --type luks /dev/sdz1 tmp$' \
+        "$TEST_COMMAND_LOG" || \
+        ! grep -q '^mount /dev/mapper/tmp /tmp$' "$TEST_COMMAND_LOG"; then
+    echo 'luks-mount-all: mount test failed.' >&2
+    exit 1
+fi
+
+cp "$test_dir/home/.luksmountrc" "$test_dir/original"
+PATH="$test_dir/bin:$PATH" HOME="$test_dir/home" \
+    "$program" -v -u /tmp > "$test_dir/output"
+if ! grep -q '^Validated 11111111-2222-3333-4444-555555555555 /tmp' \
+        "$test_dir/output"; then
+    echo 'luks-mount-all: validation test failed.' >&2
+    exit 1
+fi
+if ! cmp --quiet "$test_dir/home/.luksmountrc" "$test_dir/original"; then
+    echo 'luks-mount-all: validation changed config.' >&2
+    exit 1
+fi
+
+# Different removable volumes can share a mount point.
+echo 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee /tmp' \
+    > "$test_dir/home/.luksmountrc"
+PATH="$test_dir/bin:$PATH" HOME="$test_dir/home" \
+    "$program" -u /tmp > "$test_dir/output"
+if [ "$(grep -c ' /tmp$' "$test_dir/home/.luksmountrc")" -ne 2 ]; then
+    echo 'luks-mount-all: shared mount point test failed.' >&2
+    exit 1
+fi
+
+# Multiple new devices require an explicit selection.
+: > "$test_dir/home/.luksmountrc"
+if LSBLK_MULTIPLE=1 PATH="$test_dir/bin:$PATH" HOME="$test_dir/home" \
+        "$program" -u /tmp > "$test_dir/output" 2>&1; then
+    echo 'luks-mount-all: ambiguous-device test failed.' >&2
+    exit 1
+fi
+if ! grep -q 'Select one with --device DEVICE' "$test_dir/output"; then
+    echo 'luks-mount-all: device-selection help test failed.' >&2
+    exit 1
+fi
+LSBLK_MULTIPLE=1 PATH="$test_dir/bin:$PATH" HOME="$test_dir/home" \
+    "$program" -u /tmp -d /dev/sdz1 > "$test_dir/output"
+if ! grep -q '^11111111-2222-3333-4444-555555555555 /tmp$' \
+        "$test_dir/home/.luksmountrc"; then
+    echo 'luks-mount-all: explicit-device test failed.' >&2
+    exit 1
+fi
+
+# A UUID already assigned elsewhere is a conflict and must not change config.
+echo '11111111-2222-3333-4444-555555555555 /other' \
+    > "$test_dir/home/.luksmountrc"
+cp "$test_dir/home/.luksmountrc" "$test_dir/original"
+if PATH="$test_dir/bin:$PATH" HOME="$test_dir/home" \
+        "$program" -u /tmp -d /dev/sdz1 > /dev/null 2>&1; then
+    echo 'luks-mount-all: conflict test failed.' >&2
+    exit 1
+fi
+if ! cmp --quiet "$test_dir/home/.luksmountrc" "$test_dir/original"; then
+    echo 'luks-mount-all: conflict changed config.' >&2
+    exit 1
+fi
+
+echo 'luks-mount-all: good.'

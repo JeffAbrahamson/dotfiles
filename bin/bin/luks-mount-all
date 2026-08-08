@@ -1,70 +1,368 @@
 #!/bin/bash
 
-# Mount all LUKS partitions that I know about that are connected to
-# this machine but not already mounted.
+# Mount configured LUKS partitions that are connected but not already mounted.
 
+set -u
+
+config_file="$HOME/.luksmountrc"
 logfile=/tmp/luks-mount-all.log
+verbose=false
+update_config=false
+update_mount_point=
+requested_device=
+
+usage() {
+    cat <<EOF
+Usage: $(basename "$0") [-h] [-v]
+       $(basename "$0") [-v] -u MOUNT_POINT [-d DEVICE]
+
+Mount available LUKS volumes listed in $config_file.
+
+Options:
+  -h, --help                  show this help
+  -v, --verbose               report unavailable volumes and skipped entries
+  -u, --update-config POINT   add an unopened LUKS volume at this mount point
+  -d, --device DEVICE         select a device when more than one is available
+
+The config file contains one volume per line:
+
+  LUKS_UUID MOUNT_POINT
+
+Blank lines and lines beginning with # are ignored. Mount points must be
+direct children of / (for example, /backup).
+EOF
+}
+
+log() {
+    echo "$*" >> "$logfile"
+}
+
+verbose_log() {
+    log "$*"
+    if "$verbose"; then
+        echo "$*"
+    fi
+}
+
+announce() {
+    echo "$*" | tee -a "$logfile"
+}
+
+config_error() {
+    echo "$config_file:$1: $2" >&2
+}
+
+declare -a config_uuids=()
+declare -a config_mount_points=()
+declare -A uuid_to_mount=()
+
+read_config() {
+    local line line_number=0 mount_point rest uuid
+
+    if [ ! -e "$config_file" ]; then
+        return 0
+    fi
+    if [ ! -f "$config_file" ] || [ ! -r "$config_file" ]; then
+        echo "$config_file is not a readable regular file." >&2
+        return 1
+    fi
+
+    while IFS= read -r line || [ -n "$line" ]; do
+        line_number=$((line_number + 1))
+        if [[ "$line" =~ ^[[:space:]]*$ || "$line" =~ ^[[:space:]]*# ]]; then
+            continue
+        fi
+        read -r uuid mount_point rest <<< "$line"
+        if [ -z "${uuid:-}" ] || [ -z "${mount_point:-}" ] || [ -n "${rest:-}" ]; then
+            config_error "$line_number" "expected LUKS_UUID MOUNT_POINT"
+            return 1
+        fi
+        if [[ ! "$uuid" =~ ^[[:xdigit:]][[:xdigit:]-]*[[:xdigit:]]$ ]]; then
+            config_error "$line_number" "invalid UUID: $uuid"
+            return 1
+        fi
+        if [[ ! "$mount_point" =~ ^/[^/[:space:]]+$ ]]; then
+            config_error "$line_number" "mount point must be a direct child of /: $mount_point"
+            return 1
+        fi
+        if [ -n "${uuid_to_mount[$uuid]+set}" ]; then
+            config_error "$line_number" "duplicate UUID: $uuid"
+            return 1
+        fi
+        config_uuids+=("$uuid")
+        config_mount_points+=("$mount_point")
+        uuid_to_mount["$uuid"]="$mount_point"
+    done < "$config_file"
+}
+
+device_is_active() {
+    local holder sysfs_holders
+
+    sysfs_holders="/sys/class/block/${1##*/}/holders"
+    if [ -d "$sysfs_holders" ]; then
+        for holder in "$sysfs_holders"/*; do
+            if [ -e "$holder" ]; then
+                return 0
+            fi
+        done
+        return 1
+    fi
+    lsblk -nrpo TYPE "$1" 2> /dev/null | grep -q '^crypt$'
+}
+
+show_candidates() {
+    local i
+    local -n devices=$1
+    local -n uuids=$2
+
+    for ((i = 0; i < ${#devices[@]}; i++)); do
+        printf '  %s  %s\n' "${devices[$i]}" "${uuids[$i]}" >&2
+    done
+}
+
+find_update_device() {
+    local canonical_requested= fstype name uuid
+    local -a configured_devices=() configured_uuids=()
+    local -a new_devices=() new_uuids=()
+
+    selected_device=
+    selected_uuid=
+    if [ -n "$requested_device" ]; then
+        canonical_requested=$(readlink -f "$requested_device")
+    fi
+
+    while read -r name fstype uuid; do
+        if [ "$fstype" != crypto_LUKS ] || [ -z "${uuid:-}" ]; then
+            continue
+        fi
+        if device_is_active "$name"; then
+            verbose_log "Skipping active LUKS device $name ($uuid)."
+            continue
+        fi
+        if [ -n "$canonical_requested" ]; then
+            if [ "$name" = "$canonical_requested" ]; then
+                selected_device="$name"
+                selected_uuid="$uuid"
+            fi
+            continue
+        fi
+        if [ -n "${uuid_to_mount[$uuid]+set}" ]; then
+            if [ "${uuid_to_mount[$uuid]}" = "$update_mount_point" ]; then
+                configured_devices+=("$name")
+                configured_uuids+=("$uuid")
+            else
+                verbose_log "Skipping $name: $uuid is configured for ${uuid_to_mount[$uuid]}."
+            fi
+        else
+            new_devices+=("$name")
+            new_uuids+=("$uuid")
+        fi
+    done < <(lsblk -nrpo NAME,FSTYPE,UUID)
+
+    if [ -n "$canonical_requested" ]; then
+        if [ -z "$selected_device" ]; then
+            echo "$requested_device is not an unopened LUKS device." >&2
+            return 1
+        fi
+        return 0
+    fi
+
+    if [ "${#new_devices[@]}" -eq 1 ]; then
+        selected_device=${new_devices[0]}
+        selected_uuid=${new_uuids[0]}
+        return 0
+    fi
+    if [ "${#new_devices[@]}" -gt 1 ]; then
+        echo "More than one unconfigured LUKS device is available:" >&2
+        show_candidates new_devices new_uuids
+        echo "Select one with --device DEVICE." >&2
+        return 1
+    fi
+    if [ "${#configured_devices[@]}" -eq 1 ]; then
+        selected_device=${configured_devices[0]}
+        selected_uuid=${configured_uuids[0]}
+        return 0
+    fi
+    if [ "${#configured_devices[@]}" -gt 1 ]; then
+        echo "More than one configured LUKS device targets $update_mount_point:" >&2
+        show_candidates configured_devices configured_uuids
+        echo "Select one with --device DEVICE." >&2
+        return 1
+    fi
+
+    echo "No unopened LUKS device is available for $update_mount_point." >&2
+    return 1
+}
+
+update_config_and_mount() {
+    local mount_id root_id
+
+    if [[ ! "$update_mount_point" =~ ^/[^/[:space:]]+$ ]]; then
+        echo "Mount point must be a direct child of /: $update_mount_point" >&2
+        return 1
+    fi
+    if [ ! -d "$update_mount_point" ]; then
+        echo "$update_mount_point does not exist or is not a directory." >&2
+        return 1
+    fi
+    root_id=$(stat -c '%D %m' /)
+    mount_id=$(stat -c '%D %m' "$update_mount_point")
+    if [ "$root_id" != "$mount_id" ]; then
+        echo "$update_mount_point is already mounted; not changing $config_file." >&2
+        return 1
+    fi
+
+    find_update_device || return 1
+    if [ -n "${uuid_to_mount[$selected_uuid]+set}" ]; then
+        if [ "${uuid_to_mount[$selected_uuid]}" != "$update_mount_point" ]; then
+            echo "UUID $selected_uuid is configured for ${uuid_to_mount[$selected_uuid]}, not $update_mount_point." >&2
+            return 1
+        fi
+        verbose_log "Validated $selected_uuid $update_mount_point."
+    else
+        if [ ! -e "$config_file" ]; then
+            if ! (umask 077; touch "$config_file"); then
+                echo "Could not create $config_file." >&2
+                return 1
+            fi
+        fi
+        if [ -s "$config_file" ]; then
+            if ! echo >> "$config_file"; then
+                echo "Could not update $config_file." >&2
+                return 1
+            fi
+        fi
+        if ! printf '%s %s\n' "$selected_uuid" "$update_mount_point" >> "$config_file"; then
+            echo "Could not update $config_file." >&2
+            return 1
+        fi
+        echo "Added $selected_uuid $update_mount_point to $config_file."
+    fi
+
+    luks_mount "$selected_uuid" "$update_mount_point" "$selected_device"
+}
 
 luks_mount() {
-    # This is the UUID we can see before luksOpen.
+    local device mapping mount_id mount_point root_id uuid
+
     uuid="$1"
-    # Where to mount it.  Should be at the root of the root file
-    # system with no trailing slash.  That is, /foo, not /foo/,
-    # /foo/bar or simply foo.
     mount_point="$2"
-    if [ ! -d $mount_point ]; then
-	echo "$mount_point does not exist or is not a directory." >> $logfile
-	return
+    device=${3:-}
+    if [ ! -d "$mount_point" ]; then
+        verbose_log "$mount_point does not exist or is not a directory."
+        return
     fi
     root_id=$(stat -c '%D %m' /)
     mount_id=$(stat -c '%D %m' "$mount_point")
     if [ "$root_id" != "$mount_id" ]; then
-	echo "$mount_point is already mounted (is not part of the root filesystem)." >> $logfile
-	echo "$root_id != $mount_id" >> $logfile
-	echo "$mount_point is already mounted." | tee -a $logfile
-	return
+        log "$root_id != $mount_id"
+        announce "$mount_point is already mounted."
+        return
     fi
-    if [ ! -e /dev/disk/by-uuid/$uuid ]; then
-	echo "LUKS volume for $mount_point not available." >> $logfile
-	return
+    if [ -z "$device" ]; then
+        if [ ! -e "/dev/disk/by-uuid/$uuid" ]; then
+            verbose_log "LUKS volume $uuid for $mount_point is not available."
+            return
+        fi
+        device=$(readlink -f "/dev/disk/by-uuid/$uuid")
     fi
-    if [ -f $mount_point/.mounted ]; then
-	# This case (already mounted) should be caught by the stat
-	# check above.  I don't expect this case to be possible.
-	echo "$mount_point is already mounted." | tee -a $logfile
-	return
+    if [ -f "$mount_point/.mounted" ]; then
+        announce "$mount_point is already mounted."
+        return
     fi
-    drive_letter=$(stat /dev/disk/by-uuid/$uuid -c '%N' | \
-		       sed -e 's/^.*sd//;' | \
-		       tr -d "'")
-    device=/dev/sd$drive_letter;
-    mapping=$(echo $mount_point | tr -d /);
-    echo "Mounting $mount_point." | tee -a $logfile
-    sudo cryptsetup open --type luks $device $mapping;
-    sudo mount /dev/mapper/$mapping /$mapping;
+
+    mapping=${mount_point#/}
+    announce "Opening LUKS volume $uuid on $device for $mount_point."
+    if ! sudo cryptsetup open --type luks "$device" "$mapping"; then
+        echo "Failed to open LUKS volume $uuid on $device." >&2
+        return 1
+    fi
+    if ! sudo mount "/dev/mapper/$mapping" "$mount_point"; then
+        echo "Failed to mount $uuid at $mount_point; closing mapper $mapping." >&2
+        sudo cryptsetup luksClose "$mapping"
+        return 1
+    fi
+    announce "Mounted LUKS volume $uuid at $mount_point."
 }
 
-echo >> $logfile
-echo "$(date)    luks-mount-all" >> $logfile
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        -v|--verbose)
+            verbose=true
+            ;;
+        -u|--update-config)
+            if [ "$#" -lt 2 ] || [[ "$2" = -* ]]; then
+                echo "$1 requires a mount point." >&2
+                usage >&2
+                exit 2
+            fi
+            update_config=true
+            update_mount_point=$2
+            shift
+            ;;
+        --update-config=*)
+            update_config=true
+            update_mount_point=${1#*=}
+            ;;
+        -d|--device)
+            if [ "$#" -lt 2 ]; then
+                echo "$1 requires a device." >&2
+                usage >&2
+                exit 2
+            fi
+            requested_device=$2
+            shift
+            ;;
+        --device=*)
+            requested_device=${1#*=}
+            ;;
+        --)
+            shift
+            break
+            ;;
+        -* )
+            echo "Unknown option: $1" >&2
+            usage >&2
+            exit 2
+            ;;
+        *)
+            echo "Unexpected argument: $1" >&2
+            usage >&2
+            exit 2
+            ;;
+    esac
+    shift
+done
+if [ "$#" -ne 0 ]; then
+    echo "Unexpected argument: $1" >&2
+    usage >&2
+    exit 2
+fi
 
-## These are the filesystem uuid's.  That is, they are the symbolic
-## links in /dev/disk/by-uuid/ that point to the /dev/sd* file.
+read_config || exit 1
 
-# siegfried / fileserver
-luks_mount 2aa26caa-b42c-4a80-bf3f-29eaf961552a /jma-5t
-luks_mount 4d4bc0a0-e67a-4f9b-8c70-05cfdbf9282c /jma-4t
-luks_mount 4b824f8c-94d4-4655-8e56-67ead167ed4c /jma-3t
-luks_mount 5d6777f0-f475-451e-bad8-3cdf6e80f7c5 /sb-4t
-luks_mount 4ea3852f-8cdd-4ed9-898e-d86a851e0a9c /sb-3t
-luks_mount 52c1125a-cb3f-4d8a-bd16-443ee394ad2e /sb-r4t
+if "$update_config"; then
+    update_config_and_mount
+    exit $?
+fi
 
-# birdsong
-luks_mount f2d2634c-8d85-40d5-a770-e940807a548f /home2
-luks_mount 1adff2f1-b5e0-4782-900c-e65c77e7bf6b /images-2
-luks_mount 4e9f9771-df39-4cdd-943e-a69aafd83a4e /images-3
-luks_mount cb67c4e8-9c87-41b1-93ad-3704be60f7f0 /birdsong-backup
+if [ -n "$requested_device" ]; then
+    echo "--device requires --update-config." >&2
+    exit 2
+fi
 
-# starshine
-luks_mount 2a6760f7-d0ad-4adc-8a22-e7c9168d37fc /home2
+if [ ! -e "$config_file" ]; then
+    echo "$config_file does not exist; use --update-config or create it manually." >&2
+    exit 1
+fi
 
-# morning
+echo >> "$logfile"
+log "$(date)    luks-mount-all"
+
+for ((i = 0; i < ${#config_uuids[@]}; i++)); do
+    luks_mount "${config_uuids[$i]}" "${config_mount_points[$i]}"
+done
