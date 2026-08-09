@@ -5,7 +5,7 @@ set -euo pipefail
 pdf_engine=xelatex
 fallback_viewer=xdg-open
 pdf_cleanup_delay=${PDF_CLEANUP_DELAY:-3600}
-pdf_mainfont=${PDF_MAINFONT:-DejaVu Serif}
+pdf_mainfont=${PDF_MAINFONT:-Linux Libertine O}
 pdf_monofont=${PDF_MONOFONT:-DejaVu Sans Mono}
 
 usage() {
