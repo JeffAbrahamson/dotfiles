@@ -234,8 +234,10 @@ _todo_show() { grep -h -vE '^#' "$@"; }
 _todo_print() {
     # Use paps to handle CJK.  Otherwise, u2ps worked great (67 lines).
     if [[ "${1:-false}" == true ]]; then
-        head -53 | cat -n | paps | lpr
+        head -53 | cat -n | cut -c-62 | paps | lpr
     else
+        # u2ps appears to truncate lines for us rather than wrapping.
+	# The line length on my current printer appears to be 79 characters.
         head -67 | cat -n | u2ps
     fi
 }
