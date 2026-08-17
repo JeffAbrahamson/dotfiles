@@ -68,3 +68,87 @@ def test_md2pdf_renders_common_unicode_and_mathematics(
         "Na₂CO₃ → 水",
     ):
         assert expected in extracted_text
+
+
+def test_md2pdf_normalizes_nonstandard_math_delimiters(tmp_path: Path) -> None:
+    markdown = tmp_path / "math-delims.md"
+    pdf = tmp_path / "math-delims.pdf"
+    markdown.write_text(
+        r"""# Delimiters
+
+Backslash-escaped inline: \(a_1 + b_2\)
+
+Backslash-escaped block:
+
+\[
+c^2 = a^2 + b^2
+\]
+
+Bare block:
+
+[
+d^2 = e^2 + f^2
+]
+""",
+        encoding="utf-8",
+    )
+
+    conversion = subprocess.run(
+        [str(MD2PDF), "-D", "-o", str(pdf), str(markdown)],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    assert "Missing character" not in conversion.stderr
+    extracted_text = subprocess.run(
+        ["pdftotext", str(pdf), "-"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout
+    normalized_text = extracted_text.translate(
+        str.maketrans("𝑎𝑏𝑐𝑑𝑒𝑓", "abcdef")
+    )
+    compact_text = "".join(normalized_text.split())
+    assert "a1+b2" in compact_text
+    assert "c2=a2+b2" in compact_text
+    assert "d2=e2+f2" in compact_text
+
+
+def test_md2pdf_leaves_code_containing_bracket_like_math_untouched(
+    tmp_path: Path,
+) -> None:
+    markdown = tmp_path / "code-vs-math.md"
+    pdf = tmp_path / "code-vs-math.pdf"
+    markdown.write_text(
+        """# Code vs. math
+
+```json
+[
+  1, 2, 3
+]
+```
+
+Inline code with parens: `foo(x_{1})`
+""",
+        encoding="utf-8",
+    )
+
+    conversion = subprocess.run(
+        [str(MD2PDF), "-D", "-o", str(pdf), str(markdown)],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    assert "Missing character" not in conversion.stderr
+    extracted_text = subprocess.run(
+        ["pdftotext", str(pdf), "-"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout
+    compact_text = "".join(extracted_text.split())
+    assert "[1,2,3]" in compact_text
+    assert "foo(x_{1})" in compact_text

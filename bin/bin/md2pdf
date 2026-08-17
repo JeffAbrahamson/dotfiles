@@ -111,6 +111,38 @@ write_cjk_header() {
     printf '%s\n' '\xeCJKDeclareCharClass{Default}{"2018,"2019,"201C,"201D}' >"$tmp_header"
 }
 
+# Copy-pasted LaTeX (e.g. from ChatGPT) often arrives with math delimiters
+# that pandoc doesn't recognise: \( \) / \[ \] with backslashes intact, or
+# with the backslashes stripped entirely leaving bare ( ) / [ ] around the
+# math. Normalize both cases to pandoc's $ $ / $$ $$ so math renders without
+# manual cleanup.
+fix_math_delims() {
+    local file=$1
+    perl -0777 -i -pe '
+        # Protect fenced code blocks and inline code spans first so the
+        # delimiter fixes below never touch code that merely happens to
+        # look like bare math (e.g. a JSON array on its own line, or
+        # `foo(x_{1})` in a code span).
+        my @stash;
+        s/^(`{3,}|~{3,})[^\n]*\n.*?^\1[ \t]*\n?/push(@stash, $&) && "\x01STASH$#stash\x02"/gmse;
+        s/(`+)[^`\n]*?\1/push(@stash, $&) && "\x01STASH$#stash\x02"/gse;
+        # \[ ... \] -> $$ ... $$  (display, backslashes intact)
+        s/\\\[(.*?)\\\]/"\$\$" . $1 . "\$\$"/gse;
+        # \( ... \) -> $ ... $  (inline, backslashes intact)
+        s/\\\((.*?)\\\)/"\$" . $1 . "\$"/gse;
+        # Bare block math: a line containing only "[", ..., a line containing
+        # only "]". Real Markdown never has a lone "[" on its own line, so
+        # this does not collide with links or reference definitions.
+        s/^\[[ \t]*\n(.*?)\n\][ \t]*$/"\$\$\n" . $1 . "\n\$\$"/gmse;
+        # Bare inline math: (...) with no spaces/parens/newlines inside,
+        # containing a LaTeX-ish token (\command, _{, or ^{). Plain prose
+        # in parentheses essentially never matches this shape.
+        s/\(([^()\s]*(?:\\[a-zA-Z]+|[_^]\{)[^()\s]*)\)/"\$" . $1 . "\$"/ge;
+        # Restore the protected code.
+        s/\x01STASH(\d+)\x02/$stash[$1]/gse;
+    ' "$file"
+}
+
 viewer() {
     if [[ -n "${PDF_VIEWER:-}" ]]; then
         read -r -a selected_viewer <<<"$PDF_VIEWER"
@@ -164,6 +196,7 @@ if [[ "$input" == "-" || "$no_pdf" -eq 1 ]]; then
         [[ -f "$input" ]] || die "No such file: $input"
         cp "$input" "$tmp_md"
     fi
+    fix_math_delims "$tmp_md"
 
     pandoc \
         --pdf-engine="$pdf_engine" \
@@ -200,6 +233,9 @@ if [[ "$force" -eq 0 && -f "$output" && "$output" -nt "$input" ]]; then
 else
     trap cleanup EXIT
     write_cjk_header
+    tmp_md=$(mktemp --suffix=.md)
+    cp "$input" "$tmp_md"
+    fix_math_delims "$tmp_md"
     pandoc \
         --pdf-engine="$pdf_engine" \
         --variable geometry:margin=1in \
@@ -208,7 +244,7 @@ else
         --variable monofont="$pdf_monofont" \
         --include-in-header="$tmp_header" \
         "${pandoc_args[@]}" \
-        "$input" \
+        "$tmp_md" \
         -o "$output"
     printf 'Wrote %s\n' "$output"
 fi
