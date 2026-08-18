@@ -2,7 +2,7 @@
 	$(addsuffix -install,$(INSTALL_SUBDIRS)) \
 	$(addsuffix -test,$(TEST_SUBDIRS))
 
-INSTALL_SUBDIRS := firewall X11 bash bin emacs i3 postgresql python \
+INSTALL_SUBDIRS := firewall X11 bash bat bin emacs i3 postgresql python \
 	readline screen sway tmux misc
 TEST_SUBDIRS := bash bin emacs git i3 mutt notion ratpoison sway
 

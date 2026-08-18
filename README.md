@@ -53,6 +53,7 @@ The repo is broad enough now that it helps to navigate by area:
 
 * [X11](X11/README.md) for X resources.
 * [bash](bash/README.md) for shell startup and prompt configuration.
+* [bat](bat/README.md) for `bat` configuration.
 * [bin](bin/README.md) for standalone helper scripts and data-analysis tools.
 * [docker](docker/README.md) for the development container used to run checks.
 * [emacs](emacs/README.md) for editor configuration and local elisp.
