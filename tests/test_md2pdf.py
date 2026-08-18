@@ -11,7 +11,7 @@ MD2PDF = PROJECT_ROOT / "bin" / "bin" / "md2pdf"
 
 @pytest.mark.parametrize(
     "command",
-    ["pandoc", "xelatex", "pdftotext", "fc-match"],
+    ["pandoc", "xelatex", "pdfinfo", "pdftotext", "fc-match"],
 )
 def test_md2pdf_dependency_is_available(command: str) -> None:
     assert shutil.which(command), f"md2pdf test requires {command}"
@@ -68,6 +68,27 @@ def test_md2pdf_renders_common_unicode_and_mathematics(
         "Na₂CO₃ → 水",
     ):
         assert expected in extracted_text
+
+
+def test_md2pdf_uses_a4_paper(tmp_path: Path) -> None:
+    markdown = tmp_path / "page-size.md"
+    pdf = tmp_path / "page-size.pdf"
+    markdown.write_text("# A4 document\n", encoding="utf-8")
+
+    subprocess.run(
+        [str(MD2PDF), "-D", "-o", str(pdf), str(markdown)],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    metadata = subprocess.run(
+        ["pdfinfo", str(pdf)],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout
+    assert "Page size:       595.28 x 841.89 pts (A4)" in metadata
 
 
 def test_md2pdf_normalizes_nonstandard_math_delimiters(tmp_path: Path) -> None:

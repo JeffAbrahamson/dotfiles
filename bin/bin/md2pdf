@@ -200,6 +200,7 @@ if [[ "$input" == "-" || "$no_pdf" -eq 1 ]]; then
 
     pandoc \
         --pdf-engine="$pdf_engine" \
+        --variable papersize:a4 \
         --variable geometry:margin=1in \
         --variable CJKmainfont="Noto Serif CJK SC" \
         --variable mainfont="$pdf_mainfont" \
@@ -238,6 +239,7 @@ else
     fix_math_delims "$tmp_md"
     pandoc \
         --pdf-engine="$pdf_engine" \
+        --variable papersize:a4 \
         --variable geometry:margin=1in \
         --variable CJKmainfont="Noto Serif CJK SC" \
         --variable mainfont="$pdf_mainfont" \
