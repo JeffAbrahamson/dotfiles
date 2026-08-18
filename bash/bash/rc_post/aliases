@@ -12,6 +12,7 @@ alias ltm="ls -lt|more"
 alias ltl="ls -lt|less"    # Effectively the same thing
 alias mv="mv -i"
 alias cp="cp -i"
+alias bcat=batcat
 
 alias h="history"
 alias hg="history | grep"
