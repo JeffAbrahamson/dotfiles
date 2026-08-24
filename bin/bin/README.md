@@ -17,6 +17,10 @@ This directory contains the actual executables installed from the repository. Mo
 ## Notable tools
 
 * [`bandwidth`](bandwidth) is the cleaner current interface for summarizing recorded network quality data, including per-network breakdowns and textual or graphical statistics.
+* [`md2pdf`](md2pdf) converts Markdown to an A4 PDF with Pandoc and XeLaTeX.
+  Fenced `mermaid` blocks are rendered as fitted vector diagrams when Mermaid
+  CLI is installed with `npm install -g @mermaid-js/mermaid-cli`; otherwise,
+  they remain ordinary code blocks and a warning is printed.
 * [`tsd-bicycle`](tsd-bicycle) focuses on bicycle mileage logs and can report totals or generate year-over-year plots.
 
 `video-to-audio VIDEO [START [END]]` accepts times as seconds, `MM:SS`, or

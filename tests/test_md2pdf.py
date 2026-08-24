@@ -1,3 +1,4 @@
+import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -173,3 +174,95 @@ Inline code with parens: `foo(x_{1})`
     compact_text = "".join(extracted_text.split())
     assert "[1,2,3]" in compact_text
     assert "foo(x_{1})" in compact_text
+
+
+@pytest.mark.skipif(
+    shutil.which("mmdc") is None,
+    reason="Mermaid CLI is not installed",
+)
+def test_md2pdf_renders_mermaid_code_blocks(tmp_path: Path) -> None:
+    markdown = tmp_path / "mermaid.md"
+    pdf = tmp_path / "mermaid.pdf"
+    markdown.write_text(
+        """# Observation workflow
+
+```mermaid
+flowchart TD
+    A["Personal observation"] --> B["Structured issue"]
+    B --> C{"Related place dossier?"}
+    C -->|Yes| D["Add evidence"]
+    C -->|No| E["Create candidate dossier"]
+    D --> F["Identify evidence gaps"]
+    E --> F
+    F --> G["Local verification missions"]
+    G --> H{"Action threshold reached?"}
+    H -->|No| F
+    H -->|Yes| I["Institutional dossier"]
+    I --> J["Notification and response tracking"]
+```
+""",
+        encoding="utf-8",
+    )
+
+    conversion = subprocess.run(
+        [str(MD2PDF), "-D", "-o", str(pdf), str(markdown)],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    assert "Error" not in conversion.stderr
+    assert pdf.stat().st_size > 0
+    metadata = subprocess.run(
+        ["pdfinfo", str(pdf)],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout
+    assert "Pages:           1" in metadata
+    extracted_text = subprocess.run(
+        ["pdftotext", str(pdf), "-"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout
+    assert "flowchart TD" not in extracted_text
+
+
+def test_md2pdf_leaves_mermaid_as_code_when_mmdc_is_missing(
+    tmp_path: Path,
+) -> None:
+    markdown = tmp_path / "mermaid-without-cli.md"
+    pdf = tmp_path / "mermaid-without-cli.pdf"
+    markdown.write_text(
+        """```mermaid
+flowchart LR
+    A --> B
+```
+""",
+        encoding="utf-8",
+    )
+    environment = os.environ.copy()
+    environment["PATH"] = os.pathsep.join(
+        directory
+        for directory in environment.get("PATH", "").split(os.pathsep)
+        if not (Path(directory) / "mmdc").exists()
+    )
+
+    conversion = subprocess.run(
+        [str(MD2PDF), "-D", "-o", str(pdf), str(markdown)],
+        check=True,
+        capture_output=True,
+        text=True,
+        env=environment,
+    )
+
+    assert "mmdc is not installed" in conversion.stderr
+    extracted_text = subprocess.run(
+        ["pdftotext", str(pdf), "-"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout
+    assert "flowchart LR" in extracted_text
+    assert "A --> B" in extracted_text

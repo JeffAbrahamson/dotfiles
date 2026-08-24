@@ -7,6 +7,8 @@ fallback_viewer=xdg-open
 pdf_cleanup_delay=${PDF_CLEANUP_DELAY:-3600}
 pdf_mainfont=${PDF_MAINFONT:-Linux Libertine O}
 pdf_monofont=${PDF_MONOFONT:-DejaVu Sans Mono}
+script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+mermaid_filter=$script_dir/md2pdf-mermaid.lua
 
 usage() {
     cat <<EOF
@@ -15,6 +17,8 @@ Usage:
     md2pdf [OPTIONS] -
 
 Convert Markdown to PDF using pandoc.
+
+Fenced mermaid code blocks are rendered when Mermaid CLI (mmdc) is installed.
 
 Arguments:
     FILE              Markdown file
@@ -143,6 +147,11 @@ fix_math_delims() {
     ' "$file"
 }
 
+check_mermaid_filter() {
+    [[ -f "$mermaid_filter" ]] ||
+        die "Missing Mermaid filter: $mermaid_filter"
+}
+
 viewer() {
     if [[ -n "${PDF_VIEWER:-}" ]]; then
         read -r -a selected_viewer <<<"$PDF_VIEWER"
@@ -189,6 +198,7 @@ if [[ "$input" == "-" || "$no_pdf" -eq 1 ]]; then
     selected_viewer=()
     viewer
     write_cjk_header
+    check_mermaid_filter
 
     if [[ "$input" == "-" ]]; then
         cat >"$tmp_md"
@@ -206,6 +216,7 @@ if [[ "$input" == "-" || "$no_pdf" -eq 1 ]]; then
         --variable mainfont="$pdf_mainfont" \
         --variable monofont="$pdf_monofont" \
         --include-in-header="$tmp_header" \
+        --lua-filter="$mermaid_filter" \
         "${pandoc_args[@]}" \
         "$tmp_md" \
         -o "$tmp_pdf"
@@ -234,6 +245,7 @@ if [[ "$force" -eq 0 && -f "$output" && "$output" -nt "$input" ]]; then
 else
     trap cleanup EXIT
     write_cjk_header
+    check_mermaid_filter
     tmp_md=$(mktemp --suffix=.md)
     cp "$input" "$tmp_md"
     fix_math_delims "$tmp_md"
@@ -245,6 +257,7 @@ else
         --variable mainfont="$pdf_mainfont" \
         --variable monofont="$pdf_monofont" \
         --include-in-header="$tmp_header" \
+        --lua-filter="$mermaid_filter" \
         "${pandoc_args[@]}" \
         "$tmp_md" \
         -o "$output"
