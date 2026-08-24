@@ -49,13 +49,106 @@ apt-refresh() {
         sudo apt-get autoremove -y;
 }
 
+# Print elapsed time at regular intervals in minutes or seconds.
+# The interval defaults to one; pass an integer >= 1 to use another interval.
 minutes() {
-    minute_=0;
+    local interval_=${1-1}
+    local minute_=0
+
+    if [[ ! $interval_ =~ ^[0-9]+$ ]] || (( 10#$interval_ < 1 )); then
+        echo "minutes: interval must be an integer greater than or equal to 1" >&2
+        return 2
+    fi
+    interval_=$((10#$interval_))
+
     while true; do
-        echo -n "$minute_  ";
-        sleep 60;
-        minute_=$((minute_ + 1));
-    done;
+        printf '%s  ' "$minute_"
+        sleep "$((interval_ * 60))" || return
+        minute_=$((minute_ + interval_))
+    done
+}
+
+seconds() {
+    local interval_=${1-1}
+    local second_=0
+
+    if [[ ! $interval_ =~ ^[0-9]+$ ]] || (( 10#$interval_ < 1 )); then
+        echo "seconds: interval must be an integer greater than or equal to 1" >&2
+        return 2
+    fi
+    interval_=$((10#$interval_))
+
+    while true; do
+        printf '%s  ' "$second_"
+        sleep "$interval_" || return
+        second_=$((second_ + interval_))
+    done
+}
+
+# Find research directories, optionally filtering their paths by substring.
+resfind() {
+    local substring_=${1-}
+    local directory_
+
+    (
+        cd "${HOME}/work" || return
+        while IFS= read -r directory_; do
+            if [[ $directory_ == *"$substring_"* ]]; then
+                printf '%s\n' "$directory_"
+            fi
+        done < <(fdfind --type d research)
+    )
+}
+
+# Change to a research directory only when the substring identifies one uniquely.
+rescd() {
+    local -a matches_
+    local directory_
+    local substring_
+    local matches_all_
+
+    if (( $# == 0 )); then
+        echo "usage: rescd SUBSTRING [SUBSTRING ...]" >&2
+        return 2
+    fi
+
+    for substring_ in "$@"; do
+        if [[ -z $substring_ ]]; then
+            echo "rescd: substrings must not be empty" >&2
+            return 2
+        fi
+    done
+
+    while IFS= read -r directory_; do
+        matches_all_=true
+        for substring_ in "$@"; do
+            if [[ $directory_ != *"$substring_"* ]]; then
+                matches_all_=false
+                break
+            fi
+        done
+        if [[ $matches_all_ == true ]]; then
+            matches_+=("$directory_")
+        fi
+    done < <(resfind)
+
+    case ${#matches_[@]} in
+        0)
+            echo "rescd: no research directory matches all substrings: $*" >&2
+            return 1
+            ;;
+        1)
+            cd "${HOME}/work/${matches_[0]}" && printf '%s\n' "$PWD"
+            ;;
+        *)
+            echo "rescd: multiple research directories match all substrings: $*" >&2
+            echo "Refine with another substring or use a complete path:" >&2
+            for directory_ in "${matches_[@]}"; do
+                printf '  rescd %q\n' "$directory_" >&2
+            done
+            return 1
+            ;;
+    esac
 }
 
 ###########################################################################

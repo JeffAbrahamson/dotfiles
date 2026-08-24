@@ -19,4 +19,5 @@ test:
 	test_file bashrc-include; \
 	test_file bash_profile-include; \
 	test_file bash_logout-include; \
+	test_file test/aliases_test.bash; \
 	exit "$$ok"
