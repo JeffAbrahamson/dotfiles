@@ -1,0 +1,10 @@
+#!/bin/sh
+
+set -eu
+
+if [ "${1:-}" != --list-themes ]; then
+    echo "Expected --list-themes" >&2
+    exit 2
+fi
+
+cat "${BAT_THEME_FIXTURE:?BAT_THEME_FIXTURE is not set}"

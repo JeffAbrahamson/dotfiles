@@ -1,0 +1,45 @@
+#!/bin/sh
+
+set -eu
+
+template=${1:?Usage: install-config TEMPLATE DESTINATION [BAT-PROGRAM]}
+destination=${2:?Usage: install-config TEMPLATE DESTINATION [BAT-PROGRAM]}
+bat_program=${3:-}
+
+if [ -z "$bat_program" ]; then
+    for candidate in bat bcat batcat; do
+        if command -v "$candidate" > /dev/null 2>&1; then
+            bat_program=$candidate
+            break
+        fi
+    done
+fi
+
+if [ -z "$bat_program" ]; then
+    echo "Cannot install bat config: no bat, bcat, or batcat executable found." >&2
+    exit 1
+fi
+
+if ! available_themes=$("$bat_program" --list-themes); then
+    echo "Cannot install bat config: '$bat_program --list-themes' failed." >&2
+    exit 1
+fi
+
+if printf '%s\n' "$available_themes" | grep -Fqx 'Solarized (light)'; then
+    theme='Solarized (light)'
+elif printf '%s\n' "$available_themes" | grep -Fqx 'OneHalfLight'; then
+    theme=OneHalfLight
+else
+    echo "Cannot install bat config: neither Solarized (light) nor OneHalfLight is supported." >&2
+    exit 1
+fi
+
+destination_directory=$(dirname "$destination")
+mkdir -p "$destination_directory"
+temporary_config=$(mktemp)
+trap 'rm -f "$temporary_config"' EXIT HUP INT TERM
+
+sed "s/{% theme %}/$theme/" "$template" > "$temporary_config"
+if ! cmp -s "$temporary_config" "$destination"; then
+    cp "$temporary_config" "$destination"
+fi

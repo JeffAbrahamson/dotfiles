@@ -1,2 +1,2 @@
---theme="Solarized (light)"
-# --theme=OneHalfLight is also good
+--theme="{% theme %}"
+# Preferred theme: Solarized (light); fallback: OneHalfLight

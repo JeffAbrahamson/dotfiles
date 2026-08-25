@@ -4,7 +4,7 @@
 
 INSTALL_SUBDIRS := firewall X11 bash bat bin emacs i3 postgresql python \
 	readline screen sway tmux misc
-TEST_SUBDIRS := bash bin emacs git i3 mutt notion ratpoison sway
+TEST_SUBDIRS := bash bat bin emacs git i3 mutt notion ratpoison sway
 
 install: $(addsuffix -install,$(INSTALL_SUBDIRS)) cleanup
 
