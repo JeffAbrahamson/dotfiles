@@ -983,8 +983,10 @@ tns() { cd "$HOME/src/jma/transport-nantes/tn_web/"; }
 pav() { cd "$HOME/work/associations/place_au_velo/"; }
 pavadm() { cd "$HOME/work/associations/place_au_velo/administrateur/"; }
 pavqr() { qrencode -l L -s 5 --foreground 004996 -o "${2:-/tmp/pavqr.png}" "$1"; }
-pav-todo() { _todo_show "$HOME/work/associations/place_au_velo/administrateur/TODO.txt"; }
-pav-todo-print() { pav-todo | _todo_print false; }
+rco() { cd "$HOME/work/associations/rue-commune/"; }
+rcos() { cd "$HOME/src/jma/rue-commune/"; }
+rco-todo() { _todo_show "$HOME/work/associations/rue-commune/TODO.txt"; }
+rco-todo-print() { rco-todo | _todo_print false; }
 
 ###########################################################################
 # Jellybooks personal.
