@@ -1,0 +1,43 @@
+#!/bin/bash
+
+set -eu
+
+script_dir=$(cd "$(dirname "$0")" && pwd)
+program="$script_dir/../bin/git-update-all.sh"
+test_dir=$(mktemp -d /tmp/git-update-all-test_XXXXXX)
+trap 'rm -rf "$test_dir"' EXIT
+
+mkdir "$test_dir/bin" "$test_dir/repos"
+mkdir "$test_dir/repos/first repo" "$test_dir/repos/first repo/.git"
+mkdir "$test_dir/repos/second" "$test_dir/repos/second/.git"
+mkdir "$test_dir/repos/not-a-repository"
+
+fake_git='#!/bin/sh
+printf "%s:" "${PWD##*/}" >> "$GIT_COMMAND_LOG"
+printf " <%s>" "$@" >> "$GIT_COMMAND_LOG"
+printf "\\n" >> "$GIT_COMMAND_LOG"'
+printf '%s\n' "$fake_git" > "$test_dir/bin/git"
+chmod +x "$test_dir/bin/git"
+
+export GIT_COMMAND_LOG="$test_dir/commands"
+(
+    cd "$test_dir/repos"
+    PATH="$test_dir/bin:$PATH" "$program" > "$test_dir/output"
+)
+
+expected="$test_dir/expected"
+printf '%s\n' \
+    'first repo: <remote> <update> <--prune>' \
+    'second: <remote> <update> <--prune>' \
+    'first repo: <pull>' \
+    'second: <pull>' \
+    'first repo: <status>' \
+    'second: <status>' > "$expected"
+
+if ! cmp --quiet "$GIT_COMMAND_LOG" "$expected"; then
+    echo 'git-update-all: test failed.' >&2
+    diff -u "$expected" "$GIT_COMMAND_LOG" || true
+    exit 1
+fi
+
+echo 'git-update-all: good.'
