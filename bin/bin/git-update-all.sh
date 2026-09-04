@@ -32,23 +32,50 @@ if [ "$#" -ne 0 ]; then
     exit 2
 fi
 
-# Record upstream tips before fetching.  Once fetch prunes a ref, its old
-# object ID is no longer available for comparison with the local branch.
+# Fetch only remote branches into their conventional remote-tracking
+# namespace.  An explicit refspec prevents repository configuration from
+# directing pruning at local branches, and --no-prune-tags protects local
+# tags even when fetch.pruneTags or remote.<name>.pruneTags is enabled.
+update-remotes-safely()
+{
+    local remote refspec failed=0
+
+    while IFS= read -r remote; do
+	[ -n "$remote" ] || continue
+	refspec="+refs/heads/*:refs/remotes/$remote/*"
+	git fetch --no-tags --prune --no-prune-tags --no-write-fetch-head \
+	    --refmap= "$remote" "$refspec" || failed=1
+    done < <(git remote)
+
+    return "$failed"
+}
+
+# Record canonical remote-tracking tips before fetching.  Once fetch prunes a
+# ref, its old object ID is no longer available for comparison with the local
+# branch.  Also retain the configured upstream details so a concurrent config
+# change cannot make a different branch eligible for deletion.
 snapshot-upstreams()
 {
     local snapshot=$1
-    local branch_ref upstream_ref remote upstream_oid
+    local branch_ref upstream_ref remote remote_ref tracking_ref upstream_oid
 
     : > "$snapshot"
-    while read -r branch_ref upstream_ref remote; do
-	[ -n "$upstream_ref" ] || continue
-	upstream_oid=$(git rev-parse --verify "$upstream_ref^{commit}" \
+    while read -r branch_ref upstream_ref remote remote_ref; do
+	[ -n "$upstream_ref" ] && [ -n "$remote" ] || continue
+	case $remote_ref in
+	    refs/heads/*) ;;
+	    *) continue ;;
+	esac
+	tracking_ref="refs/remotes/$remote/${remote_ref#refs/heads/}"
+	upstream_oid=$(git rev-parse --verify "$tracking_ref^{commit}" \
 	    2>/dev/null) || upstream_oid=-
-	printf '%s\t%s\t%s\t%s\n' \
-	    "$branch_ref" "$upstream_ref" "$remote" "$upstream_oid" \
+	printf '%s\t%s\t%s\t%s\t%s\t%s\n' \
+	    "$branch_ref" "$upstream_ref" "$remote" "$remote_ref" \
+	    "$tracking_ref" "$upstream_oid" \
 	    >> "$snapshot"
     done < <(git for-each-ref \
-	--format='%(refname) %(upstream) %(upstream:remotename)' refs/heads)
+	--format='%(refname) %(upstream) %(upstream:remotename) %(upstream:remoteref)' \
+	refs/heads)
 }
 
 # Set default_branch and default_tracking_ref.  Refresh the remote's symbolic
@@ -157,12 +184,18 @@ branch-is-safe-to-remove()
 
 delete-local-branch()
 {
-    local branch_ref=$1 upstream_ref=$2 remote=$3 upstream_oid=$4
-    local branch=${branch_ref#refs/heads/} current_upstream
+    local branch_ref=$1 upstream_ref=$2 remote=$3 remote_ref=$4
+    local tracking_ref=$5 upstream_oid=$6 branch=${branch_ref#refs/heads/}
+    local current_upstream current_remote current_remote_ref
 
-    current_upstream=$(git for-each-ref --format='%(upstream)' "$branch_ref")
+    read -r current_upstream current_remote current_remote_ref < \
+	<(git for-each-ref \
+	    --format='%(upstream) %(upstream:remotename) %(upstream:remoteref)' \
+	    "$branch_ref")
     if [ "$current_upstream" != "$upstream_ref" ] ||
-	    git show-ref --verify --quiet "$upstream_ref" ||
+	    [ "$current_remote" != "$remote" ] ||
+	    [ "$current_remote_ref" != "$remote_ref" ] ||
+	    git show-ref --verify --quiet "$tracking_ref" ||
 	    ! branch-is-safe-to-remove "$branch_ref" "$remote" \
 		"$upstream_oid"; then
 	echo "Keeping local branch '$branch': its state changed during cleanup." >&2
@@ -173,8 +206,9 @@ delete-local-branch()
 
 handle-gone-branch()
 {
-    local branch_ref=$1 upstream_ref=$2 remote=$3 upstream_oid=$4
-    local primary_worktree=$5 branch=${branch_ref#refs/heads/}
+    local branch_ref=$1 upstream_ref=$2 remote=$3 remote_ref=$4
+    local tracking_ref=$5 upstream_oid=$6 primary_worktree=$7
+    local branch=${branch_ref#refs/heads/}
     local gone_worktree target_worktree
 
     if ! branch-is-safe-to-remove "$branch_ref" "$remote" "$upstream_oid"; then
@@ -187,7 +221,7 @@ handle-gone-branch()
 	    echo "Would prune local branch '$branch' (use --prune-local)."
 	else
 	    delete-local-branch "$branch_ref" "$upstream_ref" "$remote" \
-		"$upstream_oid"
+		"$remote_ref" "$tracking_ref" "$upstream_oid"
 	fi
 	return
     fi
@@ -211,7 +245,7 @@ handle-gone-branch()
 		"branch '$branch' (use --prune-local)."
 	elif git worktree remove "$gone_worktree"; then
 	    delete-local-branch "$branch_ref" "$upstream_ref" "$remote" \
-		"$upstream_oid"
+		"$remote_ref" "$tracking_ref" "$upstream_oid"
 	else
 	    echo "Keeping local branch '$branch': could not remove" \
 		"worktree '$gone_worktree'." >&2
@@ -245,7 +279,7 @@ handle-gone-branch()
     fi
     if git switch "$default_branch"; then
 	delete-local-branch "$branch_ref" "$upstream_ref" "$remote" \
-	    "$upstream_oid"
+	    "$remote_ref" "$tracking_ref" "$upstream_oid"
     else
 	echo "Keeping local branch '$branch': could not switch to '$default_branch'." >&2
     fi
@@ -254,42 +288,69 @@ handle-gone-branch()
 prune-gone-local-branches()
 {
     local snapshot=$1 primary_worktree=$2
-    local branch_ref upstream_ref remote upstream_oid current_upstream
+    local branch_ref upstream_ref remote remote_ref tracking_ref upstream_oid
+    local current_upstream current_remote current_remote_ref
 
     declare -A default_branch_seen=()
     declare -A default_branch_cache=()
     declare -A default_tracking_ref_cache=()
 
-    while IFS=$'\t' read -r branch_ref upstream_ref remote upstream_oid; do
+    while IFS=$'\t' read -r branch_ref upstream_ref remote remote_ref \
+	    tracking_ref upstream_oid; do
 	[ -n "$branch_ref" ] || continue
 	[ "$remote" != . ] || continue
-	current_upstream=$(git for-each-ref --format='%(upstream)' \
-	    "$branch_ref")
-	[ "$current_upstream" = "$upstream_ref" ] || continue
-	git show-ref --verify --quiet "$upstream_ref" && continue
+	git remote get-url "$remote" >/dev/null 2>&1 || continue
+	read -r current_upstream current_remote current_remote_ref < \
+	    <(git for-each-ref \
+		--format='%(upstream) %(upstream:remotename) %(upstream:remoteref)' \
+		"$branch_ref")
+	[ "$current_upstream" = "$upstream_ref" ] &&
+	    [ "$current_remote" = "$remote" ] &&
+	    [ "$current_remote_ref" = "$remote_ref" ] || continue
+	git show-ref --verify --quiet "$tracking_ref" && continue
 	handle-gone-branch "$branch_ref" "$upstream_ref" "$remote" \
-	    "$upstream_oid" "$primary_worktree"
+	    "$remote_ref" "$tracking_ref" "$upstream_oid" "$primary_worktree"
     done < "$snapshot"
 }
 
-pull-current-branch()
+# Fast-forward from the canonical tracking ref populated above.  Avoiding
+# git pull prevents configured fetch refspecs or pruning options from changing
+# local branches and tags, and --ff-only preserves all local commits.
+update-current-branch()
 {
-    local branch_ref upstream_ref
+    local branch_ref upstream_ref remote remote_ref tracking_ref worktree
 
     branch_ref=$(git symbolic-ref --quiet HEAD 2>/dev/null) || {
-	echo 'Skipping pull: HEAD is detached.'
+	echo 'Skipping update: HEAD is detached.'
 	return
     }
-    upstream_ref=$(git for-each-ref --format='%(upstream)' "$branch_ref")
+    read -r upstream_ref remote remote_ref < \
+	<(git for-each-ref \
+	    --format='%(upstream) %(upstream:remotename) %(upstream:remoteref)' \
+	    "$branch_ref")
     if [ -z "$upstream_ref" ]; then
-	echo 'Skipping pull: the current branch has no upstream.'
+	echo 'Skipping update: the current branch has no upstream.'
 	return
     fi
-    if ! git show-ref --verify --quiet "$upstream_ref"; then
-	echo "Skipping pull: the current branch's upstream is gone."
+    if [ "$remote" = . ] || [[ $remote_ref != refs/heads/* ]]; then
+	echo 'Skipping update: the current branch does not track a remote branch.'
 	return
     fi
-    git pull
+
+    tracking_ref="refs/remotes/$remote/${remote_ref#refs/heads/}"
+    if ! git show-ref --verify --quiet "$tracking_ref"; then
+	echo "Skipping update: the current branch's upstream is gone."
+	return
+    fi
+    worktree=$(git rev-parse --show-toplevel 2>/dev/null) || {
+	echo 'Skipping update: could not find the current worktree.'
+	return
+    }
+    if ! worktree-is-pristine "$worktree"; then
+	echo 'Skipping update: the current worktree is not pristine.'
+	return
+    fi
+    git merge --ff-only "$tracking_ref"
 }
 
 update-repository()
@@ -305,13 +366,13 @@ update-repository()
     snapshot-upstreams "$snapshot"
     primary_worktree=$(git rev-parse --show-toplevel) || exit
 
-    if git remote update --prune; then
+    if update-remotes-safely; then
 	prune-gone-local-branches "$snapshot" "$primary_worktree"
     else
 	echo 'Skipping local branch cleanup because remote update failed.' >&2
     fi
     echo
-    pull-current-branch
+    update-current-branch
     echo
     git status
 )

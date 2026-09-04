@@ -26,7 +26,8 @@ printf 'initial\n' > "$seed/file"
 git -C "$seed" add file
 git -C "$seed" commit --quiet -m initial
 
-for branch in already-gone current dirty divergent dormant linked locked; do
+for branch in already-gone current dirty divergent dormant excluded \
+	fast-forward linked locked; do
     git -C "$seed" branch "$branch"
 done
 
@@ -37,6 +38,9 @@ git clone --quiet "$remote" "$repo"
 
 git -C "$repo" branch --quiet --track already-gone origin/already-gone
 git -C "$repo" branch --quiet --track dormant origin/dormant
+git -C "$repo" branch --quiet --track excluded origin/excluded
+git -C "$repo" branch --quiet --track fast-forward origin/fast-forward
+fast_forward_oid=$(git -C "$repo" rev-parse refs/heads/fast-forward)
 
 linked_worktree="$worktrees/linked tree"
 dirty_worktree="$worktrees/dirty tree"
@@ -66,6 +70,32 @@ git -C "$repo" switch --quiet -c current origin/current
 git --git-dir="$remote" update-ref -d refs/heads/already-gone
 git -C "$repo" fetch --quiet --prune origin
 
+# Updating the current branch must not rewrite commits when local and remote
+# have diverged, even when pull.rebase is configured.
+git -C "$repo" switch --quiet main
+git -C "$repo" commit --quiet --allow-empty -m local-main
+local_main_oid=$(git -C "$repo" rev-parse refs/heads/main)
+git -C "$repo" switch --quiet current
+git -C "$seed" commit --quiet --allow-empty -m remote-main
+git -C "$seed" push --quiet origin main
+remote_main_oid=$(git -C "$seed" rev-parse refs/heads/main)
+git --git-dir="$remote" update-ref refs/heads/fast-forward "$remote_main_oid"
+git -C "$repo" config pull.rebase true
+
+# Configured pruning must not be able to target local branches or tags.  A
+# negative refspec must not hide a branch which is still present remotely.
+git -C "$repo" update-ref -d refs/remotes/origin/excluded
+git -C "$repo" config --add remote.origin.fetch '^refs/heads/excluded'
+git -C "$repo" switch --quiet -c archive/precious
+git -C "$repo" commit --quiet --allow-empty -m local-only
+precious_oid=$(git -C "$repo" rev-parse refs/heads/archive/precious)
+git -C "$repo" switch --quiet current
+git -C "$repo" tag local-only-tag
+git -C "$repo" config fetch.prune true
+git -C "$repo" config fetch.pruneTags true
+git -C "$repo" config --add remote.origin.fetch \
+    '+refs/archive/*:refs/heads/archive/*'
+
 for branch in current dirty divergent dormant linked locked; do
     git --git-dir="$remote" update-ref -d "refs/heads/$branch"
 done
@@ -78,6 +108,11 @@ output="$test_dir/output"
 
 if [ "$(git -C "$repo" symbolic-ref --short HEAD)" != main ]; then
     echo 'git-update-all: primary worktree did not switch to main.' >&2
+    exit 1
+fi
+
+if [ "$(git -C "$repo" rev-parse refs/heads/main)" != "$local_main_oid" ]; then
+    echo 'git-update-all: update rewrote a local commit.' >&2
     exit 1
 fi
 
@@ -100,6 +135,16 @@ for branch in dirty divergent locked; do
     fi
 done
 
+if ! git -C "$repo" show-ref --verify --quiet refs/heads/archive/precious ||
+	[ "$(git -C "$repo" rev-parse refs/heads/archive/precious)" != \
+	    "$precious_oid" ] ||
+	! git -C "$repo" show-ref --verify --quiet refs/heads/excluded ||
+	! git -C "$repo" show-ref --verify --quiet refs/remotes/origin/excluded ||
+	! git -C "$repo" show-ref --verify --quiet refs/tags/local-only-tag; then
+    echo 'git-update-all: fetch pruning changed a protected local ref.' >&2
+    exit 1
+fi
+
 for worktree in "$dirty_worktree" "$divergent_worktree" "$locked_worktree"; do
     if [ ! -d "$worktree" ]; then
 	echo "git-update-all: protected worktree '$worktree' was removed." >&2
@@ -115,9 +160,9 @@ if ! grep -q "worktree '$dirty_worktree' is not pristine" "$output" ||
 fi
 
 # Without --prune-local, report eligible branches without deleting them.
-main_oid=$(git -C "$repo" rev-parse refs/heads/main)
-git --git-dir="$remote" update-ref refs/heads/report-only "$main_oid"
-git -C "$repo" fetch --quiet origin
+report_oid=$(git --git-dir="$remote" rev-parse refs/heads/main)
+git --git-dir="$remote" update-ref refs/heads/report-only "$report_oid"
+git -C "$repo" update-ref refs/remotes/origin/report-only "$report_oid"
 git -C "$repo" branch --quiet --track report-only origin/report-only
 git --git-dir="$remote" update-ref -d refs/heads/report-only
 git -C "$repo" switch --quiet report-only
@@ -130,9 +175,37 @@ if ! git -C "$repo" show-ref --verify --quiet refs/heads/report-only ||
         [ "$(git -C "$repo" symbolic-ref --short HEAD)" != report-only ] ||
         ! grep -q "Would switch .*prune local branch 'report-only'" \
             "$test_dir/report-output" ||
-        ! grep -q "Skipping pull: the current branch's upstream is gone" \
+	! grep -q "Skipping update: the current branch's upstream is gone" \
             "$test_dir/report-output"; then
     echo 'git-update-all: report-only mode changed or omitted a candidate.' >&2
+    exit 1
+fi
+
+# Even an ignored file prevents updating the worktree.  Once it is removed, a
+# branch without local commits fast-forwards from the safely fetched tracking
+# ref.
+git -C "$repo" switch --quiet fast-forward
+printf 'ignored-local\n' > "$repo/.git/info/exclude"
+printf 'preserve me\n' > "$repo/ignored-local"
+(
+    cd "$repos"
+    "$program" > "$test_dir/ignored-output" 2>&1
+)
+if [ "$(git -C "$repo" rev-parse refs/heads/fast-forward)" != \
+	"$fast_forward_oid" ] || [ ! -f "$repo/ignored-local" ] ||
+	! grep -q 'current worktree is not pristine' \
+	    "$test_dir/ignored-output"; then
+    echo 'git-update-all: update did not preserve an ignored local file.' >&2
+    exit 1
+fi
+rm "$repo/ignored-local"
+(
+    cd "$repos"
+    "$program" > "$test_dir/fast-forward-output" 2>&1
+)
+if [ "$(git -C "$repo" rev-parse refs/heads/fast-forward)" != \
+	"$remote_main_oid" ]; then
+    echo 'git-update-all: current branch was not fast-forwarded.' >&2
     exit 1
 fi
 

@@ -27,6 +27,19 @@ git clone --quiet "$origin" "$scan_directory"
 mkdir -p "$scan_directory/nested"
 git clone --quiet "$origin" "$scan_directory/nested/second repository"
 
+# Fetch configuration must not be able to prune local branches or tags.
+git -C "$scan_directory" config user.name 'Test User'
+git -C "$scan_directory" config user.email test@example.com
+git -C "$scan_directory" switch --quiet -c archive/precious
+git -C "$scan_directory" commit --quiet --allow-empty -m local-only
+precious_oid=$(git -C "$scan_directory" rev-parse refs/heads/archive/precious)
+git -C "$scan_directory" switch --quiet "$branch"
+git -C "$scan_directory" tag local-only-tag
+git -C "$scan_directory" config fetch.prune true
+git -C "$scan_directory" config fetch.pruneTags true
+git -C "$scan_directory" config --add remote.origin.fetch \
+    '+refs/archive/*:refs/heads/archive/*'
+
 expected="$test_dir/expected"
 actual="$test_dir/actual"
 
@@ -45,6 +58,16 @@ compare_output()
 ) > "$actual"
 echo 'No remote changes since the previous fetch.' > "$expected"
 compare_output
+
+if ! git -C "$scan_directory" show-ref --verify --quiet \
+	refs/heads/archive/precious ||
+	[ "$(git -C "$scan_directory" rev-parse refs/heads/archive/precious)" != \
+	    "$precious_oid" ] ||
+	! git -C "$scan_directory" show-ref --verify --quiet \
+	    refs/tags/local-only-tag; then
+    echo 'git-remote-changes: fetch pruning changed a local ref.' >&2
+    exit 1
+fi
 
 echo second >> "$source_repository/tracked"
 git -C "$source_repository" commit --quiet -am second

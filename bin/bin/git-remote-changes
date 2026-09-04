@@ -25,6 +25,21 @@ fi
 changed=false
 failed=false
 
+fetch-remotes-safely()
+{
+    local repository=$1 remote refspec fetch_failed=0
+
+    while IFS= read -r remote; do
+	[ -n "$remote" ] || continue
+	refspec="+refs/heads/*:refs/remotes/$remote/*"
+	git -C "$repository" fetch --no-tags --prune --no-prune-tags \
+	    --no-write-fetch-head --refmap= "$remote" "$refspec" || \
+	    fetch_failed=1
+    done < <(git -C "$repository" remote)
+
+    return "$fetch_failed"
+}
+
 while IFS= read -r -d '' git_marker; do
     repository=${git_marker%/.git}
     if [ -z "$repository" ]; then
@@ -38,9 +53,9 @@ while IFS= read -r -d '' git_marker; do
 
     refs_before=$(git -C "$repository" for-each-ref \
         --format='%(refname) %(objectname) %(symref)' \
-        refs/remotes refs/tags)
+        refs/remotes)
 
-    if ! fetch_output=$(git -C "$repository" remote update --prune 2>&1); then
+    if ! fetch_output=$(fetch-remotes-safely "$repository" 2>&1); then
         echo "${0##*/}: could not update $repository" >&2
         while IFS= read -r line; do
             echo "  $line" >&2
@@ -51,7 +66,7 @@ while IFS= read -r -d '' git_marker; do
 
     refs_after=$(git -C "$repository" for-each-ref \
         --format='%(refname) %(objectname) %(symref)' \
-        refs/remotes refs/tags)
+        refs/remotes)
 
     if [ "$refs_before" != "$refs_after" ]; then
         if ! $changed; then
