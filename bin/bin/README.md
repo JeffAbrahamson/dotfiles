@@ -7,7 +7,9 @@ This directory contains the actual executables installed from the repository. Mo
 * Network and connectivity: [`bandwidth`](bandwidth), [`bandwidth_history.py`](bandwidth_history.py), [`speedtest`](speedtest), [`up-monitor`](up-monitor), [`wifi-qr`](wifi-qr), and [`wifi_summary.py`](wifi_summary.py).
 * Time-series and personal data: [`tsd-bicycle`](tsd-bicycle) and [`tsd-sleep`](tsd-sleep); general tsd plotting commands (`tsd-plot`, `tsd-season-plot`) are installed with the `tsd` package.
 * File and package comparison: [`compare-file-lists`](compare-file-lists), [`compare-sum-lists`](compare-sum-lists), [`dedup`](dedup), and [`disk-usage.sh`](disk-usage.sh).
-* Git helpers: [`gc`](gc), [`git-this-week`](git-this-week), [`git-update-all.sh`](git-update-all.sh), and [`update-gf`](update-gf).
+* Git helpers: [`gc`](gc), [`git-this-week`](git-this-week),
+  [`git-remote-changes`](git-remote-changes),
+  [`git-update-all.sh`](git-update-all.sh), and [`update-gf`](update-gf).
 * Window-manager and desktop helpers: [`i3-chromium-browser`](i3-chromium-browser), [`signal-desktop`](signal-desktop), [`journal-edit`](journal-edit), and [`journal-read`](journal-read).
 * Media: [`video-to-audio`](video-to-audio) copies a video's first audio
   stream without re-encoding it and can optionally cut it by start and end
@@ -22,6 +24,12 @@ This directory contains the actual executables installed from the repository. Mo
   CLI is installed with `npm install -g @mermaid-js/mermaid-cli`; otherwise,
   they remain ordinary code blocks and a warning is printed.
 * [`tsd-bicycle`](tsd-bicycle) focuses on bicycle mileage logs and can report totals or generate year-over-year plots.
+
+`git-remote-changes [DIRECTORY]` recursively fetches Git worktrees at or below
+the directory (the current directory by default) and lists repositories whose
+remote-tracking branches or tags changed. It does not pull or alter a worktree.
+Because the previous remote-tracking refs are its baseline, running it
+acknowledges the changes it reports.
 
 `video-to-audio VIDEO [START [END]]` accepts times as seconds, `MM:SS`, or
 `HH:MM:SS`. It requires `ffmpeg` and `ffprobe`. The output extension follows

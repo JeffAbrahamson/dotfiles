@@ -1,0 +1,71 @@
+#!/bin/bash
+
+# Report repositories whose view of a remote changes while fetching.  The
+# remote-tracking refs serve as the record of what was present at the previous
+# fetch, so running this command also acknowledges the reported changes.
+
+set -u
+
+usage()
+{
+    echo "Usage: ${0##*/} [directory]" >&2
+    exit 2
+}
+
+if [ "$#" -gt 1 ]; then
+    usage
+fi
+
+root=${1:-.}
+if [ ! -d "$root" ]; then
+    echo "${0##*/}: not a directory: $root" >&2
+    exit 2
+fi
+
+changed=false
+failed=false
+
+while IFS= read -r -d '' git_marker; do
+    repository=${git_marker%/.git}
+    if [ -z "$repository" ]; then
+        repository=/
+    fi
+
+    # A repository without remotes cannot have changed elsewhere.
+    if [ -z "$(git -C "$repository" remote)" ]; then
+        continue
+    fi
+
+    refs_before=$(git -C "$repository" for-each-ref \
+        --format='%(refname) %(objectname) %(symref)' \
+        refs/remotes refs/tags)
+
+    if ! fetch_output=$(git -C "$repository" remote update --prune 2>&1); then
+        echo "${0##*/}: could not update $repository" >&2
+        while IFS= read -r line; do
+            echo "  $line" >&2
+        done <<< "$fetch_output"
+        failed=true
+        continue
+    fi
+
+    refs_after=$(git -C "$repository" for-each-ref \
+        --format='%(refname) %(objectname) %(symref)' \
+        refs/remotes refs/tags)
+
+    if [ "$refs_before" != "$refs_after" ]; then
+        if ! $changed; then
+            echo 'Changed remotely since the previous fetch:'
+        fi
+        printf '  %s\n' "$repository"
+        changed=true
+    fi
+done < <(find "$root" -name .git -print0 -prune | sort -z)
+
+if ! $changed && ! $failed; then
+    echo 'No remote changes since the previous fetch.'
+fi
+
+if $failed; then
+    exit 1
+fi

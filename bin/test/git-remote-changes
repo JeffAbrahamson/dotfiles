@@ -1,0 +1,71 @@
+#!/bin/bash
+
+set -eu
+
+script_dir=$(cd "$(dirname "$0")" && pwd)
+program="$script_dir/../bin/git-remote-changes"
+test_dir=$(mktemp -d /tmp/git-remote-changes-test_XXXXXX)
+trap 'rm -rf "$test_dir"' EXIT
+
+origin="$test_dir/origin.git"
+source_repository="$test_dir/source"
+scan_directory="$test_dir/repositories"
+
+git init --bare --quiet "$origin"
+git init --quiet "$source_repository"
+git -C "$source_repository" config user.name 'Test User'
+git -C "$source_repository" config user.email test@example.com
+echo first > "$source_repository/tracked"
+git -C "$source_repository" add tracked
+git -C "$source_repository" commit --quiet -m first
+branch=$(git -C "$source_repository" symbolic-ref --short HEAD)
+git -C "$source_repository" remote add origin "$origin"
+git -C "$source_repository" push --quiet --set-upstream origin "$branch"
+git --git-dir="$origin" symbolic-ref HEAD "refs/heads/$branch"
+
+git clone --quiet "$origin" "$scan_directory"
+mkdir -p "$scan_directory/nested"
+git clone --quiet "$origin" "$scan_directory/nested/second repository"
+
+expected="$test_dir/expected"
+actual="$test_dir/actual"
+
+compare_output()
+{
+    if ! cmp --quiet "$expected" "$actual"; then
+        echo 'git-remote-changes: test failed.' >&2
+        diff -u "$expected" "$actual" || true
+        exit 1
+    fi
+}
+
+(
+    cd "$scan_directory"
+    "$program"
+) > "$actual"
+echo 'No remote changes since the previous fetch.' > "$expected"
+compare_output
+
+echo second >> "$source_repository/tracked"
+git -C "$source_repository" commit --quiet -am second
+git -C "$source_repository" push --quiet
+
+(
+    cd "$scan_directory"
+    "$program"
+) > "$actual"
+cat > "$expected" <<'EOF'
+Changed remotely since the previous fetch:
+  .
+  ./nested/second repository
+EOF
+compare_output
+
+(
+    cd "$scan_directory"
+    "$program"
+) > "$actual"
+echo 'No remote changes since the previous fetch.' > "$expected"
+compare_output
+
+echo 'git-remote-changes: good.'
