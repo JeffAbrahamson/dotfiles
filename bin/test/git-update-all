@@ -7,36 +7,141 @@ program="$script_dir/../bin/git-update-all.sh"
 test_dir=$(mktemp -d /tmp/git-update-all-test_XXXXXX)
 trap 'rm -rf "$test_dir"' EXIT
 
-mkdir "$test_dir/bin" "$test_dir/repos"
-mkdir "$test_dir/repos/first repo" "$test_dir/repos/first repo/.git"
-mkdir "$test_dir/repos/second" "$test_dir/repos/second/.git"
-mkdir "$test_dir/repos/not-a-repository"
+export GIT_CONFIG_NOSYSTEM=1
+export GIT_CONFIG_GLOBAL=/dev/null
+export GIT_AUTHOR_NAME='Git Update Test'
+export GIT_AUTHOR_EMAIL='git-update-test@example.com'
+export GIT_COMMITTER_NAME=$GIT_AUTHOR_NAME
+export GIT_COMMITTER_EMAIL=$GIT_AUTHOR_EMAIL
 
-fake_git='#!/bin/sh
-printf "%s:" "${PWD##*/}" >> "$GIT_COMMAND_LOG"
-printf " <%s>" "$@" >> "$GIT_COMMAND_LOG"
-printf "\\n" >> "$GIT_COMMAND_LOG"'
-printf '%s\n' "$fake_git" > "$test_dir/bin/git"
-chmod +x "$test_dir/bin/git"
+seed="$test_dir/seed"
+remote="$test_dir/remote.git"
+repos="$test_dir/repositories"
+repo="$repos/primary repo"
+worktrees="$test_dir/worktrees"
 
-export GIT_COMMAND_LOG="$test_dir/commands"
+mkdir "$repos" "$worktrees"
+git init --quiet --initial-branch=main "$seed"
+printf 'initial\n' > "$seed/file"
+git -C "$seed" add file
+git -C "$seed" commit --quiet -m initial
+
+for branch in already-gone current dirty divergent dormant linked locked; do
+    git -C "$seed" branch "$branch"
+done
+
+git init --quiet --bare --initial-branch=main "$remote"
+git -C "$seed" remote add origin "$remote"
+git -C "$seed" push --quiet --all origin
+git clone --quiet "$remote" "$repo"
+
+git -C "$repo" branch --quiet --track already-gone origin/already-gone
+git -C "$repo" branch --quiet --track dormant origin/dormant
+
+linked_worktree="$worktrees/linked tree"
+dirty_worktree="$worktrees/dirty tree"
+divergent_worktree="$worktrees/divergent tree"
+locked_worktree="$worktrees/locked tree"
+git -C "$repo" worktree add --quiet -b linked \
+    "$linked_worktree" origin/linked
+git -C "$repo" worktree add --quiet -b dirty \
+    "$dirty_worktree" origin/dirty
+git -C "$repo" worktree add --quiet -b divergent \
+    "$divergent_worktree" origin/divergent
+git -C "$repo" worktree add --quiet -b locked \
+    "$locked_worktree" origin/locked
+
+# A clean worktree can still contain an unpushed commit and must be kept.
+printf 'local commit\n' >> "$divergent_worktree/file"
+git -C "$divergent_worktree" add file
+git -C "$divergent_worktree" commit --quiet -m divergent
+
+# Dirty and locked worktrees must also be kept.
+printf 'uncommitted change\n' >> "$dirty_worktree/file"
+git -C "$repo" worktree lock "$locked_worktree"
+
+git -C "$repo" switch --quiet -c current origin/current
+
+# Exercise the fallback for a branch whose upstream was gone before startup.
+git --git-dir="$remote" update-ref -d refs/heads/already-gone
+git -C "$repo" fetch --quiet --prune origin
+
+for branch in current dirty divergent dormant linked locked; do
+    git --git-dir="$remote" update-ref -d "refs/heads/$branch"
+done
+
+output="$test_dir/output"
 (
-    cd "$test_dir/repos"
-    PATH="$test_dir/bin:$PATH" "$program" > "$test_dir/output"
+    cd "$repos"
+    "$program" --prune-local > "$output" 2>&1
 )
 
-expected="$test_dir/expected"
-printf '%s\n' \
-    'first repo: <remote> <update> <--prune>' \
-    'second: <remote> <update> <--prune>' \
-    'first repo: <pull>' \
-    'second: <pull>' \
-    'first repo: <status>' \
-    'second: <status>' > "$expected"
+if [ "$(git -C "$repo" symbolic-ref --short HEAD)" != main ]; then
+    echo 'git-update-all: primary worktree did not switch to main.' >&2
+    exit 1
+fi
 
-if ! cmp --quiet "$GIT_COMMAND_LOG" "$expected"; then
-    echo 'git-update-all: test failed.' >&2
-    diff -u "$expected" "$GIT_COMMAND_LOG" || true
+for branch in already-gone current dormant linked; do
+    if git -C "$repo" show-ref --verify --quiet "refs/heads/$branch"; then
+	echo "git-update-all: local branch '$branch' was not pruned." >&2
+	exit 1
+    fi
+done
+
+if [ -e "$linked_worktree" ]; then
+    echo 'git-update-all: clean linked worktree was not removed.' >&2
+    exit 1
+fi
+
+for branch in dirty divergent locked; do
+    if ! git -C "$repo" show-ref --verify --quiet "refs/heads/$branch"; then
+	echo "git-update-all: protected branch '$branch' was pruned." >&2
+	exit 1
+    fi
+done
+
+for worktree in "$dirty_worktree" "$divergent_worktree" "$locked_worktree"; do
+    if [ ! -d "$worktree" ]; then
+	echo "git-update-all: protected worktree '$worktree' was removed." >&2
+	exit 1
+    fi
+done
+
+if ! grep -q "worktree '$dirty_worktree' is not pristine" "$output" ||
+        ! grep -q "tip differs from the last-fetched upstream" "$output" ||
+        ! grep -q "worktree '$locked_worktree' is locked" "$output"; then
+    echo 'git-update-all: preservation reasons were not reported.' >&2
+    exit 1
+fi
+
+# Without --prune-local, report eligible branches without deleting them.
+main_oid=$(git -C "$repo" rev-parse refs/heads/main)
+git --git-dir="$remote" update-ref refs/heads/report-only "$main_oid"
+git -C "$repo" fetch --quiet origin
+git -C "$repo" branch --quiet --track report-only origin/report-only
+git --git-dir="$remote" update-ref -d refs/heads/report-only
+git -C "$repo" switch --quiet report-only
+(
+    cd "$repos"
+    "$program" > "$test_dir/report-output" 2>&1
+)
+
+if ! git -C "$repo" show-ref --verify --quiet refs/heads/report-only ||
+        [ "$(git -C "$repo" symbolic-ref --short HEAD)" != report-only ] ||
+        ! grep -q "Would switch .*prune local branch 'report-only'" \
+            "$test_dir/report-output" ||
+        ! grep -q "Skipping pull: the current branch's upstream is gone" \
+            "$test_dir/report-output"; then
+    echo 'git-update-all: report-only mode changed or omitted a candidate.' >&2
+    exit 1
+fi
+
+if ! "$program" --help | grep -q '^Usage: git-update-all.sh \[--prune-local\]$'; then
+    echo 'git-update-all: help test failed.' >&2
+    exit 1
+fi
+if "$program" --unknown > /dev/null 2>&1; then
+    echo 'git-update-all: invalid option test failed.' >&2
     exit 1
 fi
 

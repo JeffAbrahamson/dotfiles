@@ -31,6 +31,14 @@ remote-tracking branches or tags changed. It does not pull or alter a worktree.
 Because the previous remote-tracking refs are its baseline, running it
 acknowledges the changes it reports.
 
+`git-update-all.sh [--prune-local]` updates and prunes the configured remotes
+of each repository directly below the current directory, then pulls and shows
+its status. By default it only reports local branches whose upstreams are gone.
+With `--prune-local`, matching local branches are removed; clean linked
+worktrees are removed with them, while the primary worktree switches to the
+remote's default branch. Dirty, divergent, locked, or unverifiable branches
+and worktrees are preserved.
+
 `video-to-audio VIDEO [START [END]]` accepts times as seconds, `MM:SS`, or
 `HH:MM:SS`. It requires `ffmpeg` and `ffprobe`. The output extension follows
 the source audio codec (for example, Opus becomes `.opus`), and unknown codecs
