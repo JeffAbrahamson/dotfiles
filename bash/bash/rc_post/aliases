@@ -1130,6 +1130,7 @@ fra-railswebapp-prod-de-4.jellybooks.de"
 }
 jb-p() { cd "$HOME/src/jellybooks/production"; }
 jb-s() { cd "$HOME/src/jellybooks/streamer-js-web"; }
+jb-w() { cd "$HOME/src/jellybooks/webpub-viewer"; }
 nux() {
     n=$1;
     if [ $n -gt 0 ]; then
