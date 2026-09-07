@@ -608,13 +608,23 @@ gh-issue() {
 }
 
 gh-pr() {
+    local verbose=
+    if [[ "$1" == "-v" ]]; then
+        verbose=1
+        shift
+    fi
+
     if [[ -z "$1" ]]; then
-        echo "Usage: gh-pr <pr-number>" >&2
+        echo "Usage: gh-pr [-v] <pr-number>" >&2
         return 1
     fi
-    gh pr view "$1" \
-        --json number,title,state,author,reviewRequests,reviews,assignees,labels,baseRefName,headRefName,createdAt,mergedAt,url,body \
-        --jq .
+
+    local fields=title,mergeable,mergeStateStatus,state,url
+    if [[ -n "$verbose" ]]; then
+        fields=number,title,state,author,reviewRequests,reviews,assignees,labels,baseRefName,headRefName,createdAt,mergedAt,url,body
+    fi
+
+    gh pr view "$1" --json "$fields" --jq .
 }
 
 # Rename the primary branch of the current repo from master to main.
