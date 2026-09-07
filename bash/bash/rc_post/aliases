@@ -26,6 +26,22 @@ p() { pwd; }
 alias ..="cd .."
 alias m="less"
 alias pg="ps ax | grep"
+
+# List processes matching name, one line each, with cwd.
+psw() {
+    if [[ -z "$1" ]]; then
+        echo "Usage: psw <process-name>" >&2
+        return 1
+    fi
+    local name="$1"
+    local pid line cwd
+
+    for pid in $(pgrep -x "$name"); do
+        line=$(ps -p "$pid" -o pid=,ppid=,tty=,start=,etime=,time=,%cpu=,%mem=,comm= 2>/dev/null) || continue
+        cwd=$(readlink -f "/proc/$pid/cwd" 2>/dev/null)
+        printf '%s  cwd=%s\n' "$line" "$cwd"
+    done
+}
 j() { jobs; }
 
 alias mk="make"
