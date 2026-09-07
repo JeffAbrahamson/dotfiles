@@ -1,0 +1,14 @@
+#
+# aws
+#
+
+# Usage: awsp [PROFILE]
+# With no argument, print the current AWS_* environment variables.
+# With an argument, export AWS_PROFILE=PROFILE for the AWS CLI/SDKs to use.
+awsp() {
+    if [ $# -eq 0 ]; then
+        env | grep '^AWS_' | sort
+        return
+    fi
+    export AWS_PROFILE=$1
+}
