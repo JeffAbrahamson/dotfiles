@@ -520,3 +520,8 @@ if [ "$generate_status" -ne 0 ]; then
     echo "${0##*/}: some repositories failed; summarizing partial report" >&2
 fi
 summarize-report "$report" | render-summary
+summary_status=${PIPESTATUS[0]}
+if [ "$generate_status" -ne 0 ]; then
+    exit "$generate_status"
+fi
+exit "$summary_status"
