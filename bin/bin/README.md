@@ -32,13 +32,18 @@ alter a worktree.
 Because the previous remote-tracking refs are its baseline, running it
 acknowledges the changes it reports.
 
-`jb-gh-activity [--fetch | --fetch-prune] [--since WHEN] [DIRECTORY]` shows a
-decorated commit graph for the local and remote-tracking branches in every Git
-repository directly below `$HOME/src/jellybooks` (or `DIRECTORY`). It also maps
-branches to linked worktrees, reports their clean or modified state, and calls
-out branches with no commits in the period. It reads locally available refs by
-default; `--fetch` updates them first and `--fetch-prune` also removes stale
-remote-tracking branches.
+`jb-gh-activity [--claude | --codex] [--fetch | --fetch-prune]
+[--renderer COMMAND | --no-renderer] [--since WHEN] [DIRECTORY]` shows a
+decorated commit graph for the local and remote-tracking
+branches in every Git repository directly below `$HOME/src/jellybooks` (or
+`DIRECTORY`). It also maps branches to linked worktrees, reports their clean or
+modified state, and calls out branches with no commits in the period. It reads
+locally available refs by default; `--fetch` updates them first and
+`--fetch-prune` also removes stale remote-tracking branches. `--claude` and
+`--codex` send the report to the corresponding command-line agent and print its
+concise summary instead. AI summaries are rendered with `glow` when available;
+`--renderer COMMAND` selects another Markdown renderer and `--no-renderer`
+prints the Markdown directly.
 
 `git-update-all.sh [--prune-local]` fetches and prunes remote branches for each
 repository directly below the current directory, then safely fast-forwards

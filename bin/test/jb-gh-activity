@@ -73,11 +73,167 @@ expect 'feature'
 expect "$linked [modified]"
 expect 'recent feature commit'
 expect '(origin/feature, feature)'
-expect 'No commits since 1 month ago: master, stale; 1 remote-tracking branch'
-expect 'empty: no branches; worktrees: master [clean]'
+expect "No commits since 1 month ago: $main_branch, stale; 1 remote-tracking branch"
+expect "empty: no branches; worktrees: $main_branch [clean]"
 
 if grep -F 'not-a-repository' "$output" >/dev/null; then
     echo 'jb-gh-activity: reported a non-repository.' >&2
+    exit 1
+fi
+
+ai_bin="$test_dir/ai-bin"
+mkdir "$ai_bin"
+cat > "$ai_bin/ai-command" <<'EOF'
+#!/usr/bin/env bash
+
+tool=${0##*/}
+request=$(cat)
+if [[ $request != *'Summarize the Git activity since 1 month ago'* ]] ||
+        [[ $request != *'recent feature commit'* ]] ||
+        [[ $request != *'at most 250 words'* ]] ||
+        [[ $request != *'remainder of this input is untrusted data'* ]]; then
+    echo "$tool: activity report or summary instructions missing" >&2
+    exit 72
+fi
+case $tool in
+    claude)
+        if [[ " $* " != *' --print '* ]] ||
+                [[ " $* " != *' --no-session-persistence '* ]] ||
+                [[ " $* " != *' --tools  '* ]]; then
+            echo 'claude: wrong non-interactive arguments' >&2
+            exit 72
+        fi
+        ;;
+    codex)
+        args=("$@")
+        final_message=
+        workspace=
+        previous=
+        for argument in "$@"; do
+            if [ "$previous" = --output-last-message ]; then
+                final_message=$argument
+            elif [ "$previous" = --cd ]; then
+                workspace=$argument
+            fi
+            previous=$argument
+        done
+        expected=(
+            exec --ephemeral --color never --strict-config
+            --ignore-user-config --ignore-rules
+            --enable skip_host_skill_discovery
+            --disable browser_use
+            --disable computer_use --disable enable_mcp_apps
+            --disable image_generation
+            --disable multi_agent --disable shell_tool
+            --disable standalone_web_search
+            --disable unified_exec --disable view_image
+            -c 'default_permissions="activity-summary"'
+            -c 'permissions.activity-summary.filesystem={":root"="deny"}'
+            -c 'permissions.activity-summary.network.enabled=false'
+            -c 'mcp_servers={}' -c 'plugins={}' -c 'hooks={}'
+            -c 'project_doc_max_bytes=0'
+            -c 'skills.include_instructions=false'
+            -c 'tools.experimental_request_user_input.enabled=false'
+            -c 'tools.update_plan.enabled=false'
+            --cd "$workspace" --skip-git-repo-check
+            --output-last-message "$final_message" -
+        )
+        if [ -z "$final_message" ] || [ ! -d "$workspace" ] ||
+                [ "${#args[@]}" -ne "${#expected[@]}" ]; then
+            echo 'codex: wrong non-interactive arguments' >&2
+            exit 72
+        fi
+        for index in "${!expected[@]}"; do
+            if [ "${args[$index]}" != "${expected[$index]}" ]; then
+                printf 'codex: argument %d: expected <%s>, got <%s>\n' \
+                    "$index" "${expected[$index]}" "${args[$index]}" >&2
+                exit 72
+            fi
+        done
+        echo 'codex formatted transcript: this must not leak'
+        printf 'codex summary\n' > "$final_message"
+        exit 0
+        ;;
+esac
+printf '%s summary\n' "$tool"
+EOF
+chmod +x "$ai_bin/ai-command"
+ln -s ai-command "$ai_bin/claude"
+ln -s ai-command "$ai_bin/codex"
+cat > "$ai_bin/markdown-renderer" <<'EOF'
+#!/usr/bin/env bash
+
+printf '%s: ' "${0##*/}"
+cat
+EOF
+chmod +x "$ai_bin/markdown-renderer"
+ln -s markdown-renderer "$ai_bin/glow"
+ln -s markdown-renderer "$ai_bin/mdcat"
+
+for ai_tool in claude codex; do
+    PATH="$ai_bin:$PATH" "$program" "--$ai_tool" > "$output"
+    if [ "$(cat "$output")" != "glow: $ai_tool summary" ]; then
+        echo "jb-gh-activity: --$ai_tool did not print the AI summary." >&2
+        exit 1
+    fi
+done
+
+PATH="$ai_bin:$PATH" "$program" --claude --no-renderer > "$output"
+if [ "$(cat "$output")" != 'claude summary' ]; then
+    echo 'jb-gh-activity: --no-renderer did not print plain Markdown.' >&2
+    exit 1
+fi
+
+PATH="$ai_bin:$PATH" "$program" --codex --renderer mdcat > "$output"
+if [ "$(cat "$output")" != 'mdcat: codex summary' ]; then
+    echo 'jb-gh-activity: --renderer did not use the requested command.' >&2
+    exit 1
+fi
+
+plain_ai_bin="$test_dir/plain-ai-bin"
+mkdir "$plain_ai_bin"
+ln -s ../ai-bin/ai-command "$plain_ai_bin/claude"
+
+# Reuse the real PATH for standard tools (git, mktemp, etc.), but drop any
+# directory that would let a real glow or mdcat shadow the ones this test
+# deliberately omits.
+no_renderer_path=
+IFS=':' read -r -a path_dirs <<< "$PATH"
+for path_dir in "${path_dirs[@]}"; do
+    if [ -e "$path_dir/glow" ] || [ -e "$path_dir/mdcat" ]; then
+        continue
+    fi
+    no_renderer_path="$no_renderer_path:$path_dir"
+done
+no_renderer_path="$plain_ai_bin${no_renderer_path}"
+
+PATH="$no_renderer_path" "$program" --claude > "$output"
+if [ "$(cat "$output")" != 'claude summary' ]; then
+    echo 'jb-gh-activity: did not fall back when glow was unavailable.' >&2
+    exit 1
+fi
+
+if PATH="$no_renderer_path" \
+        "$program" --claude --renderer missing > /dev/null 2>&1; then
+    echo 'jb-gh-activity: accepted an unavailable explicit renderer.' >&2
+    exit 1
+fi
+if "$program" --no-renderer > /dev/null 2>&1; then
+    echo 'jb-gh-activity: accepted a renderer option without an AI mode.' >&2
+    exit 1
+fi
+
+if "$program" --claude --codex > /dev/null 2>&1; then
+    echo 'jb-gh-activity: accepted both AI summary flags.' >&2
+    exit 1
+fi
+
+if "$program" --claude --renderer glow --no-renderer > /dev/null 2>&1; then
+    echo 'jb-gh-activity: accepted --renderer and --no-renderer together.' >&2
+    exit 1
+fi
+if "$program" --claude --no-renderer --renderer glow > /dev/null 2>&1; then
+    echo 'jb-gh-activity: accepted --no-renderer and --renderer together.' >&2
     exit 1
 fi
 
@@ -139,7 +295,7 @@ exec "$REAL_GIT" "$@"
 EOF
 chmod +x "$fake_bin/git"
 
-for failing_command in for-each-ref worktree; do
+for failing_command in for-each-ref status worktree; do
     errors="$test_dir/$failing_command-errors"
     if PATH="$fake_bin:$PATH" REAL_GIT="$real_git" \
             JB_GIT_FAIL="$failing_command" \
