@@ -12,3 +12,116 @@ awsp() {
     fi
     export AWS_PROFILE=$1
 }
+
+# Usage: aws-s3-list [region|name]
+# List S3 buckets, sorted for readability.
+#   (no arg)  sort by region, then by name within region
+#   region    sort by region only (server-side)
+#   name      sort by name only (server-side)
+aws-s3-list() {
+    case "$1" in
+        region)
+            aws s3api list-buckets \
+                --query 'sort_by(Buckets,&BucketRegion)[].[Name,BucketRegion]' \
+                --output table \
+                --page-size 1000
+            ;;
+        name)
+            aws s3api list-buckets \
+                --query 'sort_by(Buckets,&Name)[].[Name,BucketRegion]' \
+                --output table \
+                --page-size 1000
+            ;;
+        *)
+            aws s3api list-buckets \
+                --query 'Buckets[].[BucketRegion,Name]' \
+                --output text \
+                --page-size 1000 |
+            sort -k1,1 -k2,2 | column -t
+            ;;
+    esac
+}
+
+# Usage: aws-s3-audit
+# Report, one row per bucket: region, whether the bucket policy makes it
+# public, and its S3 Block Public Access settings.
+# Set AWS_S3_AUDIT_JOBS to control the number of buckets queried in parallel.
+aws-s3-audit() {
+    local active_jobs=0
+    local max_jobs=${AWS_S3_AUDIT_JOBS:-8}
+
+    if [[ ! $max_jobs =~ ^[1-9][0-9]*$ ]]; then
+        printf 'aws-s3-audit: AWS_S3_AUDIT_JOBS must be a positive integer\n' >&2
+        return 2
+    fi
+
+    {
+        printf 'BUCKET\tREGION\tPUBLIC_POLICY\tBLOCK_ACLS\tIGNORE_ACLS\tBLOCK_POLICY\tRESTRICT_PUBLIC\n'
+
+        aws s3api list-buckets \
+            --query 'Buckets[].[Name,BucketRegion]' \
+            --output text |
+        while IFS=$'\t' read -r bucket region; do
+            (
+                local block_settings public_policy
+
+                if ! block_settings=$(
+                    aws s3api get-public-access-block \
+                        --bucket "$bucket" \
+                        --region "$region" \
+                        --query '[
+                          PublicAccessBlockConfiguration.BlockPublicAcls,
+                          PublicAccessBlockConfiguration.IgnorePublicAcls,
+                          PublicAccessBlockConfiguration.BlockPublicPolicy,
+                          PublicAccessBlockConfiguration.RestrictPublicBuckets
+                        ]' \
+                        --output text 2>/dev/null
+                ); then
+                    block_settings=$(printf 'UNSET\tUNSET\tUNSET\tUNSET')
+                fi
+
+                if ! public_policy=$(
+                    aws s3api get-bucket-policy-status \
+                        --bucket "$bucket" \
+                        --region "$region" \
+                        --query 'PolicyStatus.IsPublic' \
+                        --output text 2>/dev/null
+                ); then
+                    public_policy='NONE/ERROR'
+                fi
+
+                printf '%s\t%s\t%s\t%s\n' \
+                    "$bucket" "$region" "$public_policy" "$block_settings"
+            ) &
+
+            ((active_jobs += 1))
+            if (( active_jobs >= max_jobs )); then
+                wait -n
+                ((active_jobs -= 1))
+            fi
+        done
+
+        wait
+    } | column -t -s $'\t'
+}
+
+# Usage: aws-s3-account-block [region]
+# Show the account-level S3 Block Public Access configuration (the
+# account-wide setting, separate from each bucket's own settings).
+aws-s3-account-block() {
+    local account_id region
+
+    region=${1:-${AWS_REGION:-${AWS_DEFAULT_REGION:-}}}
+    if [[ -z $region ]]; then
+        region=$(aws configure get region 2>/dev/null) || true
+    fi
+    region=${region:-us-east-1}
+
+    account_id=$(aws sts get-caller-identity --query Account --output text) ||
+        return
+
+    aws s3control get-public-access-block \
+        --account-id "$account_id" \
+        --region "$region" \
+        --output table
+}
