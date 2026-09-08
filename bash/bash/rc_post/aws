@@ -49,19 +49,27 @@ aws-s3-list() {
 aws-s3-audit() {
     local active_jobs=0
     local max_jobs=${AWS_S3_AUDIT_JOBS:-8}
+    local bucket_list
 
     if [[ ! $max_jobs =~ ^[1-9][0-9]*$ ]]; then
         printf 'aws-s3-audit: AWS_S3_AUDIT_JOBS must be a positive integer\n' >&2
         return 2
     fi
 
+    bucket_list=$(
+        aws s3api list-buckets \
+            --query 'Buckets[].[Name,BucketRegion]' \
+            --output text
+    ) || return
+
     {
         printf 'BUCKET\tREGION\tPUBLIC_POLICY\tBLOCK_ACLS\tIGNORE_ACLS\tBLOCK_POLICY\tRESTRICT_PUBLIC\n'
 
-        aws s3api list-buckets \
-            --query 'Buckets[].[Name,BucketRegion]' \
-            --output text |
+        # A here-string, unlike a pipe, keeps this loop in the current
+        # shell, so the background jobs it starts are direct children and
+        # the `wait` below actually sees them.
         while IFS=$'\t' read -r bucket region; do
+            [ -n "$bucket" ] || continue
             (
                 local block_settings public_policy
 
@@ -99,7 +107,7 @@ aws-s3-audit() {
                 wait -n
                 ((active_jobs -= 1))
             fi
-        done
+        done <<< "$bucket_list"
 
         wait
     } | column -t -s $'\t'
