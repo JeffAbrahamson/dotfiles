@@ -1,0 +1,357 @@
+#!/usr/bin/env bash
+
+# Summarize recent branch and worktree activity in Jellybooks repositories.
+
+set -uo pipefail
+
+usage()
+{
+    cat <<EOF
+Usage: ${0##*/} [--fetch | --fetch-prune] [--since WHEN] [DIRECTORY]
+
+Show recent commits on every local and remote-tracking branch in each Git
+repository directly below DIRECTORY.  DIRECTORY defaults to
+\$HOME/src/jellybooks, and WHEN defaults to "1 month ago".
+
+By default, the command only reads refs already available locally.
+
+  --fetch        Fetch all configured remotes before reporting
+  --fetch-prune  Fetch all remotes and prune deleted remote-tracking branches
+EOF
+}
+
+since='1 month ago'
+root=
+fetch=0
+fetch_prune=0
+
+while [ "$#" -gt 0 ]; do
+    case $1 in
+        --since)
+            if [ "$#" -lt 2 ]; then
+                echo "${0##*/}: --since requires a value" >&2
+                exit 2
+            fi
+            since=$2
+            shift 2
+            ;;
+        --fetch)
+            fetch=1
+            shift
+            ;;
+        --fetch-prune)
+            fetch=1
+            fetch_prune=1
+            shift
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        --)
+            shift
+            break
+            ;;
+        -*)
+            echo "${0##*/}: unknown option: $1" >&2
+            exit 2
+            ;;
+        *)
+            if [ -n "$root" ]; then
+                echo "${0##*/}: too many directories" >&2
+                exit 2
+            fi
+            root=$1
+            shift
+            ;;
+    esac
+done
+
+if [ "$#" -gt 1 ] || { [ "$#" -eq 1 ] && [ -n "$root" ]; }; then
+    echo "${0##*/}: too many directories" >&2
+    exit 2
+fi
+if [ "$#" -eq 1 ]; then
+    root=$1
+fi
+root=${root:-"$HOME/src/jellybooks"}
+
+if [ ! -d "$root" ]; then
+    echo "${0##*/}: not a directory: $root" >&2
+    exit 1
+fi
+
+short-path()
+{
+    case $1 in
+        "$HOME") printf '~' ;;
+        "$HOME"/*) printf '~%s' "${1#"$HOME"}" ;;
+        *) printf '%s' "$1" ;;
+    esac
+}
+
+worktree-record()
+{
+    local label status shown_path separator
+
+    [ -n "$worktree_path" ] || return
+    shown_path=$(short-path "$worktree_path")
+
+    if [ -n "$worktree_branch" ]; then
+        label=${worktree_branch#refs/heads/}
+    elif [ -n "$worktree_bare" ]; then
+        label='(bare)'
+    else
+        label="(detached at ${worktree_head:0:8})"
+    fi
+
+    if [ -n "$worktree_bare" ]; then
+        status='bare repository'
+    elif [ -n "$worktree_prunable" ] || [ ! -d "$worktree_path" ]; then
+        status='missing'
+    elif [ -n "$(git -C "$worktree_path" status --short 2>/dev/null)" ]; then
+        status='modified'
+    else
+        status='clean'
+    fi
+    if [ -n "$worktree_locked" ]; then
+        status="$status, locked"
+    fi
+
+    if [ "$worktree_format" = compact ]; then
+        separator=
+        if [ "$worktree_count" -gt 0 ]; then
+            separator=', '
+        fi
+        printf '%s%s [%s]' "$separator" "$label" "$status"
+    else
+        printf '    %-24s %s [%s]\n' "$label" "$shown_path" "$status"
+    fi
+    ((worktree_count += 1))
+}
+
+show-worktrees()
+{
+    local repository=$1
+    worktree_format=${2:-full}
+    worktree_count=0
+    local line worktree_output
+    worktree_path=
+    worktree_head=
+    worktree_branch=
+    worktree_bare=
+    worktree_locked=
+    worktree_prunable=
+
+    if ! worktree_output=$(git -C "$repository" worktree list --porcelain); then
+        return 1
+    fi
+    while IFS= read -r line || [ -n "$line" ]; do
+        case $line in
+            'worktree '*)
+                worktree_path=${line#worktree }
+                ;;
+            'HEAD '*)
+                worktree_head=${line#HEAD }
+                ;;
+            'branch '*)
+                worktree_branch=${line#branch }
+                ;;
+            bare)
+                worktree_bare=1
+                ;;
+            locked*)
+                worktree_locked=1
+                ;;
+            prunable*)
+                worktree_prunable=1
+                ;;
+            '')
+                worktree-record
+                worktree_path=
+                worktree_head=
+                worktree_branch=
+                worktree_bare=
+                worktree_locked=
+                worktree_prunable=
+                ;;
+        esac
+    done <<< "$worktree_output"
+    worktree-record
+    if [ "$worktree_count" -eq 0 ]; then
+        printf '(none)'
+        if [ "$worktree_format" != compact ]; then
+            echo
+        fi
+    fi
+}
+
+print-branch-list()
+{
+    local separator= branch
+
+    for branch in "$@"; do
+        printf '%s%s' "$separator" "$branch"
+        separator=', '
+    done
+}
+
+common-directory()
+{
+    local repository=$1 common
+    common=$(git -C "$repository" rev-parse --git-common-dir) || return
+    if [[ $common != /* ]]; then
+        common=$repository/$common
+    fi
+    (cd "$common" 2>/dev/null && pwd -P)
+}
+
+show-repository()
+{
+    local repository=$1 ref short_name symref recent_commit output color
+    local refs_output worktrees
+    local fetch_status=
+    local -a fetch_options=(--all --quiet)
+    local -a refs=() inactive=() inactive_local=()
+    local inactive_remote=0 local_branches=0 remote_branches=0
+
+    if [ "$fetch" -eq 1 ]; then
+        if [ "$fetch_prune" -eq 1 ]; then
+            fetch_options+=(--prune)
+        fi
+        if git -C "$repository" fetch "${fetch_options[@]}"; then
+            if [ "$fetch_prune" -eq 1 ]; then
+                fetch_status='updated and pruned remote-tracking branches'
+            else
+                fetch_status='updated remote-tracking branches'
+            fi
+        else
+            echo "${0##*/}: fetch failed in $repository; using existing refs" >&2
+            failed=1
+        fi
+    fi
+    if ! refs_output=$(git -C "$repository" for-each-ref \
+            --format='%(refname)%09%(refname:short)%09%(symref)' \
+            refs/heads refs/remotes); then
+        return 1
+    fi
+    while IFS=$'\t' read -r ref short_name symref; do
+        [ -n "$ref" ] || continue
+        [ -z "$symref" ] || continue
+        refs+=("$ref")
+        case $ref in
+            refs/heads/*) ((local_branches += 1)) ;;
+            refs/remotes/*) ((remote_branches += 1)) ;;
+        esac
+        if ! recent_commit=$(git -C "$repository" log -1 --format=%H \
+                --since="$since" "$ref"); then
+            return 1
+        fi
+        if [ -z "$recent_commit" ]; then
+            inactive+=("$short_name")
+            case $ref in
+                refs/heads/*) inactive_local+=("$short_name") ;;
+                refs/remotes/*) ((inactive_remote += 1)) ;;
+            esac
+        fi
+    done <<< "$refs_output"
+
+    if [ "${#refs[@]}" -eq 0 ] || \
+            [ "${#inactive[@]}" -eq "${#refs[@]}" ]; then
+        if ! worktrees=$(show-worktrees "$repository" compact); then
+            return 1
+        fi
+        printf '%s: ' "$(basename "$repository")"
+        if [ "${#refs[@]}" -eq 0 ]; then
+            printf 'no branches'
+        else
+            printf 'no commits since %s' "$since"
+        fi
+        printf '; worktrees: %s' "$worktrees"
+        if [ "${#refs[@]}" -gt 0 ]; then
+            printf '; branches: %d local, %d remote-tracking' \
+                "$local_branches" "$remote_branches"
+        fi
+        if [ -n "$fetch_status" ]; then
+            printf '; fetch: %s' "$fetch_status"
+        fi
+        echo
+        return
+    fi
+
+    if ! worktrees=$(show-worktrees "$repository"); then
+        return 1
+    fi
+    printf '%s\n' "$(basename "$repository")"
+    printf '  Repository: %s\n' "$(short-path "$repository")"
+    if [ -n "$fetch_status" ]; then
+        printf '  Fetch: %s\n' "$fetch_status"
+    fi
+    echo '  Worktrees:'
+    printf '%s\n' "$worktrees"
+
+    printf '  Commits since %s:\n' "$since"
+    color=never
+    if [ -t 1 ]; then
+        color=always
+    fi
+    output=$(git -C "$repository" log --graph --oneline \
+        --decorate=short --decorate-refs='refs/heads/*' \
+        --decorate-refs='refs/remotes/*' --date-order \
+        --color="$color" --since="$since" "${refs[@]}") || return
+    while IFS= read -r line; do
+        printf '    %s\n' "$line"
+    done <<< "$output"
+
+    if [ "${#inactive_local[@]}" -gt 0 ] || [ "$inactive_remote" -gt 0 ]; then
+        printf '  No commits since %s: ' "$since"
+        if [ "${#inactive_local[@]}" -gt 0 ]; then
+            print-branch-list "${inactive_local[@]}"
+            if [ "$inactive_remote" -gt 0 ]; then
+                printf '; '
+            fi
+        fi
+        if [ "$inactive_remote" -gt 0 ]; then
+            printf '%d remote-tracking branch' "$inactive_remote"
+            if [ "$inactive_remote" -ne 1 ]; then
+                printf 'es'
+            fi
+        fi
+        echo
+    fi
+}
+
+found=0
+failed=0
+declare -A seen=()
+shopt -s nullglob dotglob
+for repository in "$root"/*/; do
+    repository=${repository%/}
+    if [ "${repository##*/}" = .git ]; then
+        continue
+    fi
+    if ! git -C "$repository" rev-parse --git-dir >/dev/null 2>&1; then
+        continue
+    fi
+    common=$(common-directory "$repository") || {
+        echo "${0##*/}: could not inspect $repository" >&2
+        failed=1
+        continue
+    }
+    if [[ -n ${seen[$common]+yes} ]]; then
+        continue
+    fi
+    seen[$common]=1
+    found=1
+    if ! show-repository "$repository"; then
+        echo "${0##*/}: could not read activity in $repository" >&2
+        failed=1
+    fi
+done
+shopt -u nullglob dotglob
+
+if [ "$found" -eq 0 ]; then
+    echo "${0##*/}: no Git repositories directly below $root" >&2
+    exit 1
+fi
+exit "$failed"

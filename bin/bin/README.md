@@ -8,7 +8,7 @@ This directory contains the actual executables installed from the repository. Mo
 * Time-series and personal data: [`tsd-bicycle`](tsd-bicycle) and [`tsd-sleep`](tsd-sleep); general tsd plotting commands (`tsd-plot`, `tsd-season-plot`) are installed with the `tsd` package.
 * File and package comparison: [`compare-file-lists`](compare-file-lists), [`compare-sum-lists`](compare-sum-lists), [`dedup`](dedup), and [`disk-usage.sh`](disk-usage.sh).
 * Git helpers: [`gc`](gc), [`git-this-week`](git-this-week),
-  [`git-remote-changes`](git-remote-changes),
+  [`git-remote-changes`](git-remote-changes), [`jb-gh-activity`](jb-gh-activity),
   [`git-update-all.sh`](git-update-all.sh), and [`update-gf`](update-gf).
 * Window-manager and desktop helpers: [`i3-chromium-browser`](i3-chromium-browser), [`signal-desktop`](signal-desktop), [`journal-edit`](journal-edit), and [`journal-read`](journal-read).
 * Media: [`video-to-audio`](video-to-audio) copies a video's first audio
@@ -31,6 +31,14 @@ remote-tracking branches changed. It does not fetch or prune tags, pull, or
 alter a worktree.
 Because the previous remote-tracking refs are its baseline, running it
 acknowledges the changes it reports.
+
+`jb-gh-activity [--fetch | --fetch-prune] [--since WHEN] [DIRECTORY]` shows a
+decorated commit graph for the local and remote-tracking branches in every Git
+repository directly below `$HOME/src/jellybooks` (or `DIRECTORY`). It also maps
+branches to linked worktrees, reports their clean or modified state, and calls
+out branches with no commits in the period. It reads locally available refs by
+default; `--fetch` updates them first and `--fetch-prune` also removes stale
+remote-tracking branches.
 
 `git-update-all.sh [--prune-local]` fetches and prunes remote branches for each
 repository directly below the current directory, then safely fast-forwards

@@ -1,0 +1,163 @@
+#!/usr/bin/env bash
+
+set -eu
+
+script_dir=$(cd "$(dirname "$0")" && pwd)
+program="$script_dir/../bin/jb-gh-activity"
+test_dir=$(mktemp -d /tmp/jb-gh-activity-test_XXXXXX)
+trap 'rm -rf "$test_dir"' EXIT
+
+export HOME="$test_dir/home"
+repositories="$HOME/src/jellybooks"
+alpha="$repositories/alpha"
+linked="$test_dir/feature worktree"
+mkdir -p "$repositories/not-a-repository"
+
+git init --quiet "$alpha"
+git -C "$alpha" config user.name 'Test User'
+git -C "$alpha" config user.email test@example.com
+old_date=$(date --date='2 months ago' --iso-8601=seconds)
+recent_date=$(date --date='2 days ago' --iso-8601=seconds)
+
+echo old > "$alpha/file"
+git -C "$alpha" add file
+GIT_AUTHOR_DATE=$old_date GIT_COMMITTER_DATE=$old_date \
+    git -C "$alpha" commit --quiet -m 'old main commit'
+main_branch=$(git -C "$alpha" branch --show-current)
+git -C "$alpha" branch stale
+
+git -C "$alpha" worktree add --quiet -b feature "$linked"
+echo feature >> "$linked/file"
+GIT_AUTHOR_DATE=$recent_date GIT_COMMITTER_DATE=$recent_date \
+    git -C "$linked" commit --quiet -am 'recent feature commit'
+git -C "$alpha" update-ref refs/remotes/origin/feature \
+    "$(git -C "$linked" rev-parse HEAD)"
+echo uncommitted > "$linked/untracked"
+
+origin="$test_dir/origin.git"
+source_repository="$test_dir/source"
+git init --bare --quiet "$origin"
+git -C "$alpha" remote add origin "$origin"
+git -C "$alpha" push --quiet origin "$main_branch" feature
+git --git-dir="$origin" symbolic-ref HEAD "refs/heads/$main_branch"
+git clone --quiet "$origin" "$source_repository"
+git -C "$source_repository" config user.name 'Test User'
+git -C "$source_repository" config user.email test@example.com
+git -C "$source_repository" switch --quiet -c remote-new
+GIT_AUTHOR_DATE=$recent_date GIT_COMMITTER_DATE=$recent_date \
+    git -C "$source_repository" commit --quiet --allow-empty \
+        -m 'new remote commit'
+git -C "$source_repository" push --quiet --set-upstream origin remote-new
+git -C "$source_repository" switch --quiet -c prune-me
+git -C "$source_repository" push --quiet --set-upstream origin prune-me
+
+empty="$repositories/empty"
+git init --quiet "$empty"
+
+output="$test_dir/output"
+HOME="$HOME" "$program" --since '1 month ago' > "$output"
+
+expect()
+{
+    if ! grep -F -- "$1" "$output" >/dev/null; then
+        echo "jb-gh-activity: missing output: $1" >&2
+        cat "$output" >&2
+        exit 1
+    fi
+}
+
+expect 'alpha'
+expect "Repository: ~/src/jellybooks/alpha"
+expect "$main_branch"
+expect 'feature'
+expect "$linked [modified]"
+expect 'recent feature commit'
+expect '(origin/feature, feature)'
+expect 'No commits since 1 month ago: master, stale; 1 remote-tracking branch'
+expect 'empty: no branches; worktrees: master [clean]'
+
+if grep -F 'not-a-repository' "$output" >/dev/null; then
+    echo 'jb-gh-activity: reported a non-repository.' >&2
+    exit 1
+fi
+
+if git -C "$alpha" show-ref --verify --quiet refs/remotes/origin/remote-new; then
+    echo 'jb-gh-activity: fetched without --fetch.' >&2
+    exit 1
+fi
+
+"$program" --fetch > "$output"
+expect 'Fetch: updated remote-tracking branches'
+expect 'new remote commit'
+if ! git -C "$alpha" show-ref --verify --quiet \
+        refs/remotes/origin/remote-new ||
+        ! git -C "$alpha" show-ref --verify --quiet \
+            refs/remotes/origin/prune-me; then
+    echo 'jb-gh-activity: --fetch did not update remote-tracking refs.' >&2
+    exit 1
+fi
+
+git -C "$source_repository" push --quiet origin --delete prune-me
+"$program" --fetch > /dev/null
+if ! git -C "$alpha" show-ref --verify --quiet \
+        refs/remotes/origin/prune-me; then
+    echo 'jb-gh-activity: --fetch unexpectedly pruned a remote-tracking ref.' >&2
+    exit 1
+fi
+
+"$program" --fetch-prune > "$output"
+expect 'Fetch: updated and pruned remote-tracking branches'
+if git -C "$alpha" show-ref --verify --quiet \
+        refs/remotes/origin/prune-me; then
+    echo 'jb-gh-activity: --fetch-prune did not prune a remote-tracking ref.' >&2
+    exit 1
+fi
+
+if "$program" --since > /dev/null 2>&1; then
+    echo 'jb-gh-activity: accepted --since without a value.' >&2
+    exit 1
+fi
+
+if "$program" "$alpha" > /dev/null 2>&1; then
+    echo 'jb-gh-activity: treated the scan root .git as a child repository.' >&2
+    exit 1
+fi
+
+fake_bin="$test_dir/fake-bin"
+real_git=$(command -v git)
+mkdir "$fake_bin"
+cat > "$fake_bin/git" <<'EOF'
+#!/usr/bin/env bash
+
+for argument in "$@"; do
+    if [ "$argument" = "${JB_GIT_FAIL-}" ]; then
+        echo "simulated git failure: $argument" >&2
+        exit 71
+    fi
+done
+exec "$REAL_GIT" "$@"
+EOF
+chmod +x "$fake_bin/git"
+
+for failing_command in for-each-ref worktree; do
+    errors="$test_dir/$failing_command-errors"
+    if PATH="$fake_bin:$PATH" REAL_GIT="$real_git" \
+            JB_GIT_FAIL="$failing_command" \
+            "$program" "$repositories" > /dev/null 2> "$errors"; then
+        echo "jb-gh-activity: ignored git $failing_command failure." >&2
+        exit 1
+    fi
+    if ! grep -F "simulated git failure: $failing_command" \
+            "$errors" >/dev/null; then
+        echo "jb-gh-activity: did not exercise git $failing_command failure." >&2
+        exit 1
+    fi
+done
+
+mkdir -p "$test_dir/no-repositories"
+if "$program" "$test_dir/no-repositories" > /dev/null 2>&1; then
+    echo 'jb-gh-activity: accepted a directory without repositories.' >&2
+    exit 1
+fi
+
+echo 'jb-gh-activity: good.'
