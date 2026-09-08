@@ -31,9 +31,7 @@ fetch=0
 fetch_prune=0
 analyzer=
 renderer=glow
-renderer_requested=0
 renderer_mode=
-render_markdown=1
 
 while [ "$#" -gt 0 ]; do
     case $1 in
@@ -73,9 +71,7 @@ while [ "$#" -gt 0 ]; do
                 exit 2
             fi
             renderer=$2
-            renderer_requested=1
             renderer_mode=set
-            render_markdown=1
             shift 2
             ;;
         --no-renderer)
@@ -83,9 +79,7 @@ while [ "$#" -gt 0 ]; do
                 echo "${0##*/}: --renderer and --no-renderer cannot be combined" >&2
                 exit 2
             fi
-            renderer_requested=1
             renderer_mode=none
-            render_markdown=0
             shift
             ;;
         -h|--help)
@@ -110,6 +104,15 @@ while [ "$#" -gt 0 ]; do
             ;;
     esac
 done
+
+renderer_requested=0
+render_markdown=1
+if [ -n "$renderer_mode" ]; then
+    renderer_requested=1
+fi
+if [ "$renderer_mode" = none ]; then
+    render_markdown=0
+fi
 
 if [ "$#" -gt 1 ] || { [ "$#" -eq 1 ] && [ -n "$root" ]; }; then
     echo "${0##*/}: too many directories" >&2
@@ -275,20 +278,42 @@ common-directory()
     (cd "$common" 2>/dev/null && pwd -P)
 }
 
+# Fetch only remote branches into their conventional remote-tracking
+# namespace.  An explicit refspec prevents repository configuration from
+# directing pruning at local branches, and --no-prune-tags protects local
+# tags even when fetch.pruneTags or remote.<name>.pruneTags is enabled.
+fetch-remotes-safely()
+{
+    local repository=$1 remote refspec failed=0 remotes
+    local -a options=(--no-tags --quiet --no-write-fetch-head --refmap=)
+
+    if [ "$fetch_prune" -eq 1 ]; then
+        options+=(--prune --no-prune-tags)
+    fi
+
+    if ! remotes=$(git -C "$repository" remote); then
+        return 1
+    fi
+    while IFS= read -r remote; do
+        [ -n "$remote" ] || continue
+        refspec="+refs/heads/*:refs/remotes/$remote/*"
+        git -C "$repository" fetch "${options[@]}" "$remote" "$refspec" ||
+            failed=1
+    done <<< "$remotes"
+
+    return "$failed"
+}
+
 show-repository()
 {
-    local repository=$1 ref short_name symref recent_commit output color
-    local refs_output worktrees
+    local repository=$1 ref short_name symref objectname output color
+    local refs_output recent_output recent_commit worktrees
     local fetch_status=
-    local -a fetch_options=(--all --quiet)
     local -a refs=() inactive=() inactive_local=()
     local inactive_remote=0 local_branches=0 remote_branches=0
 
     if [ "$fetch" -eq 1 ]; then
-        if [ "$fetch_prune" -eq 1 ]; then
-            fetch_options+=(--prune)
-        fi
-        if git -C "$repository" fetch "${fetch_options[@]}"; then
+        if fetch-remotes-safely "$repository"; then
             if [ "$fetch_prune" -eq 1 ]; then
                 fetch_status='updated and pruned remote-tracking branches'
             else
@@ -300,11 +325,25 @@ show-repository()
         fi
     fi
     if ! refs_output=$(git -C "$repository" for-each-ref \
-            --format='%(refname)%09%(refname:short)%09%(symref)' \
+            --format='%(refname)%09%(refname:short)%09%(objectname)%09%(symref)' \
             refs/heads refs/remotes); then
         return 1
     fi
-    while IFS=$'\t' read -r ref short_name symref; do
+    # One combined walk of every branch/remote-tracking tip, using git's own
+    # date parser (the same one --since uses below), instead of forking
+    # `git log` once per ref: a ref is active iff its own tip commit is in
+    # this set, since each tip is itself a starting point of the walk.
+    if ! recent_output=$(git -C "$repository" log --since="$since" \
+            --format=%H --branches --remotes); then
+        return 1
+    fi
+    local -A recent=()
+    while IFS= read -r recent_commit; do
+        [ -n "$recent_commit" ] || continue
+        recent[$recent_commit]=1
+    done <<< "$recent_output"
+
+    while IFS=$'\t' read -r ref short_name objectname symref; do
         [ -n "$ref" ] || continue
         [ -z "$symref" ] || continue
         refs+=("$ref")
@@ -312,11 +351,7 @@ show-repository()
             refs/heads/*) ((local_branches += 1)) ;;
             refs/remotes/*) ((remote_branches += 1)) ;;
         esac
-        if ! recent_commit=$(git -C "$repository" log -1 --format=%H \
-                --since="$since" "$ref"); then
-            return 1
-        fi
-        if [ -z "$recent_commit" ]; then
+        if [[ -z ${recent[$objectname]+yes} ]]; then
             inactive+=("$short_name")
             case $ref in
                 refs/heads/*) inactive_local+=("$short_name") ;;
@@ -520,8 +555,13 @@ if [ "$generate_status" -ne 0 ]; then
     echo "${0##*/}: some repositories failed; summarizing partial report" >&2
 fi
 summarize-report "$report" | render-summary
-summary_status=${PIPESTATUS[0]}
+pipe_status=("${PIPESTATUS[@]}")
+summary_status=${pipe_status[0]}
+render_status=${pipe_status[1]}
 if [ "$generate_status" -ne 0 ]; then
     exit "$generate_status"
 fi
-exit "$summary_status"
+if [ "$summary_status" -ne 0 ]; then
+    exit "$summary_status"
+fi
+exit "$render_status"
