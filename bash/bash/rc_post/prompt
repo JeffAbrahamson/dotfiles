@@ -9,6 +9,13 @@ fg_blue="$(tput setaf 4)"
 fg_magenta="$(tput setaf 5)"
 fg_cyan="$(tput setaf 6)"
 fg_white="$(tput setaf 7)"
+# Orange isn't in the base 8-color ANSI palette; fall back to red on
+# terminals that don't advertise 256-color support (e.g. plain TERM=screen).
+if [[ $(tput colors 2>/dev/null) -ge 256 ]]; then
+    fg_orange="$(tput setaf 208)"
+else
+    fg_orange="$(tput setaf 1)"
+fi
 reset="$(tput sgr0)"
 
 # Set this to something if I want some extra info in the prompt.
@@ -84,6 +91,13 @@ virtualenv_indicator() {
     fi
 }
 
+aws_profile_indicator() {
+    aws_profile_indicator_=
+    if [[ -n $AWS_PROFILE ]]; then
+	aws_profile_indicator_="$fg_orange[aws:$AWS_PROFILE]$fg_black"
+    fi
+}
+
 # These variables affect the status of the zero line git prompt.
 # This is all defined in ./git-prompt, which I store here for ease
 # of reference.  The original is generally installed and sourced on
@@ -102,11 +116,19 @@ line_zero() {
     # This causes git information to be shown:
     git_=$(__git_ps1)
     virt_=$virtualenv_indicator_
-    zerospace=
-    if [[ -n $git_ && -n $virt_ ]]; then
-	zerospace=' '
-    fi
-    line_zero_="$git_$zerospace$virt_$prompt_extra"
+    aws_=$aws_profile_indicator_
+    local part
+    for part in "$git_" "$virt_" "$aws_"; do
+	[[ -n $part ]] || continue
+	if [[ -n $line_zero_ ]]; then
+	    line_zero_="$line_zero_ $part"
+	else
+	    line_zero_="$part"
+	fi
+    done
+    # prompt_extra supplies its own leading space when set (see e.g.
+    # gc-use in aliases), so it's appended raw rather than joined.
+    line_zero_="$line_zero_$prompt_extra"
 }
 
 line_zero_format() {
@@ -154,4 +176,4 @@ $zero_\[$exit_color_\]$one_prefix_\${exit_status_indicator_}${screen_indicator_}
 
 # Prompt command outputs nothing, only sets state.
 # The prompt itself computes nothing, only displays state.
-PROMPT_COMMAND="exit_status_indicator; script_indicator; display_indicator; screen_indicator; virtualenv_indicator; line_zero; line_zero_format; setup_prompt"
+PROMPT_COMMAND="exit_status_indicator; script_indicator; display_indicator; screen_indicator; virtualenv_indicator; aws_profile_indicator; line_zero; line_zero_format; setup_prompt"
