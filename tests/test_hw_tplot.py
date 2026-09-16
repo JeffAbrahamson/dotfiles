@@ -126,11 +126,13 @@ def test_print_run_summary_reports_hidpi(capsys):
     HW_TPLOT.print_run_summary(series, 250, detected_hidpi=True, hidpi=True)
 
     output = capsys.readouterr().out
+    shutdown_time = HW_TPLOT.format_time(100.0)
+    last_time = HW_TPLOT.format_time(400.0)
     assert "Temperature checkpoints:" in output
-    assert "shutdown before time-series gap: 1970-01-01" in output
+    assert f"shutdown before time-series gap: {shutdown_time}" in output
     assert ("    * k10temp-tctl (CPU control temperature)   50.0 C") in output
     assert ("    * amdgpu-edge (GPU edge temperature)       45.0 C") in output
-    assert "current last recorded time: 1970-01-01" in output
+    assert f"current last recorded time: {last_time}" in output
     assert (
         "HiDPI display detected: yes; larger plot fonts applied: yes" in output
     )
