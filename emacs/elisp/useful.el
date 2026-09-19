@@ -96,6 +96,9 @@
 ; (local-set-key '(meta left) 'beginning-of-line))
 
 (global-set-key (kbd "C-c o") 'occur)
+;; General Unicode insertion is available with C-x 8 RET <name> RET.
+(global-set-key (kbd "C-c -") (lambda () (interactive) (insert "–")))
+(global-set-key (kbd "C-c _") (lambda () (interactive) (insert "—")))
 
 
 (defun switch-to-makefile ()
