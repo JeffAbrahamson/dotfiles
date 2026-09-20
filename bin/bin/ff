@@ -30,6 +30,9 @@ case "$request" in
     jbks)
 	profile=jellybooks
     ;;
+    rco)
+	profile=rue-commune-jeff
+    ;;
     test)
 	profile=test
     ;;

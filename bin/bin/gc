@@ -1,7 +1,7 @@
 #!/bin/bash
 
 tn_dir="$HOME/work/startup/transport-nantes/finances"
-nmla_dir="$HOME/work/startup/ML-meetup/compta/gnucash"
+nmla_dir="$HOME/work/associations/NMLA/compta/gnucash"
 declare -A accounts
 
 accounts['tn']="$tn_dir/gnucash/transport-nantes.gnucash"
