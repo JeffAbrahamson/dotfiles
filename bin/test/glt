@@ -1,0 +1,244 @@
+#!/bin/bash
+
+set -eu
+
+script_dir=$(cd "$(dirname "$0")" && pwd)
+glt="$script_dir/../bin/glt"
+glw="$script_dir/../bin/glw"
+test_dir=$(mktemp -d /tmp/glt-test_XXXXXX)
+trap 'rm -rf "$test_dir"' EXIT
+
+export GIT_CONFIG_NOSYSTEM=1
+export GIT_CONFIG_GLOBAL=/dev/null
+export GIT_AUTHOR_NAME='Glt Test'
+export GIT_AUTHOR_EMAIL='glt-test@example.com'
+export GIT_COMMITTER_NAME=$GIT_AUTHOR_NAME
+export GIT_COMMITTER_EMAIL=$GIT_AUTHOR_EMAIL
+export GIT_PAGER=cat
+
+failures=0
+
+fail()
+{
+    echo "glt: test failed: $*" >&2
+    failures=$((failures + 1))
+}
+
+expect_equal()
+{
+    if [ "$2" != "$3" ]; then
+        fail "$1"
+        diff -u <(printf '%s\n' "$2") <(printf '%s\n' "$3") >&2 || true
+    fi
+}
+
+expect_contains()
+{
+    case "$2" in
+        *"$3"*) ;;
+        *) fail "$1: output lacks '$3'" ;;
+    esac
+}
+
+expect_lacks()
+{
+    case "$2" in
+        *"$3"*) fail "$1: output contains '$3'" ;;
+    esac
+}
+
+expect_status()
+{
+    local expected=$1
+    shift
+    local status=0
+    "$@" >/dev/null 2>&1 || status=$?
+    [ "$status" = "$expected" ] ||
+        fail "$* exited $status, expected $expected"
+}
+
+# Distinct, increasing commit times keep git log's order deterministic.
+tick=1700000000
+commit()
+{
+    tick=$((tick + 60))
+    GIT_AUTHOR_DATE="@$tick +0000" GIT_COMMITTER_DATE="@$tick +0000" \
+        git commit --quiet "$@"
+}
+
+merge()
+{
+    tick=$((tick + 60))
+    GIT_AUTHOR_DATE="@$tick +0000" GIT_COMMITTER_DATE="@$tick +0000" \
+        git merge --quiet --no-ff "$@"
+}
+
+repo="$test_dir/repo"
+git init --quiet --initial-branch=main "$repo"
+cd "$repo"
+echo root-content > a
+git add a
+commit -m 'root commit'
+for n in 2 3 4 5; do
+    echo "$n" >> a
+    commit -am "commit $n"
+done
+git tag 1-2 HEAD~3
+
+# Row order, newest first: commit 5, 4, 3, 2, root.
+hashes=$(git log --format=%h)
+row() { sed -n "${1}p" <<<"$hashes"; }
+
+# --- glt ---
+
+out=$("$glt" 2-3 | cut -d'|' -f1)
+expect_equal 'glt 2-3 selects rows 2-3' "$(row 2)
+$(row 3)" "$out"
+
+out=$("$glt" -N 2-3 | cut -d'|' -f1)
+expect_equal 'glt -N 2-3 numbers from 2' "     2	$(row 2)
+     3	$(row 3)" "$out"
+
+out=$("$glt" 4- | cut -d'|' -f1)
+expect_equal 'glt 4- runs to the end' "$(row 4)
+$(row 5)" "$out"
+
+out=$("$glt" -N | cut -f1)
+expect_equal 'glt -N numbers every row' "     1
+     2
+     3
+     4
+     5" "$out"
+
+out=$("$glt" -n 1 | cut -d'|' -f1)
+expect_equal 'glt still passes -n through to git log' "$(row 1)" "$out"
+
+out=$("$glt" -2 | cut -d'|' -f1)
+expect_equal 'glt still passes -2 through to git log' "$(row 1)
+$(row 2)" "$out"
+
+# A ref named like a row range is a revision, not a range.
+out=$("$glt" 1-2 | cut -d'|' -f1)
+expect_equal 'glt 1-2 prefers the tag 1-2' "$(row 4)
+$(row 5)" "$out"
+
+# So is an existing path.
+echo x > 3-4
+git add 3-4
+commit -m 'add 3-4'
+out=$("$glt" 3-4)
+expect_contains 'glt 3-4 prefers the path 3-4' "$out" 'add 3-4'
+expect_equal 'glt 3-4 lists only commits touching 3-4' 1 \
+    "$(printf '%s\n' "$out" | wc -l)"
+git rm --quiet 3-4
+commit -m 'remove 3-4'
+hashes=$(git log --format=%h)
+
+out=$("$glt" -- 2-3)
+expect_equal 'glt -- 2-3 treats 2-3 as a path' '' "$out"
+
+# Values of git options aren't row ranges.
+out=$("$glt" --grep 3-4 | cut -d'|' -f1)
+expect_equal 'glt --grep 3-4 greps for 3-4' "$(git log --format=%h --grep 3-4)" "$out"
+out=$("$glt" --until 2000-01)
+expect_equal 'glt --until 2000-01 is a date' '' "$out"
+
+out=$("$glt" -p -I 3-4 -1 | head -1 | cut -d'|' -f1)
+expect_equal 'glt -I 3-4 passes the value to git' "$(row 1)" "$out"
+
+# Explicit limits would select or number the wrong rows.
+for limit in -1 '-n 1' -n1 --max-count=1 --skip=1 '--skip 1'; do
+    # shellcheck disable=SC2086
+    expect_status 2 "$glt" 2-4 $limit
+    # shellcheck disable=SC2086
+    expect_status 2 "$glw" -N 2-4 $limit
+done
+
+# git's failure survives the numbering pipeline.
+expect_status 128 "$glt" -N no-such-ref
+
+expect_status 2 "$glt" 2-3 --reverse
+expect_status 2 "$glw" 2-3 --reverse
+out=$("$glt" --reverse -N | cut -f1 | head -1)
+expect_equal 'glt --reverse without a row range' '     1' "$out"
+
+expect_status 2 "$glt" 5-3
+expect_status 2 "$glt" 0-3
+# Only the first argument for git can be ROWS.
+expect_status 128 "$glt" 2-3 4-5
+expect_status 128 "$glt" main 2-3
+out=$("$glt" --line-prefix 1-2 -1)
+expect_contains 'glt --line-prefix 1-2' "$out" "1-2$(row 1)"
+expect_status 0 "$glt" -h
+
+out=$("$glt" --help)
+expect_contains 'glt --help' "$out" 'Usage: glt'
+
+# --- glw ---
+
+out=$("$glw" -N 3-4)
+expect_contains 'glw -N shows row numbers' "$out" 'Row 3'
+expect_contains 'glw -N shows row numbers' "$out" 'Row 4'
+expect_contains 'glw shows the selected commit' "$out" "commit $(git rev-parse "$(row 3)")"
+expect_contains 'glw shows the log message' "$out" '    commit 5'
+expect_lacks 'glw without -p' "$out" 'diff --git'
+expect_lacks 'glw leaves out unselected rows' "$out" 'Row 5'
+
+out=$("$glw" 3-4 --graph)
+expect_contains 'glw --graph still finds commits' "$out" "commit $(git rev-parse "$(row 3)")"
+
+# A file named like a hash isn't a commit.
+fake=0123456789abcdef0123456789abcdef01234567
+echo x > "$fake"
+git add "$fake"
+commit -m 'add hash-named file'
+out=$("$glw" --name-only -1)
+expect_contains 'glw --name-only' "$out" 'add hash-named file'
+expect_equal 'glw --name-only walks one commit' 1 \
+    "$(grep -c '^commit ' <<<"$out")"
+git rm --quiet "$fake"
+commit -m 'remove hash-named file'
+hashes=$(git log --format=%h)
+
+out=$("$glw" 3-4)
+expect_lacks 'glw without -N' "$out" 'Row '
+
+expect_status 128 "$glw" -p no-such-ref
+
+root=$(git rev-list --max-parents=0 HEAD)
+out=$("$glw" -p "$root" -1)
+expect_contains 'glw -p on a root commit' "$out" '+root-content'
+
+# A merge shows what it brought in relative to its first parent.
+git switch --quiet -c side
+echo side > s
+git add s
+commit -m 'side commit'
+git switch --quiet main
+echo more >> a
+commit -am 'main commit'
+merge -m 'merge side' side
+out=$("$glw" -p -1)
+expect_contains 'glw -p on a merge' "$out" 'merge side'
+expect_contains 'glw -p on a merge' "$out" '+side'
+expect_lacks 'glw -p on a merge' "$out" '+more'
+
+# Paths after -- limit both the selection and the diff.
+out=$("$glw" -p -3 -- s)
+expect_contains 'glw -p -- s' "$out" 'side commit'
+expect_lacks 'glw -p -- s' "$out" 'main commit'
+
+expect_status 1 "$glw" main..main
+expect_status 2 "$glw" 2-1
+
+out=$("$glw" -h)
+expect_contains 'glw -h' "$out" 'Usage: glw'
+
+# Any other name is a mistake, not an alias for glt.
+ln -s "$glt" "$test_dir/glx"
+expect_status 2 "$test_dir/glx" -h
+
+if [ "$failures" -ne 0 ]; then
+    echo "glt: $failures test(s) failed." >&2
+    exit 1
+fi

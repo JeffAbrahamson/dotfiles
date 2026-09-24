@@ -8,6 +8,8 @@ This directory contains hook snippets sourced after the main interactive-shell s
 * [`aliases`](aliases) defines shell aliases.
 * [`aws`](aws) defines AWS profile and S3 inventory/audit helpers.
 * [`git-prompt`](git-prompt) and [`git-worktrees`](git-worktrees) add git-aware shell behavior.
+* [`glt`](glt) provides tab completion for `glt` and `glw` (see
+  [`../../../bin/bin/glt`](../../../bin/bin/glt)).
 * [`prompt`](prompt) configures the command prompt.
 * [`rsync`](rsync) defines rsync-related helpers.
 

@@ -1,0 +1,338 @@
+#!/bin/bash
+#
+# glt: one-line-per-commit git log table.
+# glw: walk through the same selection one commit at a time.
+#
+# Both commands live in this file and share their argument handling;
+# glw is a symlink (or, once installed, a copy) of glt, and the name we
+# are invoked as selects the behaviour.
+
+set -u
+
+# Short output should just print, and stay on screen after less exits
+# (glw prompts beneath it).  If LESS is unset, git's own default, FRX,
+# already does both.
+[[ -v LESS ]] && export LESS="$LESS -FX"
+
+prog=$(basename "$0")
+
+table_format='%C(yellow)%h%Creset|%C(red)%ad%Creset|%C(blue)%an%Creset|%C(green)%d%Creset %s'
+
+glt_usage() {
+    cat <<'EOF'
+Usage: glt [-N] [ROWS] [git-log-arguments...]
+
+Show a one-line-per-commit table (hash|date|author|refs subject).
+Every argument glt doesn't recognise is passed through to git log, so
+revision ranges, paths, -10, -n 5, --author=..., etc. all work.
+
+  -N, --number   Number the rows (like cat -n).  Numbers are positions
+                 in the selection, starting at 1 for the first commit
+                 git log would show; they are not HEAD~N offsets.  They
+                 number output lines, so with options that print more
+                 than one line per commit (--stat, --graph, -p) they no
+                 longer match ROWS.
+  ROWS           START-END (e.g. 3-10) or START- (e.g. 3-): show only
+                 rows START to END of the output, numbered as such with
+                 -N.  Only recognised as the first argument after glt's
+                 own options, and only if it doesn't name an existing
+                 commit or path.  Can't be combined with --reverse, -n,
+                 -NUMBER, --max-count or --skip.
+  -h, --help     Show this help.
+
+Arguments after -- are always passed through untouched.
+
+See also: glw, to step through the same selection commit by commit.
+EOF
+}
+
+glw_usage() {
+    cat <<'EOF'
+Usage: glw [-N] [-p] [--no-prompt] [--no-clear] [ROWS] [git-log-arguments...]
+
+Walk through commits one at a time, showing each commit's log message
+and, with -p, its diff.  The commits are those glt would list for the
+same arguments.
+
+  -N, --number   Show each commit's row number (as glt -N would).
+  -p, --patch    Also show the diff against the first parent (so merges
+                 show what they brought in, and root commits show their
+                 whole content).
+  --no-prompt    Don't pause between commits; just show them all.
+  --no-clear     Don't clear the screen before each commit.
+  ROWS           START-END or START-, as for glt.
+  -h, --help     Show this help.
+
+After each commit glw prompts for a key:
+
+  space, Enter, n, j   next commit (quit, after the last one)
+  p, b, k              previous commit
+  q                    quit
+
+Commits too long for the screen are shown through git's pager first.
+When output is not a terminal, glw behaves as if --no-prompt were given.
+
+Other arguments (revision ranges, paths, --author=..., etc.) are passed
+to git log to choose the commits.  Paths after -- also limit the diffs
+that -p shows.
+EOF
+}
+
+die() {
+    echo "$prog: $*" >&2
+    exit 2
+}
+
+# Parsed state, filled in by parse_args.
+number=0
+patch=0
+prompt=1
+clear_screen=1
+row_start=1
+pass=()         # Arguments for git log before any --.
+ranges=()       # --skip/--max-count selecting ROWS.
+dd=()           # "--" and the paths after it, if given.
+
+# True if $1 looks like a row range and doesn't name a commit or path.
+is_row_range() {
+    [[ $1 =~ ^[0-9]+-[0-9]*$ ]] || return 1
+    [[ -e $1 ]] && return 1
+    ! git rev-parse -q --verify "$1^{commit}" >/dev/null 2>&1
+}
+
+set_rows() {
+    local start=${1%%-*} end=${1#*-}
+    # Force base 10 so that e.g. 08 isn't read as octal.
+    start=$((10#$start))
+    (( start >= 1 )) || die "rows are numbered from 1: $1"
+    row_start=$start
+    (( start > 1 )) && ranges+=("--skip=$((start - 1))")
+    if [[ -n $end ]]; then
+        end=$((10#$end))
+        (( end >= start )) || die "row range ends before it starts: $1"
+        ranges+=("--max-count=$((end - start + 1))")
+    fi
+    return 0
+}
+
+parse_args() {
+    local walk=$1 first=1 arg
+    shift
+    while (( $# )); do
+        arg=$1
+        shift
+        case $arg in
+            --)
+                dd=(-- "$@")
+                break
+                ;;
+            -h|--help)
+                if (( walk )); then glw_usage; else glt_usage; fi
+                exit 0
+                ;;
+            -N|--number)
+                number=1
+                continue
+                ;;
+            -p|--patch)
+                (( walk )) && { patch=1; continue; }
+                ;;
+            --no-prompt)
+                (( walk )) && { prompt=0; continue; }
+                ;;
+            --no-clear)
+                (( walk )) && { clear_screen=0; continue; }
+                ;;
+        esac
+        # Only the first argument for git can be ROWS: unlike later
+        # ones, it can't be the value of an option (--until 2023-12).
+        if (( first )); then
+            first=0
+            if is_row_range "$arg"; then
+                set_rows "$arg"
+                continue
+            fi
+        fi
+        pass+=("$arg")
+    done
+    # git applies these before or instead of our --skip/--max-count,
+    # which would select or number the wrong rows.
+    if (( ${#ranges[@]} )); then
+        for arg in "${pass[@]}"; do
+            if [[ $arg =~ ^(--reverse|-n.*|-[0-9]+|--max-count(=.*)?|--skip(=.*)?)$ ]]; then
+                die "a row range can't be combined with $arg"
+            fi
+        done
+    fi
+    return 0
+}
+
+# Set $pager to what git would page "git $1" through, or cat if paging
+# is off for it (pager.$1).  This runs a git process, so call it once,
+# outside any pipeline.
+pager=cat
+resolve_pager() {
+    local setting
+    setting=$(git config --get "pager.$1" 2>/dev/null) || setting=
+    case ${setting,,} in
+        false|no|off|0)
+            pager=cat
+            ;;
+        ''|true|yes|on|1)
+            pager=$(git var GIT_PAGER 2>/dev/null) || pager=less
+            ;;
+        *)
+            pager=$setting
+            ;;
+    esac
+}
+
+# Run stdin through $pager, as git itself would.
+page() {
+    LESS=${LESS-FRX} LV=${LV--c} sh -c "$pager"
+}
+
+# Whether git would colour output to a terminal on our stdout.
+use_color() {
+    [[ -t 1 ]] && [[ $(git config --get-colorbool color.diff true) == true ]]
+}
+
+number_rows() {
+    awk -v n="$row_start" '{ printf "%6d\t%s\n", n++, $0 }'
+}
+
+run_glt() {
+    local cmd=(git log "--pretty=tformat:$table_format" --date=short
+               --decorate --abbrev-commit "${ranges[@]}")
+
+    if (( ! number )); then
+        exec "${cmd[@]}" "${pass[@]}" "${dd[@]}"
+    fi
+    if [[ -t 1 ]]; then
+        # Piping loses git's colour and pager, so ask for both back.
+        local color=never
+        use_color && color=always
+        resolve_pager log
+        "${cmd[@]}" "--color=$color" "${pass[@]}" "${dd[@]}" | number_rows | page
+    else
+        "${cmd[@]}" "${pass[@]}" "${dd[@]}" | number_rows
+    fi
+    local status=("${PIPESTATUS[@]}")
+    # Quitting the pager early kills git with SIGPIPE; that's no error.
+    if (( status[0] != 0 && status[0] != 141 )); then
+        exit "${status[0]}"
+    fi
+    exit "${status[-1]}"
+}
+
+# Set up by run_glw: colour (always/never), and git show with the
+# requested colour and diff.
+color=never
+show=()
+
+# Show commit $1 (row $2).
+show_commit() {
+    local sha=$1 row=$2
+    if (( number )); then
+        if [[ $color == always ]]; then
+            printf '\e[1mRow %d\e[0m\n' "$row"
+        else
+            printf 'Row %d\n' "$row"
+        fi
+    fi
+    "${show[@]}" "$sha" "${dd[@]}"
+}
+
+# Read a key for commit $1 of $2 into REPLY: n (next), p or q.
+prompt_key() {
+    local pos=$1 total=$2 key keys='next: space/n  previous: p  quit: q'
+    (( pos == total )) && keys='last commit  previous: p  quit: space/n/q'
+    printf '\e[7m(%d/%d) %s\e[0m' "$pos" "$total" "$keys"
+    while :; do
+        IFS= read -rsn1 key </dev/tty || { key=q; break; }
+        case $key in
+            ''|' '|n|j) key=n; break ;;
+            p|b|k) key=p; break ;;
+            q|Q) key=q; break ;;
+        esac
+    done
+    printf '\r\e[K'
+    REPLY=$key
+}
+
+run_glw() {
+    local shas out
+
+    # Same argument order as glt, so both select the same commits; only
+    # --format must come after the user's options, to win over theirs.
+    out=$(git log "${ranges[@]}" "${pass[@]}" --no-color --format=%x01%H "${dd[@]}") ||
+        exit
+    # Pass-through options may prefix the hash (--graph) or add lines
+    # of their own (--stat, --name-only), hence the \x01 marker.
+    mapfile -t shas < <(sed -n 's/.*\x01\([0-9a-f]\{40,64\}\)$/\1/p' <<<"$out")
+    local total=${#shas[@]}
+    if (( total == 0 )); then
+        echo "$prog: no commits selected" >&2
+        exit 1
+    fi
+
+    if [[ ! -t 1 ]] || ! { : </dev/tty; } 2>/dev/null; then
+        prompt=0
+    fi
+
+    use_color && color=always
+    show=(git --no-pager show "--color=$color")
+    if (( patch )); then
+        show+=(--diff-merges=first-parent)
+    else
+        show+=(--no-patch)
+    fi
+    [[ -t 1 ]] && resolve_pager show
+
+    local i
+    if (( ! prompt )); then
+        if (( number )); then
+            for (( i = 0; i < total; i++ )); do
+                (( i > 0 )) && echo
+                show_commit "${shas[i]}" $((row_start + i))
+            done
+        else
+            # No per-commit header, so one git process will do.
+            printf '%s\n' "${shas[@]}" | "${show[@]}" --stdin "${dd[@]}"
+        fi | page
+        return
+    fi
+
+    i=0
+    while :; do
+        if (( clear_screen )); then
+            clear 2>/dev/null || printf '\e[H\e[2J'
+        fi
+        show_commit "${shas[i]}" $((row_start + i)) | page
+        # With a single commit there is nowhere to go.
+        (( total == 1 )) && break
+        echo
+        prompt_key $((i + 1)) "$total"
+        case $REPLY in
+            q) break ;;
+            p) (( i > 0 )) && i=$((i - 1)) ;;
+            n) (( i == total - 1 )) && break
+               i=$((i + 1)) ;;
+        esac
+        (( clear_screen )) || echo
+    done
+}
+
+case $prog in
+    glt)
+        parse_args 0 "$@"
+        run_glt
+        ;;
+    glw)
+        parse_args 1 "$@"
+        run_glw
+        ;;
+    *)
+        die "must be run as glt or glw"
+        ;;
+esac

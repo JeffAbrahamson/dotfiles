@@ -1,0 +1,21 @@
+# Bash completion for glt and glw (bin/bin/glt).
+
+_git_log_table_completion() {
+  local cur="${COMP_WORDS[COMP_CWORD]}"
+
+  if [[ $cur == -* ]]; then
+    local opts="-N --number -h --help"
+    [[ ${COMP_WORDS[0]} == glw ]] && opts+=" -p --patch --no-prompt --no-clear"
+    COMPREPLY=( $(compgen -W "$opts" -- "$cur") )
+    return
+  fi
+
+  # Complete branch-like refs from the current repo, including remote branches.
+  local refs
+  refs="$(git for-each-ref --format='%(refname:short)' refs/heads refs/remotes 2>/dev/null | grep -v '/HEAD$')"
+  COMPREPLY=( $(compgen -W "$refs" -- "$cur") )
+}
+
+complete -F _git_log_table_completion git-log-table
+complete -F _git_log_table_completion glt
+complete -F _git_log_table_completion glw

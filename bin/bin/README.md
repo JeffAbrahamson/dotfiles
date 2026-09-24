@@ -7,7 +7,8 @@ This directory contains the actual executables installed from the repository. Mo
 * Network and connectivity: [`bandwidth`](bandwidth), [`bandwidth_history.py`](bandwidth_history.py), [`speedtest`](speedtest), [`up-monitor`](up-monitor), [`wifi-qr`](wifi-qr), and [`wifi_summary.py`](wifi_summary.py).
 * Time-series and personal data: [`tsd-bicycle`](tsd-bicycle) and [`tsd-sleep`](tsd-sleep); general tsd plotting commands (`tsd-plot`, `tsd-season-plot`) are installed with the `tsd` package.
 * File and package comparison: [`compare-file-lists`](compare-file-lists), [`compare-sum-lists`](compare-sum-lists), [`dedup`](dedup), and [`disk-usage.sh`](disk-usage.sh).
-* Git helpers: [`gc`](gc), [`git-this-week`](git-this-week),
+* Git helpers: [`gc`](gc), [`glt`](glt), [`glw`](glw),
+  [`git-this-week`](git-this-week),
   [`git-remote-changes`](git-remote-changes), [`jb-gh-activity`](jb-gh-activity),
   [`git-update-all.sh`](git-update-all.sh), and [`update-gf`](update-gf).
 * Window-manager and desktop helpers: [`i3-chromium-browser`](i3-chromium-browser), [`signal-desktop`](signal-desktop), [`journal-edit`](journal-edit), and [`journal-read`](journal-read).
@@ -24,6 +25,14 @@ This directory contains the actual executables installed from the repository. Mo
   CLI is installed with `npm install -g @mermaid-js/mermaid-cli`; otherwise,
   they remain ordinary code blocks and a warning is printed.
 * [`tsd-bicycle`](tsd-bicycle) focuses on bicycle mileage logs and can report totals or generate year-over-year plots.
+
+`glt [-N] [ROWS] [git-log-arguments...]` prints a one-line-per-commit
+table and passes anything it doesn't recognise to `git log`. `-N` numbers
+the rows and `ROWS` (`3-10` or `3-`) selects rows by position; an argument
+that names a commit or path is passed through instead. `glw` (a symlink to
+`glt`) takes the same selection and steps through it one commit at a time,
+optionally with each commit's first-parent diff (`-p`), prompting between
+commits unless given `--no-prompt`. Both accept `-h` for details.
 
 `git-remote-changes [DIRECTORY]` recursively fetches Git worktrees at or below
 the directory (the current directory by default) and lists repositories whose
