@@ -1,0 +1,114 @@
+#!/usr/bin/env bash
+
+set -eu
+
+script_dir=$(cd "$(dirname "$0")" && pwd)
+program="$script_dir/../bin/repo-map"
+test_dir=$(mktemp -d /tmp/repo-map-test_XXXXXX)
+trap 'rm -rf "$test_dir"' EXIT
+
+src="$test_dir/src"
+manifests="$test_dir/data/repo-manifests"
+mkdir -p "$src/old place"
+git init --quiet "$src/old place"
+git -C "$src/old place" remote add origin 'https://example.invalid/main.git'
+git init --quiet "$src/local only"
+
+"$program" --src-dir "$src" --manifest-dir "$manifests" --host alpha scan
+manifest="$manifests/alpha.json"
+test -f "$manifest"
+python3 - "$manifest" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as source:
+    manifest = json.load(source)
+assert manifest["schema_version"] == 1
+assert manifest["host"] == "alpha"
+assert len(manifest["generated_at"]) > 10
+assert manifest["repositories"] == [
+    {"path": "local only", "origin": None},
+    {"path": "old place", "origin": "https://example.invalid/main.git"},
+]
+PY
+
+write_host_manifest()
+{
+    python3 - "$manifests/$1.json" "$1" "$2" "$3" <<'PY'
+import json
+import sys
+
+path, host, main_path, include_new = sys.argv[1:]
+repositories = [
+    {"path": main_path, "origin": "https://example.invalid/main.git"}
+]
+if include_new == "yes":
+    repositories.append({
+        "path": "new parent/new checkout",
+        "origin": "https://example.invalid/new.git"
+    })
+with open(path, "w", encoding="utf-8") as output:
+    json.dump({
+        "schema_version": 1,
+        "host": host,
+        "generated_at": "2020-01-01T00:00:00+00:00",
+        "repositories": repositories,
+    }, output)
+PY
+}
+
+write_host_manifest beta 'preferred place' yes
+write_host_manifest gamma 'preferred place' yes
+output="$test_dir/reconcile.txt"
+"$program" --src-dir "$src" --manifest-dir "$manifests" --host alpha \
+    reconcile > "$output"
+grep -F 'present on 3/3 hosts' "$output" >/dev/null
+grep -F 'Suggested move:' "$output" >/dev/null
+grep -F "mv -- '$src/old place' '$src/preferred place'" "$output" >/dev/null
+grep -F 'Suggested clone:' "$output" >/dev/null
+grep -F 'git clone -- https://example.invalid/new.git' "$output" >/dev/null
+grep -F "mkdir -p -- '$src/new parent' &&" "$output" >/dev/null
+grep -F 'manifest generated 2020-01-01T00:00:00+00:00' "$output" >/dev/null
+test -d "$src/old place"
+test ! -e "$src/preferred place"
+test ! -e "$src/new parent"
+
+# An occupied destination is reported without suggesting an overwrite.
+mkdir "$src/preferred place"
+"$program" --src-dir "$src" --manifest-dir "$manifests" --host alpha \
+    reconcile > "$output"
+if ! grep -F 'destination already exists' "$output" >/dev/null; then
+    cat "$output" >&2
+    exit 1
+fi
+rmdir "$src/preferred place"
+
+# Duplicate local checkouts are called out instead of choosing one to move.
+git init --quiet "$src/duplicate place"
+git -C "$src/duplicate place" remote add origin 'https://example.invalid/main.git'
+"$program" --src-dir "$src" --manifest-dir "$manifests" --host alpha \
+    reconcile > "$output"
+grep -F 'duplicate checkouts found' "$output" >/dev/null
+grep -F 'Local duplicate checkouts; resolve manually' "$output" >/dev/null
+
+# A 2-to-2 vote has no majority and must not produce either command.
+write_host_manifest delta 'other place' no
+"$program" --src-dir "$src" --manifest-dir "$manifests" --host alpha \
+    reconcile > "$output"
+grep -F 'No strict-majority path' "$output" >/dev/null
+if grep -F 'Suggested move:' "$output" >/dev/null; then
+    echo 'repo-map: proposed a move without a strict path majority.' >&2
+    exit 1
+fi
+
+# Missing source roots fail before creating the manifest directory.
+missing="$test_dir/missing-src"
+if "$program" --src-dir "$missing" --manifest-dir "$test_dir/should-not-exist" \
+    --host missing scan > /dev/null 2> "$test_dir/error"; then
+    echo 'repo-map: accepted a missing source directory.' >&2
+    exit 1
+fi
+grep -F "source directory does not exist: $missing" "$test_dir/error" >/dev/null
+test ! -e "$test_dir/should-not-exist"
+
+echo 'repo-map: all checks passed.'

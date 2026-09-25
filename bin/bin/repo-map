@@ -1,0 +1,269 @@
+#!/usr/bin/env python3
+"""Inventory Git repositories and compare inventories from multiple hosts."""
+
+import argparse
+import json
+import os
+from pathlib import Path
+import shlex
+import socket
+import subprocess
+import sys
+import tempfile
+from collections import Counter, defaultdict
+from datetime import datetime, timezone
+
+
+def find_repositories(root):
+    """Return repository entries below root, sorted by relative path."""
+    repositories = []
+    for current, directories, _files in os.walk(root):
+        directories.sort()
+        current_path = Path(current)
+        marker = current_path / ".git"
+        if marker.is_dir() or marker.is_file():
+            relative_path = current_path.relative_to(root).as_posix()
+            if relative_path == ".":
+                relative_path = "."
+            remote = subprocess.run(
+                ["git", "-C", str(current_path), "remote", "get-url", "origin"],
+                check=False,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                text=True,
+            )
+            origin = remote.stdout.strip() if remote.returncode == 0 else None
+            repositories.append({"path": relative_path, "origin": origin})
+            directories[:] = []
+    return sorted(repositories, key=lambda entry: entry["path"])
+
+
+def manifest_for(host, root):
+    return {
+        "schema_version": 1,
+        "host": host,
+        "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "source": str(root),
+        "repositories": find_repositories(root),
+    }
+
+
+def write_manifest(directory, manifest):
+    directory.mkdir(parents=True, exist_ok=True)
+    destination = directory / (manifest["host"] + ".json")
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w", encoding="utf-8", dir=directory, delete=False
+        ) as output:
+            temporary = Path(output.name)
+            json.dump(manifest, output, indent=2, sort_keys=True)
+            output.write("\n")
+        temporary.replace(destination)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+    return destination
+
+
+def scan(args):
+    root = args.src_dir.expanduser()
+    if not root.is_dir():
+        raise ValueError("source directory does not exist: {}".format(root))
+    host = args.host or socket.gethostname()
+    manifest = manifest_for(host, root)
+    output = write_manifest(args.manifest_dir.expanduser(), manifest)
+    print("{}: recorded {} repositories in {}".format(
+        host, len(manifest["repositories"]), output
+    ))
+    return manifest
+
+
+def load_manifests(directory):
+    manifests = []
+    for path in sorted(directory.glob("*.json")):
+        try:
+            with path.open(encoding="utf-8") as source:
+                manifest = json.load(source)
+            if (manifest.get("schema_version") != 1 or
+                    not isinstance(manifest.get("host"), str) or
+                    not isinstance(manifest.get("repositories"), list) or
+                    any(
+                        not isinstance(entry, dict) or
+                        not isinstance(entry.get("path"), str) or
+                        Path(entry.get("path", "")).is_absolute() or
+                        ".." in Path(entry.get("path", "")).parts or
+                        (entry.get("origin") is not None and
+                         not isinstance(entry.get("origin"), str))
+                        for entry in manifest.get("repositories", [])
+                    )):
+                raise ValueError("unsupported or malformed manifest")
+            manifests.append(manifest)
+        except (OSError, json.JSONDecodeError, ValueError, AttributeError) as error:
+            print("repo-map: skipping {}: {}".format(path, error), file=sys.stderr)
+    return manifests
+
+
+def shell_command(*parts):
+    return " ".join(shlex.quote(str(part)) for part in parts)
+
+
+def destination_problem(root, relative_path, repository_paths):
+    destination = root / relative_path
+    if destination.exists() or destination.is_symlink():
+        return "destination already exists"
+    relative = Path(relative_path)
+    for parent in relative.parents:
+        if parent == Path("."):
+            break
+        parent_name = parent.as_posix()
+        parent_path = root / parent_name
+        if parent_name in repository_paths:
+            return "destination is inside repository {}".format(parent_name)
+        if parent_path.exists() and not parent_path.is_dir():
+            return "parent path is not a directory: {}".format(parent_name)
+    return None
+
+
+def suggested_command(root, relative_path, *command):
+    parent = (root / relative_path).parent
+    parts = []
+    if not parent.is_dir():
+        parts.append(shell_command("mkdir", "-p", "--", parent))
+    parts.append(shell_command(*command))
+    return " && ".join(parts)
+
+
+def reconcile(args):
+    current = scan(args)
+    directory = args.manifest_dir.expanduser()
+    manifests = load_manifests(directory)
+    # Prefer the just-written copy if a malformed or stale duplicate host file
+    # was present under a different filename.
+    by_host = {manifest["host"]: manifest for manifest in manifests}
+    by_host[current["host"]] = current
+    manifests = [by_host[name] for name in sorted(by_host)]
+    total_hosts = len(manifests)
+    if total_hosts < 2:
+        print("Only one host manifest is available; scan other hosts first.")
+        return current
+
+    for manifest in manifests:
+        generated = manifest.get("generated_at", "unknown age")
+        print("Host {} (manifest generated {})".format(manifest["host"], generated))
+
+    local_repositories = current["repositories"]
+    local_by_origin = defaultdict(list)
+    local_paths = {entry["path"]: entry for entry in local_repositories}
+    for entry in local_repositories:
+        if entry.get("origin"):
+            local_by_origin[entry["origin"]].append(entry["path"])
+
+    appearances = defaultdict(list)
+    for manifest in manifests:
+        per_host = defaultdict(list)
+        for entry in manifest["repositories"]:
+            origin = entry.get("origin")
+            if origin:
+                per_host[origin].append(entry.get("path", ""))
+        for origin, paths in per_host.items():
+            appearances[origin].append((manifest["host"], paths))
+
+    proposals = 0
+    print("\nRepository comparison ({} hosts; strict majority requires more than {}).".format(
+        total_hosts, total_hosts / 2
+    ))
+    for origin in sorted(appearances):
+        host_entries = appearances[origin]
+        present_hosts = len(host_entries)
+        local_paths_for_origin = local_by_origin.get(origin, [])
+        label = origin
+        if any(len(paths) > 1 for _host, paths in host_entries):
+            print("\n{}: duplicate checkouts found; path consensus may be ambiguous".format(label))
+        host_votes = Counter(
+            paths[0] for _host, paths in host_entries if len(paths) == 1
+        )
+        path_winner = next(
+            (path for path, votes in host_votes.items() if votes > present_hosts / 2),
+            None,
+        )
+        if present_hosts <= total_hosts / 2:
+            print("\n{}: present on {}/{} hosts (no strict majority)".format(
+                label, present_hosts, total_hosts
+            ))
+            continue
+        print("\n{}: present on {}/{} hosts".format(label, present_hosts, total_hosts))
+        if path_winner is None:
+            print("  No strict-majority path; locations: {}".format(
+                ", ".join("{}:{}".format(host, "/".join(paths))
+                          for host, paths in host_entries)
+            ))
+            continue
+        if len(local_paths_for_origin) > 1:
+            print("  Local duplicate checkouts; resolve manually: {}".format(
+                ", ".join(local_paths_for_origin)
+            ))
+            continue
+        if local_paths_for_origin:
+            source = local_paths_for_origin[0]
+            if source == path_winner:
+                print("  In place at {}".format(source))
+            else:
+                problem = destination_problem(
+                    args.src_dir.expanduser(), path_winner, local_paths
+                )
+                if problem:
+                    print("  Cannot move {} to {}: {}".format(
+                        source, path_winner, problem
+                    ))
+                else:
+                    print("  Suggested move: {}".format(suggested_command(
+                        args.src_dir.expanduser(), path_winner,
+                        "mv", "--", args.src_dir.expanduser() / source,
+                        args.src_dir.expanduser() / path_winner
+                    )))
+                    proposals += 1
+        else:
+            problem = destination_problem(
+                args.src_dir.expanduser(), path_winner, local_paths
+            )
+            if problem:
+                print("  Cannot clone to {}: {}".format(path_winner, problem))
+            else:
+                print("  Suggested clone: {}".format(suggested_command(
+                    args.src_dir.expanduser(), path_winner,
+                    "git", "clone", "--", origin,
+                    args.src_dir.expanduser() / path_winner
+                )))
+                proposals += 1
+    if not appearances:
+        print("No repositories with an origin were found in the manifests.")
+    print("\n{} command suggestion(s); none were executed.".format(proposals))
+    return current
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--src-dir", type=Path, default=Path.home() / "src",
+                        help="repository scan root (default: ~/src)")
+    parser.add_argument("--manifest-dir", type=Path,
+                        default=Path.home() / "data" / "repo-manifests",
+                        help="manifest directory (default: ~/data/repo-manifests)")
+    parser.add_argument("--host", help="manifest host name (default: system hostname)")
+    commands = parser.add_subparsers(dest="command", required=True)
+    commands.add_parser("scan", help="write this host's repository manifest")
+    commands.add_parser("reconcile", help="refresh this host and compare manifests")
+    args = parser.parse_args()
+    try:
+        if args.command == "scan":
+            scan(args)
+        else:
+            reconcile(args)
+    except (OSError, ValueError, subprocess.SubprocessError) as error:
+        print("repo-map: {}".format(error), file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

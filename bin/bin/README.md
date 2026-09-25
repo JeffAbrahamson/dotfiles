@@ -10,7 +10,8 @@ This directory contains the actual executables installed from the repository. Mo
 * Git helpers: [`gc`](gc), [`glt`](glt), [`glw`](glw),
   [`git-this-week`](git-this-week),
   [`git-remote-changes`](git-remote-changes), [`jb-gh-activity`](jb-gh-activity),
-  [`git-update-all.sh`](git-update-all.sh), and [`update-gf`](update-gf).
+  [`git-update-all.sh`](git-update-all.sh), [`repo-map`](repo-map), and
+  [`update-gf`](update-gf).
 * Window-manager and desktop helpers: [`i3-chromium-browser`](i3-chromium-browser), [`signal-desktop`](signal-desktop), [`journal-edit`](journal-edit), and [`journal-read`](journal-read).
 * Media: [`video-to-audio`](video-to-audio) copies a video's first audio
   stream without re-encoding it and can optionally cut it by start and end
@@ -64,6 +65,12 @@ By default it only reports local branches whose upstreams are gone. With
 are removed with them, while the primary worktree switches to the remote's
 default branch. Dirty, divergent, locked, or unverifiable branches and
 worktrees are preserved.
+
+`repo-map scan` writes a JSON inventory of repositories under `~/src` to
+`~/data/repo-manifests/{hostname}.json`. `repo-map reconcile` refreshes the
+local inventory, compares all host manifests, and prints suggested `git clone`
+or `mv` commands only when a strict majority agrees. Suggestions are never
+executed; old manifests continue to count until removed.
 
 `video-to-audio VIDEO [START [END]]` accepts times as seconds, `MM:SS`, or
 `HH:MM:SS`. It requires `ffmpeg` and `ffprobe`. The output extension follows
