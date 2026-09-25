@@ -12,7 +12,9 @@ Usage: ${0##*/} [--claude | --codex] [--fetch | --fetch-prune]
 
 Show recent commits on every local and remote-tracking branch in each Git
 repository directly below DIRECTORY.  DIRECTORY defaults to
-\$HOME/src/jellybooks, and WHEN defaults to "1 month ago".
+\$HOME/src/jellybooks, and WHEN defaults to "1 month ago". WHEN can be a
+date understood by GNU date (for example "2025-01-01" or "1 month ago")
+or a duration such as 1d, 2w, or 3h (days, weeks, or hours ago).
 
 By default, the command only reads refs already available locally.
 
@@ -41,6 +43,19 @@ while [ "$#" -gt 0 ]; do
                 exit 2
             fi
             since=$2
+            if [[ $since =~ ^([0-9]+)([dhw])$ ]]; then
+                amount=${BASH_REMATCH[1]}
+                unit=${BASH_REMATCH[2]}
+                case $unit in
+                    d) since="$amount days ago" ;;
+                    h) since="$amount hours ago" ;;
+                    w) since="$amount weeks ago" ;;
+                esac
+            elif ! date -d "$since" >/dev/null 2>&1; then
+                echo "${0##*/}: cannot understand --since '$since'" >&2
+                echo "Try a date such as '2025-01-01', '1 month ago', or a duration such as 1d." >&2
+                exit 2
+            fi
             shift 2
             ;;
         --fetch)
