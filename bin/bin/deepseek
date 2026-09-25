@@ -1,0 +1,4 @@
+#!/bin/bash
+
+. $HOME/.config/deepseek/auth.sh || exit 1
+claude
