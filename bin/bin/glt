@@ -52,12 +52,14 @@ Usage: glw [-N] [-p] [--no-prompt] [--no-clear] [ROWS] [git-log-arguments...]
 
 Walk through commits one at a time, showing each commit's log message
 and, with -p, its diff.  The commits are those glt would list for the
-same arguments.
+same arguments.  --stat is also shown for each commit; other git-log
+options choose commits but don't change what glw displays.
 
   -N, --number   Show each commit's row number (as glt -N would).
   -p, --patch    Also show the diff against the first parent (so merges
                  show what they brought in, and root commits show their
                  whole content).
+  --stat         Show the changed-file summary for each commit.
   --no-prompt    Don't pause between commits; just show them all.
   --no-clear     Don't clear the screen before each commit.
   ROWS           START-END or START-, as for glt.
@@ -86,6 +88,7 @@ die() {
 # Parsed state, filled in by parse_args.
 number=0
 patch=0
+stat=0
 prompt=1
 clear_screen=1
 row_start=1
@@ -136,6 +139,9 @@ parse_args() {
                 ;;
             -p|--patch)
                 (( walk )) && { patch=1; continue; }
+                ;;
+            --stat)
+                (( walk )) && { stat=1; }
                 ;;
             --no-prompt)
                 (( walk )) && { prompt=0; continue; }
@@ -284,7 +290,10 @@ run_glw() {
     show=(git --no-pager show "--color=$color")
     if (( patch )); then
         show+=(--diff-merges=first-parent)
-    else
+    fi
+    if (( stat )); then
+        show+=(--stat)
+    elif (( ! patch )); then
         show+=(--no-patch)
     fi
     [[ -t 1 ]] && resolve_pager show
