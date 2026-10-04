@@ -990,9 +990,11 @@ jbks-todo() { _todo_show "$HOME/work/startup/jellybooks/TODO.txt"; }
 jbks-todo-print() { jbks-todo | _todo_print false; }
 tn() { cd "$HOME/work/startup/transport-nantes/"; }
 tns() { cd "$HOME/src/jma/transport-nantes/tn_web/"; }
+mo(){ cd "$HOME/work/associations/français-pour-une-meilleure-mobilité/"; }
+mos(){ cd "$HOME/src/jma/mobilitains/"; }
 pav() { cd "$HOME/work/associations/place_au_velo/"; }
-pavadm() { cd "$HOME/work/associations/place_au_velo/administrateur/"; }
-pavqr() { qrencode -l L -s 5 --foreground 004996 -o "${2:-/tmp/pavqr.png}" "$1"; }
+# pavadm() { cd "$HOME/work/associations/place_au_velo/administrateur/"; }
+# pavqr() { qrencode -l L -s 5 --foreground 004996 -o "${2:-/tmp/pavqr.png}" "$1"; }
 rco() { cd "$HOME/work/associations/rue-commune/"; }
 rcos() { cd "$HOME/src/jma/rue-commune/"; }
 rco-todo() { _todo_show "$HOME/work/associations/rue-commune/TODO.txt"; }
