@@ -30,6 +30,10 @@
   unavailable, etc.), say so explicitly and ask the user to verify
   rather than skipping silently.
 
+* Run the project's lint and format checks before every commit, even for
+  changes that appear unrelated. `make test` includes Black and flake8
+  for Python files; run any relevant directory-specific checks too.
+
 ## Subagents
 
 * Delegate to a subagent when a subtask would pull a lot of disposable
@@ -41,3 +45,13 @@
 * Don't delegate trivial work by default: spawning has overhead and
   loses shared context, so a quick inline grep or read usually beats a
   subagent for a small, well-scoped lookup.
+
+## Style and files
+
+* Follow formatter and linter configuration as the source of truth. Avoid
+  unrelated whitespace and formatting changes.
+* Add comments when they explain why a choice is necessary; don't add
+  comments that only narrate the code.
+* For new files, follow naming and layout in the target directory and check
+  its README, Makefile, and install scripts for inclusion requirements.
+  Document any new convention that isn't obvious from nearby code.

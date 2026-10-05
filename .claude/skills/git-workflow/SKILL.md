@@ -29,3 +29,16 @@ merge and a fast-forward is possible — it does the same thing without
 involving GitHub at all. Reach for `gh` only for things that are
 genuinely GitHub-only: opening/commenting on PRs and issues, checking
 CI status, and similar.
+
+## Pushes and destructive operations
+
+Never run `git push` in any form, including to a personal or agent
+branch, unless the user explicitly requested the push. Authorization for
+one push does not authorize a later push. After a history rewrite, each
+push requires explicit authorization; if authorized, use
+`git push --force-with-lease`, never `--force` or `-f`.
+
+Get explicit user confirmation before destructive Git operations,
+including force-pushes, `reset --hard`, history rewrites, and amending
+commits that may already be shared. Treat other potentially destructive
+Git operations the same way.
