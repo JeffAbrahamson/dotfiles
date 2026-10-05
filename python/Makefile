@@ -3,6 +3,10 @@
 install:
 	@. ../script/lib.sh; \
 	/bin/cp -f python/flake8 "$$HOME/.flake8"; \
+	bin_dest="$$HOME/.local/bin/"; \
+	maybe_mkdir "$$bin_dest"; \
+	/bin/cp -f ssa.py "$$bin_dest/ssa"; \
+	chmod +x "$$bin_dest/ssa"; \
 	bash_dest="$$HOME/.dotfiles/bash/rc_post/"; \
 	maybe_mkdir "$$bash_dest"; \
 	rsync -av --exclude 'README' --exclude 'README.*' bash/ "$$bash_dest/"; \
