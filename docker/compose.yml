@@ -1,3 +1,5 @@
+name: dotfiles
+
 services:
   dev-base:
     build:
