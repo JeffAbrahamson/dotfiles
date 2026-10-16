@@ -1,0 +1,56 @@
+# Bare sizes are GB; bare ages are weeks. Run in a subshell to scope the EXIT trap.
+docker-cleanup() (
+    local size_=50GB age_=336h value_ count_ unit_
+    set -o pipefail
+
+    while (( $# )); do
+        case $1 in
+            --size|--age)
+                if (( $# < 2 )) || [[ -z $2 || $2 == --* ]]; then
+                    echo "docker-cleanup: $1 requires a value" >&2
+                    return 2
+                fi
+                value_=$2
+                if [[ $1 == --size ]]; then
+                    value_=${value_// /}
+                    [[ $value_ =~ ^[0-9]+([.][0-9]+)?$ ]] && value_+=GB
+                    if [[ ! $value_ =~ ^[0-9]+([.][0-9]+)?([kKmMgGtT][bB]|[bB])$ ]]; then
+                        echo "docker-cleanup: size must be a number of GB or a size such as 20GB" >&2
+                        return 2
+                    fi
+                    size_=$value_
+                else
+                    if [[ ! $value_ =~ ^([0-9]{1,9})[[:space:]]*(w|weeks?|d|days?|h|hours?|m|minutes?|s|seconds?)?$ ]]; then
+                        echo "docker-cleanup: age must be a number of weeks or an age such as 7d or 168h" >&2
+                        return 2
+                    fi
+                    count_=$((10#${BASH_REMATCH[1]}))
+                    unit_=${BASH_REMATCH[2]}
+                    case $unit_ in
+                        ''|w|week|weeks) age_="$((count_ * 168))h" ;;
+                        d|day|days) age_="$((count_ * 24))h" ;;
+                        h|hour|hours) age_="${count_}h" ;;
+                        m|minute|minutes) age_="${count_}m" ;;
+                        s|second|seconds) age_="${count_}s" ;;
+                    esac
+                fi
+                shift 2
+                ;;
+            *)
+                echo "Usage: docker-cleanup [--size GB|SIZE] [--age WEEKS|DURATION]" >&2
+                return 2
+                ;;
+        esac
+    done
+
+    printf 'docker-cleanup: size=%s age=%s\n' "$size_" "$age_"
+    trap 'echo "At exit:"; docker system df | grep "^Build Cache" | sed "s/^/  /" || :' EXIT
+
+    echo "Before age-based cleanup:"
+    docker system df | grep '^Build Cache' | sed 's/^/  /' || return
+    docker builder prune --all --force --filter "until=$age_" | sed 's/^/  /' || return
+
+    echo "Before size-based cleanup:"
+    docker system df | grep '^Build Cache' | sed 's/^/  /' || return
+    docker builder prune --all --force --keep-storage "$size_" | sed 's/^/  /'
+)

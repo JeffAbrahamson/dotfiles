@@ -20,4 +20,5 @@ test:
 	test_file bash_profile-include; \
 	test_file bash_logout-include; \
 	test_file test/aliases_test.bash; \
+	test_file test/docker_test.bash; \
 	exit "$$ok"

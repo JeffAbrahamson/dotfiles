@@ -7,6 +7,10 @@ This directory contains hook snippets sourced after the main interactive-shell s
 * [`.present`](.present) is a marker file used by the surrounding bash configuration layout.
 * [`aliases`](aliases) defines shell aliases.
 * [`aws`](aws) defines AWS profile and S3 inventory/audit helpers.
+* [`docker`](docker) defines `docker-cleanup`, which prunes build cache by age
+  first, then size, reporting cache size before each step and on exit.
+  Defaults are 50GB and two weeks (336h). For example,
+  `docker-cleanup --size 20GB --age 7d`; bare numbers mean GB and weeks.
 * [`git-prompt`](git-prompt) and [`git-worktrees`](git-worktrees) add git-aware shell behavior.
 * [`glt`](glt) provides tab completion for `glt` and `glw` (see
   [`../../../bin/bin/glt`](../../../bin/bin/glt)).
