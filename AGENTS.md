@@ -1,38 +1,50 @@
 # Repository Guidelines
 
-(Commit message format is in `CLAUDE.md`.)
+This file is the shared policy for all agents working in this repository.
+Read it before starting work. Load the skills below only when their triggers
+apply; repository-specific instructions take precedence over generic skills.
 
-## Environment
+## Working rules
 
-* Checks can run on the host or in Docker (`docker/docker-manage.sh
-  test`, which runs `make test` inside the `dev-test` service). Tell
-  them apart before running build/test commands: inside the container
-  the repo lives at `/devsrc`; on the host it's the normal deep path
-  under your home directory. State which one you're in, and how you
-  told, before running build/test commands.
+* Follow formatter and linter configuration as the source of truth. Avoid
+  unrelated whitespace and formatting changes.
+* Add comments when they explain why a choice is necessary; don't add
+  comments that only narrate the code.
+* Use British spelling (en-UK) in code comments and commit messages.
+* For new files, follow naming and layout in the target directory and check
+  its README, Makefile, and install scripts for inclusion requirements.
+  Document any new convention that isn't obvious from nearby code.
+* `git add --intent-to-add` new files as soon as they're created, so
+  `git status` and `git diff` include them for review.
+* Run checks appropriate to the change and review completed changes before
+  hand-off, even when no commit was requested. Run `make test` and all
+  relevant lint/format checks before every commit; never commit with a
+  failing check. If a required check cannot run, explain why and ask the
+  user to verify it. Running tests does not require permission.
+* Reviews are read-only unless fixes or implementation are authorised.
+* Ask before committing unless the user's request already authorises it.
+* Destructive Git operations (force-pushes, `reset --hard`, history rewrites,
+  or amending shared/pushed commits) require explicit user confirmation.
+* Every push requires explicit user authorisation; an earlier push does
+  not authorise a later one.
+* Perform Git operations with `git`, not `gh`. In particular, merge locally
+  with `git merge`, never `gh pr merge`. Use `gh` only for GitHub-specific
+  operations, which require separate authorisation.
 
-## Testing
+## Skills to load when applicable
 
-* Run `make test` before every commit, even for changes that look
-  unrelated — it's cheap and catches pre-existing breakage too. It runs
-  the Python checks below plus every subdirectory's own test target
-  (`bash`, `bat`, `bin`, `emacs`, `git`, `i3`, `mutt`, `notion`,
-  `ratpoison`, `sway`; see `Makefile`).
+Paths below are relative to the repository root. Read the indicated
+`SKILL.md` before the associated work, rather than loading every skill.
 
-* For fast iteration on Python-only changes, the individual checks:
-  * `./script/python-checks.sh black`
-  * `./script/python-checks.sh flake8`
-  * `./script/python-checks.sh pytest`
-
-* Running tests doesn't need to wait for permission — just run them.
-
-* Never commit with a failing check. If a check can't be run (tool
-  unavailable, etc.), say so explicitly and ask the user to verify
-  rather than skipping silently.
-
-* Run the project's lint and format checks before every commit, even for
-  changes that appear unrelated. `make test` includes Black and flake8
-  for Python files; run any relevant directory-specific checks too.
+* [Testing](.claude/skills/repo-testing/SKILL.md): before running build,
+  test, lint, or format checks.
+* [Code review](.claude/skills/code-review/SKILL.md): for requested reviews
+  and before handing off implemented changes, whether or not committing.
+* [Committing](.claude/skills/repo-commit/SKILL.md): before preparing,
+  proposing, or creating a commit. Use these repository conventions when
+  a generic commit skill differs.
+* [Git workflow](.claude/skills/git-workflow/SKILL.md): before Git commands
+  targeting another worktree/clone, or any GitHub operation or push.
 
 ## Subagents
 
@@ -45,13 +57,3 @@
 * Don't delegate trivial work by default: spawning has overhead and
   loses shared context, so a quick inline grep or read usually beats a
   subagent for a small, well-scoped lookup.
-
-## Style and files
-
-* Follow formatter and linter configuration as the source of truth. Avoid
-  unrelated whitespace and formatting changes.
-* Add comments when they explain why a choice is necessary; don't add
-  comments that only narrate the code.
-* For new files, follow naming and layout in the target directory and check
-  its README, Makefile, and install scripts for inclusion requirements.
-  Document any new convention that isn't obvious from nearby code.

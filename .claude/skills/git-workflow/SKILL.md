@@ -1,6 +1,6 @@
 ---
 name: git-workflow
-description: Safety rules for git worktrees and the git/GitHub boundary in this repo. Load before running git commands that touch another worktree or clone, or before any operation that talks to GitHub (gh, PR merge/close, pushing to a shared branch).
+description: Safety rules for git worktrees and the git/GitHub boundary in this repo. Load before running git commands that touch another worktree or clone, or before any operation that talks to GitHub (gh, PR/issue operations, or any push).
 ---
 
 ## Worktrees and other clones
@@ -23,12 +23,15 @@ GitHub is a separate system layered on top, and touching it needs
 separate authorisation: either the user asked for it directly, or you
 asked a clarifying question and got a yes.
 
-Prefer the local equivalent when one exists. For example, use
-`git merge --ff-only` rather than `gh pr merge` if the user asked for a
-merge and a fast-forward is possible — it does the same thing without
-involving GitHub at all. Reach for `gh` only for things that are
-genuinely GitHub-only: opening/commenting on PRs and issues, checking
-CI status, and similar.
+Perform Git operations with `git`, never through `gh`. This includes
+branching, committing, merging, rebasing, fetching, and pushing. Merge
+locally with `git merge` (using `--ff-only` when appropriate); never use
+`gh pr merge`, including squash or rebase variants. A merge request does
+not authorise a GitHub operation or a push.
+
+Use `gh` only for GitHub-specific operations such as opening or commenting
+on PRs and issues, closing an issue, or checking CI status, with the
+required authorisation.
 
 ## Pushes and destructive operations
 
