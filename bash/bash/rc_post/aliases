@@ -1048,6 +1048,7 @@ jb-a-logs-umount() {
     fusermount -u "$local_dir"
     rmdir "$local_dir"
 }
+jb-c() { cd "$HOME/src/jellybooks/candy-wrapper"; }
 jb-d() { cd "$HOME/src/jellybooks/danube"; }
 jb-di() { cd "$HOME/src/jellybooks/discovery_ingest"; }
 jb-i() { cd "$HOME/src/jellybooks/infrastructure"; }
