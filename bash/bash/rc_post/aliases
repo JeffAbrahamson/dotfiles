@@ -178,7 +178,15 @@ mirror-fast() { echo fast mirror; wget --no-host-directories --convert-links --m
 
 rmthisdir() { p_=`pwd`; b_=`basename $p_`; cd ..; /bin/rmdir $b_; unset p_ b_; }
 
-google() { w3m http://www.google.com/; }
+# With arguments, search for them straight away; the lite page then shows
+# the results with the query already in the search field.
+ddg() {
+    local url=https://lite.duckduckgo.com/lite/
+    if [ $# -gt 0 ]; then
+        url="$url?q=$(python3 -c 'import sys, urllib.parse; print(urllib.parse.quote_plus(" ".join(sys.argv[1:])))' "$@")"
+    fi
+    w3m "$url"
+}
 cnn() { w3m https://lite.cnn.io/en; }
 
 ###########################################################################
