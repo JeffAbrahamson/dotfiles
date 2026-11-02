@@ -36,11 +36,41 @@ cat > "$test_dir/bin/sudo" <<'EOF'
 
 echo "$*" >> "$TEST_COMMAND_LOG"
 EOF
-chmod +x "$test_dir/bin/lsblk" "$test_dir/bin/sudo"
+cat > "$test_dir/bin/stat" <<'EOF'
+#!/bin/sh
+
+# Keep the simulated mount independent of the host's /tmp filesystem.
+case "$*" in
+    '-c %D %m /') echo '1 /' ;;
+    '-c %D %m /tmp')
+        if [ "${STAT_TMP_MOUNTED:-}" = 1 ]; then
+            echo '2 /tmp'
+        else
+            echo '1 /'
+        fi
+        ;;
+    *)
+        echo "Unexpected stat arguments: $*" >&2
+        exit 1
+        ;;
+esac
+EOF
+chmod +x "$test_dir/bin/lsblk" "$test_dir/bin/sudo" "$test_dir/bin/stat"
 export TEST_COMMAND_LOG="$test_dir/commands"
 
 if ! "$program" --help | grep -q -- '--update-config POINT'; then
     echo 'luks-mount-all: help test failed.' >&2
+    exit 1
+fi
+
+if STAT_TMP_MOUNTED=1 PATH="$test_dir/bin:$PATH" HOME="$test_dir/home" \
+        "$program" --update-config /tmp > "$test_dir/output" 2>&1; then
+    echo 'luks-mount-all: already-mounted test failed.' >&2
+    exit 1
+fi
+if ! grep -q '/tmp is already mounted' "$test_dir/output" || \
+        [ -e "$test_dir/home/.luksmountrc" ] || [ -e "$TEST_COMMAND_LOG" ]; then
+    echo 'luks-mount-all: already-mounted rejection test failed.' >&2
     exit 1
 fi
 
