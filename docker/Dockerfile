@@ -1,4 +1,4 @@
-FROM ubuntu:24.04 AS compile-dev-base
+FROM ubuntu:26.04 AS compile-dev-base
 
 RUN mkdir -p   /usr/local/
 
