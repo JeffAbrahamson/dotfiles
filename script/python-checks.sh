@@ -15,7 +15,7 @@ fi
 run_black() {
     local target
     for target in "${python_targets[@]}"; do
-        python3 -m black --check --required-version 24.2.0 --line-length 79 \
+        python3 -m black --check --required-version 26.3.1 --line-length 79 \
             --workers 1 \
             "$target"
     done

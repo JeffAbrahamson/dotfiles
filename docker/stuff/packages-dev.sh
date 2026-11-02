@@ -33,6 +33,6 @@ apt-get install -y --no-install-recommends      \
 
 # Install Python testing/linting tools
 pip3 install --break-system-packages           \
-    black==24.2.0                               \
+    black==26.3.1                               \
     flake8                                      \
     pytest                                      \

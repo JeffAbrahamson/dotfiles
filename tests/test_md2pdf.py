@@ -5,7 +5,6 @@ from pathlib import Path
 
 import pytest
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 MD2PDF = PROJECT_ROOT / "bin" / "bin" / "md2pdf"
 

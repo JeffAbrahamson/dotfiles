@@ -8,7 +8,6 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any, Callable, Sequence
 
-
 CODEC_EXTENSIONS = {
     "aac": ".m4a",
     "ac3": ".ac3",

@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 
-"""Display a visualsiation of performance of a wifi SSID.
-"""
+"""Display a visualsiation of performance of a wifi SSID."""
 
 import argparse
 import os
