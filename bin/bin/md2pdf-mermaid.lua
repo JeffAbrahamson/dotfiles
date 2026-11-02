@@ -1,6 +1,7 @@
 -- Render fenced Mermaid code blocks as vector images for md2pdf.
 
 local mmdc_available
+local mmdc_pdf_fit
 local warned_about_mmdc = false
 
 local function has_mmdc()
@@ -48,16 +49,22 @@ end
 local function render_mermaid(source)
     local rendered
 
+    if mmdc_pdf_fit == nil then
+        local help = pandoc.pipe("mmdc", {"--help"}, "")
+        -- Mermaid CLI 12 fits PDFs by default and removed --pdfFit.
+        mmdc_pdf_fit = help:find("--pdfFit", 1, true) ~= nil
+    end
+
     pandoc.system.with_temporary_directory("md2pdf-mermaid", function(directory)
         local input = directory .. "/diagram.mmd"
         local pdf = directory .. "/diagram.pdf"
 
         write_file(input, source)
-        pandoc.pipe(
-            "mmdc",
-            {"--input", input, "--output", pdf, "--pdfFit", "--quiet"},
-            ""
-        )
+        local arguments = {"--input", input, "--output", pdf, "--quiet"}
+        if mmdc_pdf_fit then
+            table.insert(arguments, "--pdfFit")
+        end
+        pandoc.pipe("mmdc", arguments, "")
         rendered = read_file(pdf)
     end)
 
