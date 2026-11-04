@@ -2,7 +2,7 @@
 
 install:
 	@. ../script/lib.sh; \
-	if [ "X$$HOSTNAME" = Xvogel ]; then \
+	if [ "X$$(hostname -s)" = Xvogel ]; then \
 	    dpi=108; \
 	else \
 	    dpi=96; \

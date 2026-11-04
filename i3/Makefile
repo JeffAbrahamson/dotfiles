@@ -2,7 +2,8 @@
 
 install:
 	@. ../script/lib.sh; \
-	host_specific_config="i3/config.$$(hostname -s)"; \
+	hostname_short="$$(hostname -s)"; \
+	host_specific_config="i3/config.$$hostname_short"; \
 	if [ -r "$$host_specific_config" ]; then \
 	    cat i3/config_base "$$host_specific_config" > i3/config; \
 	else \
@@ -14,13 +15,13 @@ install:
 	maybe_mkdir "$$(dirname "$$dest")"; \
 	(cd i3 && copy_to config "$$dest"); \
 	maybe_mkdir "$$HOME/.config/dunst"; \
-	if [ "X$$HOSTNAME" = "Xbirdsong" ] || [ "X$$HOSTNAME" = "Xmorning" ]; then \
+	if [ "X$$hostname_short" = "Xbirdsong" ] || [ "X$$hostname_short" = "Xmorning" ]; then \
 	    sed -e 's/{% fontsize %}/10/;' < i3/dunstrc > "$$HOME/.config/dunst/dunstrc"; \
-	elif [ "X$$HOSTNAME" = "Xvogel" ]; then \
+	elif [ "X$$hostname_short" = "Xvogel" ]; then \
 	    sed -e 's/{% fontsize %}/16/;' < i3/dunstrc > "$$HOME/.config/dunst/dunstrc"; \
-	elif [ "X$$HOSTNAME" = "Xstarshine" ]; then \
+	elif [ "X$$hostname_short" = "Xstarshine" ]; then \
 	    sed -e 's/{% fontsize %}/18/;' < i3/dunstrc > "$$HOME/.config/dunst/dunstrc"; \
-	elif [ "X$$HOSTNAME" = "Xtau-ceti" ]; then \
+	elif [ "X$$hostname_short" = "Xtau-ceti" ]; then \
 	    sed -e 's/{% fontsize %}/11/;' < i3/dunstrc > "$$HOME/.config/dunst/dunstrc"; \
 	else \
 	    echo "Unrecognized host, not copying dunstrc."; \
