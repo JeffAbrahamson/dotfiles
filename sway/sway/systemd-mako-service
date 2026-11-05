@@ -1,12 +1,11 @@
+# Started by D-Bus activation (see dbus-mako-service) rather than by a target:
+# nothing activates graphical-session.target in an `ssh-agent sway` session.
 [Unit]
 Description=Mako notification daemon
-PartOf=graphical-session.target
-After=graphical-session.target
 
 [Service]
+Type=dbus
+BusName=org.freedesktop.Notifications
 ExecStart=/usr/bin/mako
 Restart=on-failure
 RestartSec=1
-
-[Install]
-WantedBy=graphical-session.target

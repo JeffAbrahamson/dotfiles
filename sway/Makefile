@@ -24,6 +24,15 @@ install:
 	systemd_make_dir="$$HOME/.config/systemd/user"
 	maybe_mkdir "$$systemd_make_dir"
 	(cd sway && copy_to systemd-mako-service "$$systemd_make_dir/mako.service")
+	# The system D-Bus directory offers both dunst and mako for this name and
+	# the choice between them is arbitrary; a user service file takes precedence.
+	dbus_service_dir="$$HOME/.local/share/dbus-1/services"
+	maybe_mkdir "$$dbus_service_dir"
+	(cd sway && copy_to dbus-mako-service "$$dbus_service_dir/org.freedesktop.Notifications.service")
+	# A running bus doesn't watch a directory created after it started.  These
+	# fail harmlessly when installing outside a user session.
+	systemctl --user daemon-reload 2>/dev/null || true
+	busctl --user call org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus ReloadConfig 2>/dev/null || true
 	kitty_dest_dir="$$HOME/.config/kitty"
 	maybe_mkdir "$$kitty_dest_dir"
 	kitty_dest="$$kitty_dest_dir/kitty.conf"
