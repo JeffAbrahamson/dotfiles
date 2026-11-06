@@ -6,10 +6,16 @@ summary statistics and plots.
 
 Commands:
   year             List km per year across all bikes
+  to-date          List km per year up to this day of the year
   bike             List km per bike (total)
   plot-bike        Bar chart: km per month, grouped by bicycle
   plot-cumulative  Cumulative km by year, starting at zero each year
   plot-density     Smooth Gaussian km rate by year
+
+Options for to-date:
+  --date [YYYY-]MM-DD       Count each year up to this month and day
+                            (default: today); YYYY, if given, is the
+                            latest year listed
 
 Options for plot-cumulative, plot-density:
   --comparison-year YEAR    Highlight this year in red
@@ -20,8 +26,11 @@ Options for plot-density:
 
 import argparse
 import calendar
+import functools
 import os
+import re
 import sys
+import textwrap
 from collections import defaultdict
 from datetime import date
 from pathlib import Path
@@ -75,6 +84,59 @@ def cmd_year(records):
         by_year[d.year] += km
     for year in sorted(by_year):
         print(f"{year}  {by_year[year]:8.1f}")
+
+
+DELTA_LIMIT_KM = 1500
+
+
+def parse_to_date(text):
+    """Parse MM-DD or YYYY-MM-DD into (year or None, month, day)."""
+    try:
+        parts = [int(p) for p in text.split("-")]
+        if len(parts) == 2:
+            year, (month, day) = None, parts
+            # A leap year, so that 02-29 is accepted.
+            date(2000, month, day)
+        else:
+            d = date.fromisoformat(text)
+            year, month, day = d.year, d.month, d.day
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            f"invalid date {text!r}: use MM-DD or YYYY-MM-DD"
+        )
+    return year, month, day
+
+
+def cmd_to_date(records, when=None):
+    """Print km per year up to a month and day, newest year first.
+
+    when is (year or None, month, day), defaulting to today; years after
+    year (or the current year) are not listed.
+
+    Each year is annotated with its difference from the best year at the
+    same point, so the best year shows 0 and the others are negative.
+    Deltas beyond DELTA_LIMIT_KM are omitted as noise.
+    """
+    today = date.today()
+    last_year, month, day = when or (today.year, today.month, today.day)
+    last_year = last_year or today.year
+    cutoff = (month, day)
+    by_year = defaultdict(float)
+    for _bike, d, km in records:
+        if d.year <= last_year and (d.month, d.day) <= cutoff:
+            by_year[d.year] += km
+    if not by_year:
+        return
+    best = max(by_year.values())
+    # Round before formatting so a tiny negative doesn't print as "-0".
+    deltas = {year: round(km - best) for year, km in by_year.items()}
+    deltas = {y: d for y, d in deltas.items() if -d <= DELTA_LIMIT_KM}
+    width = max(len(str(delta)) for delta in deltas.values())
+    for year in sorted(by_year, reverse=True):
+        line = f"{year}  {by_year[year]:8.0f}"
+        if year in deltas:
+            line += f"  [Δ {deltas[year]:{width}d} km]"
+        print(line)
 
 
 def cmd_bike(records):
@@ -233,6 +295,57 @@ def cmd_plot_density(records, comparison_year=None, sigma=30.0):
 
 # ── CLI ───────────────────────────────────────────────────────────────────────
 
+
+class CommandOptionsHelpFormatter(argparse.HelpFormatter):
+    """List each command's options beneath it in the top-level help.
+
+    argparse only shows a subcommand's options in that subcommand's own
+    help, which makes them hard to discover.
+    """
+
+    def __init__(self, prog, commands=None, **kwargs):
+        super().__init__(prog, **kwargs)
+        self._command_options = {
+            name: [
+                a
+                for a in command._actions
+                if a.option_strings and a.dest != "help"
+            ]
+            for name, command in (commands or {}).items()
+        }
+
+    # Python 3.14 colours option names when writing to a terminal.
+    _ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;]*m")
+
+    def _visible_len(self, text):
+        return len(self._ANSI_ESCAPE.sub("", text))
+
+    def _format_action(self, action):
+        text = super()._format_action(action)
+        options = self._command_options.get(action.dest)
+        if not options:
+            return text
+        indent = self._current_indent + 2
+        # One help column for every command, so all the options line up.
+        width = max(
+            self._visible_len(self._format_action_invocation(a))
+            for opts in self._command_options.values()
+            for a in opts
+        )
+        column = indent + width + 2
+        lines = []
+        for option in options:
+            invocation = self._format_action_invocation(option)
+            helps = textwrap.wrap(
+                option.help or "", max(self._width - column, 20)
+            )
+            helps = helps or [""]
+            padding = " " * (width + 2 - self._visible_len(invocation))
+            lines.append(" " * indent + invocation + padding + helps[0])
+            lines += [" " * column + h for h in helps[1:]]
+        return text + "\n".join(lines) + "\n"
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog="tsd-bicycle",
@@ -241,6 +354,18 @@ def main():
     sub = parser.add_subparsers(dest="command", metavar="COMMAND")
 
     sub.add_parser("year", help="List km per year across all bikes")
+    p_td = sub.add_parser(
+        "to-date", help="List km per year up to this day of the year"
+    )
+    p_td.add_argument(
+        "--date",
+        type=parse_to_date,
+        metavar="[YYYY-]MM-DD",
+        help=(
+            "Count each year up to this month and day (default: today);"
+            " YYYY, if given, is the latest year listed"
+        ),
+    )
     sub.add_parser("bike", help="List total km per bike, sorted by distance")
     sub.add_parser("plot-bike", help="Bar chart: km per month, grouped by bicycle")
 
@@ -265,6 +390,9 @@ def main():
         help="Gaussian smoothing width in days (default: 30)",
     )
 
+    parser.formatter_class = functools.partial(
+        CommandOptionsHelpFormatter, commands=sub.choices
+    )
     args = parser.parse_args()
 
     if not args.command:
@@ -280,6 +408,8 @@ def main():
     comparison = getattr(args, "comparison_year", None)
     if args.command == "year":
         cmd_year(records)
+    elif args.command == "to-date":
+        cmd_to_date(records, when=args.date)
     elif args.command == "bike":
         cmd_bike(records)
     elif args.command == "plot-bike":
