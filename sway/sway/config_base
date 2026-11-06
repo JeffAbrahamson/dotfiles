@@ -93,7 +93,7 @@ bindsym $mod+Control+Right  move right
 
 mode "sway" {
     # Start a terminal.
-    bindsym c	     exec kitty;mode "default"
+    bindsym c	     exec kitty --single-instance;mode "default"
     bindsym Shift+c  exec sway-restore-2;mode "default"
 
     # ## To deprecate as of 1 July 2019 if I'm satisified with the
@@ -129,7 +129,7 @@ mode "sway" {
 
     # Split current tab into two vertically stacked tabbed containers.
     # Opens a new terminal below and returns focus to the upper pane.
-    bindsym v  split v; exec kitty; focus up; mode "default"
+    bindsym v  split v; exec kitty --single-instance; focus up; mode "default"
 
     # Toggle tiling / floating.
     bindsym Shift+space  floating toggle; mode "default"
