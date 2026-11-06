@@ -1012,6 +1012,9 @@ rcos() { cd "$HOME/src/jma/rue-commune/"; }
 rco-todo() { _todo_show "$HOME/work/associations/rue-commune/TODO.txt"; }
 rco-todo-print() { rco-todo | _todo_print false; }
 
+14b() { cd /home/jeff/work/finance/real_estate/Nantes/Metzinger; }
+9dt() { cd /home/jeff/work/finance/real_estate/Nantes/Docteur-Touaille; }
+
 ###########################################################################
 # Jellybooks personal.
 
