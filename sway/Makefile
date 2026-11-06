@@ -79,6 +79,7 @@ install:
 	bash_dest="$$HOME/.dotfiles/bash/rc_post/"
 	maybe_mkdir "$$bash_dest"
 	rsync -av --exclude 'README' --exclude 'README.*' bash/ "$$bash_dest/"
+	./install-system.sh
 
 test:
 	@runtime_dir="$$(mktemp -d)"

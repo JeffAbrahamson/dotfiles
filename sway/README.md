@@ -8,4 +8,5 @@ This directory contains the Sway window-manager setup plus supporting notes and 
 * [`bash/`](bash/README.md) contains shell integration for Sway sessions.
 * [`sway/`](sway/README.md) contains the active Sway config and helper scripts.
 * [`Makefile`](Makefile) provides the `install` and `test` targets for the Sway setup.
+* [`install-system.sh`](install-system.sh) disables im-config's slow login-shell hook, and asks for sudo only when the hook is still active.
 * [`sway-notes.txt`](sway-notes.txt) is an older consolidated note file.
