@@ -5,6 +5,10 @@
 # If not running interactively, don't do anything
 [ -z "$PS1" ] && return
 
+# Set before sourcing .bash_profile below, whose profile would otherwise
+# source .bashrc, and so this file, a second time.
+export BASHRC="LOADED"
+
 ## This should be the first block of this file after the
 ## interactivity check.
 for file in $HOME/.dotfiles/bash/rc_pre/*; do
@@ -31,7 +35,9 @@ HISTFILESIZE=2000
 shopt -s checkwinsize
 
 # make less more friendly for non-text input files, see lesspipe(1)
-[ -x /usr/bin/lesspipe ] && eval "$(SHELL=/bin/sh lesspipe)"
+# Ubuntu's default ~/.bashrc may already have done this; lesspipe takes
+# about 40 ms.
+[ -z "${LESSOPEN-}" ] && [ -x /usr/bin/lesspipe ] && eval "$(SHELL=/bin/sh lesspipe)"
 
 # set variable identifying the chroot you work in (used in the prompt below)
 if [ -z "$debian_chroot" ] && [ -r /etc/debian_chroot ]; then
@@ -77,7 +83,9 @@ esac
 
 # enable color support of ls and also add handy aliases
 if [ -x /usr/bin/dircolors ]; then
-    test -r $HOME/.dircolors && eval "$(dircolors -b $HOME/.dircolors)" || eval "$(dircolors -b)"
+    if [ -z "${LS_COLORS-}" ]; then
+	test -r $HOME/.dircolors && eval "$(dircolors -b $HOME/.dircolors)" || eval "$(dircolors -b)"
+    fi
     alias ls='ls --color=auto'
 
     alias grep='grep --color=auto'
@@ -93,7 +101,9 @@ fi
 # enable programmable completion features (you don't need to enable
 # this, if it's already enabled in /etc/bash.bashrc and /etc/profile
 # sources /etc/bash.bashrc).
-if [ -f /etc/bash_completion ] && ! shopt -oq posix; then
+# Ubuntu's default ~/.bashrc may already have loaded it, and loading it
+# again costs about 0.1 s.
+if [ -z "${BASH_COMPLETION_VERSINFO-}" ] && [ -f /etc/bash_completion ] && ! shopt -oq posix; then
     . /etc/bash_completion
 fi
 
