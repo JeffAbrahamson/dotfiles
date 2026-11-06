@@ -1,22 +1,37 @@
 #!/bin/bash
 
-# Colors for terminal.
-fg_black="$(tput setaf 0)"
-fg_red="$(tput setaf 1)"
-fg_green="$(tput setaf 2)"
-fg_yellow="$(tput setaf 3)"
-fg_blue="$(tput setaf 4)"
-fg_magenta="$(tput setaf 5)"
-fg_cyan="$(tput setaf 6)"
-fg_white="$(tput setaf 7)"
+# Colors for terminal.  Each tput call takes about 7 ms, so on colour
+# terminals use the standard ANSI sequences and call tput only once.
+term_colors_=$(tput colors 2>/dev/null)
+if [[ $term_colors_ -ge 8 ]]; then
+    fg_black=$'\e[30m'
+    fg_red=$'\e[31m'
+    fg_green=$'\e[32m'
+    fg_yellow=$'\e[33m'
+    fg_blue=$'\e[34m'
+    fg_magenta=$'\e[35m'
+    fg_cyan=$'\e[36m'
+    fg_white=$'\e[37m'
+    reset=$'\e[0m'
+else
+    fg_black="$(tput setaf 0)"
+    fg_red="$(tput setaf 1)"
+    fg_green="$(tput setaf 2)"
+    fg_yellow="$(tput setaf 3)"
+    fg_blue="$(tput setaf 4)"
+    fg_magenta="$(tput setaf 5)"
+    fg_cyan="$(tput setaf 6)"
+    fg_white="$(tput setaf 7)"
+    reset="$(tput sgr0)"
+fi
 # Orange isn't in the base 8-color ANSI palette; fall back to red on
 # terminals that don't advertise 256-color support (e.g. plain TERM=screen).
-if [[ $(tput colors 2>/dev/null) -ge 256 ]]; then
-    fg_orange="$(tput setaf 208)"
+if [[ $term_colors_ -ge 256 ]]; then
+    fg_orange=$'\e[38;5;208m'
 else
-    fg_orange="$(tput setaf 1)"
+    fg_orange=$fg_red
 fi
-reset="$(tput sgr0)"
+unset term_colors_
 
 # Set this to something if I want some extra info in the prompt.
 prompt_extra=
