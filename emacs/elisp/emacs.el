@@ -47,6 +47,13 @@ Return non-nil when the load succeeds."
        (format "Missing packages %S; run `make install' in dotfiles/emacs."
                missing)))))
 
+;; The daemon serves every frame, so killing it by mistake closes them
+;; all.  C-x C-c in a client frame only closes that frame and doesn't
+;; ask; this asks before Emacs itself exits, as with
+;; M-x save-buffers-kill-emacs or C-x C-c in a frame no client owns.
+(when (daemonp)
+  (setq confirm-kill-emacs #'yes-or-no-p))
+
 (add-hook 'after-init-hook 'jma-after-init-hook)
 (defun jma-after-init-hook ()
   (jma-with-error-handling "load material-light theme"

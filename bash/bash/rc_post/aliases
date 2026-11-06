@@ -47,7 +47,11 @@ j() { jobs; }
 alias mk="make"
 mcm() { make clean; make; }
 
-ec() { emacsclient -n $*; }
+# A new frame from the Emacs daemon, on the given files or else on the
+# current directory.  Starts the daemon if it isn't running.  Run emacs
+# directly for an instance that uses this shell's environment (a venv,
+# say): the daemon keeps the environment it started with.
+ec() { emacsclient -c -n -a '' "${@:-.}"; }
 
 if [ -f $HOME/.dotfiles/bash/rsync ]; then
    . $HOME/.dotfiles/bash/rsync

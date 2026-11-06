@@ -47,10 +47,13 @@ emf() {
     local num=${1:-1}
 
     local one_less=$((${num} - 1))
-    emacs --eval="(progn
+    # Frames come from the Emacs daemon (started by the sway config, or
+    # here if it isn't running) and open dired on the current directory.
+    emacsclient -c -n -a '' --eval "(progn
+      (dired default-directory)
       (shell-command \"swaymsg -q move left\")
       (dotimes (_ ${one_less})
-        (make-frame-command)))" &
+        (make-frame-command)))" > /dev/null
 }
 # Split current pane into two vertically stacked tabbed containers.
 # Opens a new kitty terminal below (with same CWD) and returns focus to upper.

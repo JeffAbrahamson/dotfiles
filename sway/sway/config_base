@@ -41,6 +41,9 @@ include /etc/sway/config-vars.d/*
 exec --no-startup-id sway-env-stats
 exec --no-startup-id sway-power-monitor 2 daemon
 exec --no-startup-id sway-network-status
+# Started from here rather than by systemd so that it gets the session's
+# PATH and SSH agent.  ec and emf open frames from it.
+exec --no-startup-id emacs --daemon
 
 # Cf. https://wiki.archlinux.org/title/Sway (3.5: Input Devices)
 input type:touchpad {
