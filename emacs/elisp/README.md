@@ -4,7 +4,7 @@ This directory contains the actual Emacs Lisp code loaded by the main Emacs conf
 
 ## Contents
 
-* Core personal configuration: [`emacs.el`](emacs.el), [`jma.el`](jma.el), [`misc.el`](misc.el), [`mode-hooks.el`](mode-hooks.el), [`useful.el`](useful.el), and [`post.el`](post.el).
+* Core personal configuration: [`emacs.el`](emacs.el), [`jma-packages.el`](jma-packages.el) (the ELPA packages to install), [`jma.el`](jma.el), [`misc.el`](misc.el), [`mode-hooks.el`](mode-hooks.el), [`useful.el`](useful.el), and [`post.el`](post.el).
 * Bundled modes or compatibility files: [`dockerfile-mode.el`](dockerfile-mode.el), [`protobuf-mode.el`](protobuf-mode.el), [`web-mode.el`](web-mode.el), [`google-c-style.el`](google-c-style.el), and related helpers.
 * Focused utilities: [`mutt-alias.el`](mutt-alias.el), [`pdftools.el`](pdftools.el), [`calendar.el`](calendar.el), and [`dict.el`](dict.el).
 

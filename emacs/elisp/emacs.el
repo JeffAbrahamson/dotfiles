@@ -32,55 +32,27 @@ Return non-nil when the load succeeds."
   (jma-with-error-handling (format "require %s" feature)
     (require feature filename)))
 
-(let ((package-system-available (jma-safe-require 'package)))
-  (if package-system-available
-      (add-to-list 'package-archives
-                   '("melpa" . "http://melpa.org/packages/") t)
-    (message "Skipping package archive configuration; package.el unavailable.")))
+(when (jma-safe-require 'package)
+  (jma-safe-load-file
+   (concat (getenv "HOME") "/.dotfiles/elisp/jma-packages.el")))
 
-;; Reminder: M-x package-list-packages
-(defvar jma-packages
-  '(
-    apheleia     ;; Better than black.  https://github.com/radian-software/apheleia
-    auctex
-    blacken      ;; Alternative to py-autopep8.
-    docker
-    docker-compose-mode
-    dockerfile-mode
-    material-theme
-    editorconfig
-    elpy
-    ein	         ;; cf. https://github.com/millejoh/emacs-ipython-notebook
-    importmagic  ;; For use with elpy.
-    flycheck	 ;; Notably, instead of flymake.
-    magit        ;; git support.
-    math-preview ;; For use with ein.  https://gitlab.com/matsievskiysv/math-preview
-    python-isort ;; For use with elpy.
-    yaml-mode
-    sqlformat    ;; Requires sqlformat or pgformatter to be installed.
-    )
-  )
-;(setq package-load-list (append package-load-list jma-packages))
-
-;; The elpy package does some setup that I once got confused.  I was
-;; able to trigger redoing the setup with
-;; M-x elpy-rpc-reinstall-virtualenv .
-;;
-;; I can refresh packages manually with M-x package-refresh-contents .
-;; I can list packages with M-x package-list-packages .
+;; Packages are installed by `make install' (see install-packages.el)
+;; rather than here, so that starting Emacs never waits on the network.
+;; Emacs has already activated the installed packages by this point.
+(when (and (featurep 'package) (boundp 'jma-packages))
+  (let ((missing (seq-remove #'package-installed-p jma-packages)))
+    (when missing
+      (display-warning
+       'jma-packages
+       (format "Missing packages %S; run `make install' in dotfiles/emacs."
+               missing)))))
 
 (add-hook 'after-init-hook 'jma-after-init-hook)
 (defun jma-after-init-hook ()
   (jma-with-error-handling "load material-light theme"
     (load-theme 'material-light t))
-  (jma-with-error-handling "enable elpy"
-    (elpy-enable))
-  ;; Enable Flycheck
-  (when (jma-safe-require 'flycheck)
-    (setq elpy-modules (delq 'elpy-module-flymake elpy-modules))
-    (add-hook 'elpy-mode-hook 'flycheck-mode)
-    (jma-with-error-handling "enable global flycheck mode"
-      (global-flycheck-mode 1)))
+  (jma-with-error-handling "enable global flycheck mode"
+    (global-flycheck-mode 1))
   (custom-set-variables
    '(blacken-line-length 79))
   (setq sqlformat-command 'pgformatter)
@@ -92,32 +64,27 @@ Return non-nil when the load succeeds."
   (message "After-init completed.")
   )
 
-(when (featurep 'package)
-  (jma-with-error-handling "initialize package system"
-    (package-initialize))
-  (when (not package-archive-contents)
-    (jma-with-error-handling "refresh package archive contents"
-      (package-refresh-contents))))
+;; Elpy's RPC server and importmagic's server run in elpy's own venv,
+;; which `make install' builds (see install-python-venv.sh).  Nothing
+;; activates that venv globally, so formatters, linters and a venv
+;; Emacs was started from keep their place on PATH.
+;;
+;; If the venv gets into a mess: M-x elpy-rpc-reinstall-virtualenv, or
+;; delete ~/.emacs.d/elpy/rpc-venv and run `make install' again.
+(setq elpy-rpc-python-command "python3")
+(setq importmagic-python-interpreter
+      (expand-file-name "elpy/rpc-venv/bin/python" user-emacs-directory))
 
-;; Load MELPA packages.
-;; Scans the list in jma-packages
-;; If the package listed is not already installed, install it
-(if (featurep 'package)
-    (progn
-      (message "Checking for package installation.")
-      (mapc #'(lambda (package)
-                (let ((installed (package-installed-p package)))
-                  (message "  Checking %s...%s"
-                           (symbol-name package)
-                           (if installed "installed" "not installed"))
-                  (unless installed
-                    (message "Installing %s" (symbol-name package))
-                    (when (jma-with-error-handling (format "install package %s" package)
-                            (package-install package))
-                      (message "Completed install of %s" (symbol-name package))))))
-            jma-packages)
-      (message "Package installation completed."))
-  (message "Skipping package installation; package.el unavailable."))
+;; Elpy is only needed for Python, so enable it when python.el first
+;; loads.  That happens before the first Python buffer runs
+;; python-mode-hook, which elpy-enable adds itself to.
+(with-eval-after-load 'python
+  (jma-with-error-handling "enable elpy"
+    (elpy-enable)))
+(with-eval-after-load 'elpy
+  ;; Use flycheck rather than flymake.
+  (setq elpy-modules (delq 'elpy-module-flymake elpy-modules))
+  (add-hook 'elpy-mode-hook 'flycheck-mode))
 
 ;; My initialisation ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (let ((jma-elisp-base (concat (getenv "HOME") "/.dotfiles/elisp/")))
@@ -164,9 +131,14 @@ Return non-nil when the load succeeds."
         (jma-safe-load-file (concat jma-elisp-base "jma.el"))
         (jma-safe-load-file (concat jma-elisp-base "misc.el"))
 	;; copied from https://github.com/fxbois/web-mode.git
-        (jma-safe-load-file (concat jma-elisp-base "web-mode.el"))
+	;; These two are big enough to slow start-up, so load them on
+	;; first use.  mode-hooks.el maps .html to web-mode.
+	(autoload 'web-mode (concat jma-elisp-base "web-mode")
+	  "Major mode for editing web templates." t)
         (jma-safe-load-file (concat jma-elisp-base "pdftools.el"))
-        (jma-safe-load-file (concat jma-elisp-base "protobuf-mode.el"))
+	(autoload 'protobuf-mode (concat jma-elisp-base "protobuf-mode")
+	  "Major mode for editing Protocol Buffers." t)
+	(add-to-list 'auto-mode-alist '("\\.proto\\'" . protobuf-mode))
         (jma-safe-load-file (concat jma-elisp-base "google-c-style.el"))
         (jma-safe-load-file (concat jma-elisp-base "clang-format.el"))
 	(setq clang-format-style-option "Google")
@@ -184,13 +156,6 @@ Return non-nil when the load succeeds."
   ;; Set frame title so that ratpoison-gtd can record something about
   ;; what I'm doing.
   (setq frame-title-format '("" invocation-name "@" system-name " - %b : %f"))
-
-  ;; I was having problems with elpy not having correct python
-  ;; information because of debian policy of not installing ensurepip
-  ;; globally.  This is intended to address that by making sure I
-  ;; always use the elpy python venv.
-  (jma-with-error-handling "activate elpy python virtualenv"
-    (pyvenv-activate "~/.emacs.d/elpy/rpc-venv"))
 
   ;; This should be the last block of this file.
   ;; The file site-end.el should not be included with
