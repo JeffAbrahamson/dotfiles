@@ -17,8 +17,8 @@ PYTHON_DIR = ROOT / "python"
 if str(PYTHON_DIR) not in sys.path:
     sys.path.insert(0, str(PYTHON_DIR))
 
-from bandwidth_tool import DEFAULT_LIMIT  # type: ignore
-from bandwidth_tool import (
+from bandwidth_tool import DEFAULT_LIMIT  # type: ignore  # noqa: E402
+from bandwidth_tool import (  # noqa: E402
     default_data_directory,
     limit_measurements,
     load_measurements,

@@ -5,7 +5,13 @@ set -euo pipefail
 repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 cd "$repo_root"
 
-mapfile -t python_targets < <(rg --files -g '*.py')
+mapfile -t python_targets < <(
+    {
+        rg --files -g '*.py'
+        # Extensionless scripts (bin/bin, sway/sway/bin) are Python too.
+        rg --files-with-matches --multiline -g '!*.py' '\A#![^\n]*python'
+    } | sort -u
+)
 
 if [ "${#python_targets[@]}" -eq 0 ]; then
     echo "No Python files found." >&2

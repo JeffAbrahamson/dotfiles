@@ -24,7 +24,10 @@ def parse_args():
     parser.add_argument(
         "keywords",
         nargs="+",
-        help="literal keywords that must all occur somewhere in each result file",
+        help=(
+            "literal keywords that must all occur somewhere in each "
+            "result file"
+        ),
     )
     return parser.parse_args()
 
@@ -99,11 +102,16 @@ def main():
         if text is None:
             continue
 
-        if not all(keyword_in_text(keyword, text, args.ignore_case) for keyword in args.keywords):
+        if not all(
+            keyword_in_text(keyword, text, args.ignore_case)
+            for keyword in args.keywords
+        ):
             continue
 
         for keyword in args.keywords:
-            for line_number, line in matching_lines(keyword, text, args.ignore_case):
+            for line_number, line in matching_lines(
+                keyword, text, args.ignore_case
+            ):
                 matches_by_file[path].append((line_number, line))
 
     if not matches_by_file:

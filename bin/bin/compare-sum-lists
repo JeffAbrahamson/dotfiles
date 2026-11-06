@@ -56,5 +56,6 @@ def main():
     difference(second_map, first_map)
     return 0
 
+
 if __name__ == "__main__":
     main()

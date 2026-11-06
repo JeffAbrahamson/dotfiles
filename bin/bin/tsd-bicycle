@@ -35,7 +35,7 @@ from collections import defaultdict
 from datetime import date
 from pathlib import Path
 
-# ── TSD directory discovery ───────────────────────────────────────────────────
+# ── TSD directory discovery ──────────────────────────────────────────────────
 
 _TSD_CANDIDATES = [
     os.environ.get("TSD_DIR"),
@@ -52,13 +52,14 @@ def find_tsd_dir() -> Path:
     sys.exit("Cannot find TSD directory. Set $TSD_DIR or create ~/tsd.")
 
 
-# ── Data loading ──────────────────────────────────────────────────────────────
+# ── Data loading ─────────────────────────────────────────────────────────────
+
 
 def load_bicycle_data(tsd_dir: Path):
     """Return list of (bike_name, date, km) from all bicycle-* files."""
     records = []
     for path in sorted(tsd_dir.glob("bicycle-*")):
-        bike = path.name[len("bicycle-"):]
+        bike = path.name.removeprefix("bicycle-")
         with open(path) as f:
             for line in f:
                 line = line.strip()
@@ -76,7 +77,8 @@ def load_bicycle_data(tsd_dir: Path):
     return records
 
 
-# ── Text commands ─────────────────────────────────────────────────────────────
+# ── Text commands ────────────────────────────────────────────────────────────
+
 
 def cmd_year(records):
     by_year = defaultdict(float)
@@ -147,7 +149,8 @@ def cmd_bike(records):
         print(f"{bike:<25}  {total:8.0f}")
 
 
-# ── Plot commands ─────────────────────────────────────────────────────────────
+# ── Plot commands ────────────────────────────────────────────────────────────
+
 
 def cmd_plot_bike(records):
     import matplotlib.pyplot as plt
@@ -186,13 +189,28 @@ def cmd_plot_bike(records):
 def _year_style(year, current_year, comparison_year=None):
     """Return matplotlib line kwargs for a given year."""
     if year == current_year:
-        return dict(color="#2563EB", linewidth=2.5, zorder=10, alpha=1.0)
+        return {
+            "color": "#2563EB",
+            "linewidth": 2.5,
+            "zorder": 10,
+            "alpha": 1.0,
+        }
     if year == comparison_year:
-        return dict(color="#DC2626", linewidth=2.2, zorder=9, alpha=1.0)
+        return {
+            "color": "#DC2626",
+            "linewidth": 2.2,
+            "zorder": 9,
+            "alpha": 1.0,
+        }
     age = current_year - year
     gray = min(0.12 + (age - 1) * 0.10, 0.72)
     lw = max(1.8 - (age - 1) * 0.15, 0.7)
-    return dict(color=str(gray), linewidth=lw, zorder=max(8 - age, 1), alpha=1.0)
+    return {
+        "color": str(gray),
+        "linewidth": lw,
+        "zorder": max(8 - age, 1),
+        "alpha": 1.0,
+    }
 
 
 def _sorted_legend(ax):
@@ -276,7 +294,11 @@ def cmd_plot_density(records, comparison_year=None, sigma=30.0):
         end_doy = today_doy if year == current_year else 365
         doys = list(range(1, end_doy + 1))
         values = [
-            scale * sum(km * math.exp(-0.5 * ((d - doy) / sigma) ** 2) for doy, km in rides)
+            scale
+            * sum(
+                km * math.exp(-0.5 * ((d - doy) / sigma) ** 2)
+                for doy, km in rides
+            )
             for d in doys
         ]
         style = _year_style(year, current_year, comparison_year)
@@ -293,7 +315,7 @@ def cmd_plot_density(records, comparison_year=None, sigma=30.0):
     plt.show()
 
 
-# ── CLI ───────────────────────────────────────────────────────────────────────
+# ── CLI ──────────────────────────────────────────────────────────────────────
 
 
 class CommandOptionsHelpFormatter(argparse.HelpFormatter):
@@ -367,9 +389,15 @@ def main():
         ),
     )
     sub.add_parser("bike", help="List total km per bike, sorted by distance")
-    sub.add_parser("plot-bike", help="Bar chart: km per month, grouped by bicycle")
+    sub.add_parser(
+        "plot-bike", help="Bar chart: km per month, grouped by bicycle"
+    )
 
-    _cy_kwargs = dict(type=int, metavar="YEAR", help="Highlight this year in red")
+    _cy_kwargs = {
+        "type": int,
+        "metavar": "YEAR",
+        "help": "Highlight this year in red",
+    }
 
     p_cum = sub.add_parser(
         "plot-cumulative",

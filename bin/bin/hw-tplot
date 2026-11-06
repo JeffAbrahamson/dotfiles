@@ -13,7 +13,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 COLORBLIND_FRIENDLY_COLORS = [
     "#0072B2",  # blue
     "#E69F00",  # orange
@@ -628,12 +627,16 @@ def plot_series(
             continue
         timestamps, values = split_for_gaps(points, gap_threshold)
         dates = [
-            mdates.date2num(dt.datetime.fromtimestamp(timestamp))
-            if not math.isnan(timestamp)
-            else timestamp
+            (
+                mdates.date2num(dt.datetime.fromtimestamp(timestamp))
+                if not math.isnan(timestamp)
+                else timestamp
+            )
             for timestamp in timestamps
         ]
-        line = ax.plot(dates, values, linewidth=1.0, label=series_label(name))[0]
+        (line,) = ax.plot(
+            dates, values, linewidth=1.0, label=series_label(name)
+        )
         color = line.get_color()
 
         if highlight_gaps:
@@ -805,7 +808,10 @@ def main(argv=None):
     data_dir = host_data_dir(args.host)
     filenames = discover_temperature_files(data_dir)
     if not filenames:
-        print(f"hw-tplot: no temperature files found in {data_dir}", file=sys.stderr)
+        print(
+            f"hw-tplot: no temperature files found in {data_dir}",
+            file=sys.stderr,
+        )
         return 1
 
     try:
@@ -826,7 +832,10 @@ def main(argv=None):
         name: points for name, points in series_by_name.items() if points
     }
     if not series_by_name:
-        print("hw-tplot: no temperature samples in requested range", file=sys.stderr)
+        print(
+            "hw-tplot: no temperature samples in requested range",
+            file=sys.stderr,
+        )
         return 1
 
     if gap_threshold is None:

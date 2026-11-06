@@ -140,7 +140,8 @@ def load_config(
         # tomllib missing; config file must be ignored, but that
         # itself isn't a fatal error.
         logging.info(
-            "tomllib not available; skipping config file parsing, using defaults."
+            "tomllib not available; skipping config file parsing, "
+            "using defaults."
         )
         return config
 
@@ -165,7 +166,10 @@ def load_config(
             or not value
             or any(not isinstance(x, str) or not x.strip() for x in value)
         ):
-            msg = "Config error: ping_hosts must be a non-empty list of non-empty strings."
+            msg = (
+                "Config error: ping_hosts must be a non-empty list of "
+                "non-empty strings."
+            )
             logging.error(msg)
             print(msg, file=sys.stderr)
             sys.exit(1)
@@ -183,7 +187,8 @@ def load_config(
         config["speedtest_dir"] = os.path.expanduser(value)
 
     logging.info(
-        "Config values after applying defaults and overrides: ping_hosts=%s, speedtest_dir=%s",
+        "Config values after applying defaults and overrides: "
+        "ping_hosts=%s, speedtest_dir=%s",
         config["ping_hosts"],
         config["speedtest_dir"],
     )
@@ -340,9 +345,11 @@ def ping_host_once(
       up: 1 if ping succeeded, 0 otherwise
       latency_ms: float latency in ms if available, else None
     """
-    # Using '-c 1' for a single packet, '-n' for numeric, '-w timeout' for timeout in seconds.
+    # Using '-c 1' for a single packet, '-n' for numeric, '-w timeout' for
+    # timeout in seconds.
     try:
-        # Note: for IPv6 you'd use 'ping6' or 'ping -6', but we stay with 'ping' as per spec.
+        # Note: for IPv6 you'd use 'ping6' or 'ping -6', but we stay with
+        # 'ping' as per spec.
         result = subprocess.run(
             [
                 "ping",
@@ -421,7 +428,10 @@ def prune_ping_history(
 def collect_latencies_in_window(
     history: Dict[int, PingSample], start_ts: int, end_ts: int
 ) -> List[float]:
-    """Collect all latencies from ping samples between start_ts and end_ts inclusive."""
+    """Collect latencies from ping samples between start_ts and end_ts.
+
+    Both bounds are inclusive.
+    """
     result: List[float] = []
     for ts, sample in history.items():
         if start_ts <= ts <= end_ts:
@@ -572,7 +582,8 @@ class SpeedtestReader:
         """
         stats = self._stat_files()
         if stats is None:
-            # Required files missing; treat as no-update, but potentially as a bad read.
+            # Required files missing; treat as no-update, but potentially as
+            # a bad read.
             self.bad_read_streak += 1
             if self.bad_read_streak >= 3:
                 self.suppressed = True
@@ -590,11 +601,13 @@ class SpeedtestReader:
             self.bad_read_streak = 0
             return
 
-        # Ensure mtimes are within 1 second to avoid reading while being rewritten
+        # Ensure mtimes are within 1 second to avoid reading while being
+        # rewritten.
         mtime_values = list(mtimes.values())
         if max(mtime_values) - min(mtime_values) > 1.0:
             logging.warning(
-                "Speedtest files mtimes not aligned (likely being rewritten); skipping this iteration."
+                "Speedtest files mtimes not aligned (likely being "
+                "rewritten); skipping this iteration."
             )
             self.bad_read_streak += 1
             if self.bad_read_streak >= 3:
@@ -614,7 +627,8 @@ class SpeedtestReader:
 
         if not all([line_ssid, line_down, line_up, line_ping]):
             logging.warning(
-                "Speedtest files have empty or unreadable last lines; skipping."
+                "Speedtest files have empty or unreadable last lines; "
+                "skipping."
             )
             self.bad_read_streak += 1
             if self.bad_read_streak >= 3:
@@ -638,7 +652,8 @@ class SpeedtestReader:
             # Ensure timestamps match
             if not (ts_ssid == ts_down == ts_up == ts_ping):
                 logging.warning(
-                    "Speedtest timestamps mismatch: ssid=%d, down=%d, up=%d, ping=%d; skipping.",
+                    "Speedtest timestamps mismatch: ssid=%d, down=%d, "
+                    "up=%d, ping=%d; skipping.",
                     ts_ssid,
                     ts_down,
                     ts_up,
@@ -686,7 +701,8 @@ class SpeedtestReader:
         self.bad_read_streak = 0
         self.suppressed = False
         logging.info(
-            "Recorded speedtest sample at %d for SSID '%s': down=%.2f Mbps, up=%.2f Mbps, ping=%.2f ms",
+            "Recorded speedtest sample at %d for SSID '%s': "
+            "down=%.2f Mbps, up=%.2f Mbps, ping=%.2f ms",
             ts,
             ssid,
             download_mbps,
@@ -698,7 +714,8 @@ class SpeedtestReader:
         """Clear all cached speedtest samples (e.g., on network change)."""
         self.samples.clear()
         self.last_success_timestamp = None
-        # Do not reset last_mtimes; we want to detect changes when files are updated again.
+        # Do not reset last_mtimes; we want to detect changes when files are
+        # updated again.
 
     def compute_bandwidth_summary(
         self,
@@ -713,12 +730,14 @@ class SpeedtestReader:
 
         Returns (summary_string, has_data_for_network).
 
-        If self.suppressed is True or there is no qualifying data for current_network_id
-        in the time window, the string is "- down / - up / - ms".
+        If self.suppressed is True or there is no qualifying data for
+        current_network_id in the time window, the string is
+        "- down / - up / - ms".
         """
         if self.suppressed:
             logging.warning(
-                "Speedtest data suppressed due to repeated read errors; writing empty bandwidth section."
+                "Speedtest data suppressed due to repeated read errors; "
+                "writing empty bandwidth section."
             )
             return "- down / - up / - ms", False
 
@@ -734,7 +753,8 @@ class SpeedtestReader:
             # Log what we were looking for and what we found
             all_ssids = sorted({s.ssid for s in recent_samples})
             logging.info(
-                "No speedtest data for network '%s' in last %d minutes (cutoff=%d). "
+                "No speedtest data for network '%s' in last %d minutes "
+                "(cutoff=%d). "
                 "Available SSIDs/networks in that period: %s",
                 current_network_id,
                 margin_minutes,
@@ -834,7 +854,9 @@ def build_status_line(
 
 def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Monitor network pings and recent bandwidth for sway/i3status."
+        description=(
+            "Monitor network pings and recent bandwidth for sway/i3status."
+        )
     )
     parser.add_argument(
         "--stdout",
@@ -848,7 +870,10 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         "--long",
         type=int,
         default=DEFAULT_LONG_INTERVAL,
-        help="Number of seconds per interval in the long section (default: 15).",
+        help=(
+            "Number of seconds per interval in the long section "
+            "(default: 15)."
+        ),
     )
     parser.add_argument(
         "--speedtest-margin",
@@ -860,7 +885,10 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         "--speedtest-aggregation",
         choices=["mean", "ewma"],
         default=DEFAULT_SPEEDTEST_AGGREGATION,
-        help="Aggregation method for speedtest values: mean or ewma (default: ewma).",
+        help=(
+            "Aggregation method for speedtest values: mean or ewma "
+            "(default: ewma)."
+        ),
     )
     parser.add_argument(
         "--ewma-alpha",
@@ -873,7 +901,8 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         action="store_true",
         help=(
             "Run only once and quit (implies --stdout). "
-            "Collect data for a limited time and then output a single status line."
+            "Collect data for a limited time and then output a single "
+            "status line."
         ),
     )
     parser.add_argument(
@@ -917,7 +946,8 @@ def main(argv: Optional[List[str]] = None) -> None:
         collect_time = args.one_shot_collect_time
         if collect_time > max_collect:
             logging.info(
-                "one-shot-collect-time (%d) > 10 * long (%d); capping to %d seconds.",
+                "one-shot-collect-time (%d) > 10 * long (%d); "
+                "capping to %d seconds.",
                 collect_time,
                 args.long,
                 max_collect,
@@ -1018,10 +1048,13 @@ def run_one_shot(
         # In one-shot mode, this simply restarts accumulation
         # (previous data would be from a different network).
         if last_network_id is None:
-            logging.info("Network identifier detected: '%s'", current_network_id)
+            logging.info(
+                "Network identifier detected: '%s'", current_network_id
+            )
         elif current_network_id != last_network_id:
             logging.info(
-                "Network identifier changed from '%s' to '%s'; dropping cached data.",
+                "Network identifier changed from '%s' to '%s'; "
+                "dropping cached data.",
                 last_network_id,
                 current_network_id,
             )
@@ -1090,7 +1123,8 @@ def run_continuous(
         if current_network_id != last_network_id:
             if last_network_id is not None:
                 logging.info(
-                    "Network identifier changed from '%s' to '%s'; dropping cached data.",
+                    "Network identifier changed from '%s' to '%s'; "
+                    "dropping cached data.",
                     last_network_id,
                     current_network_id,
                 )

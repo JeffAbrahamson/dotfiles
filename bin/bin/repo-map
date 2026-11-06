@@ -26,7 +26,14 @@ def find_repositories(root):
             if relative_path == ".":
                 relative_path = "."
             remote = subprocess.run(
-                ["git", "-C", str(current_path), "remote", "get-url", "origin"],
+                [
+                    "git",
+                    "-C",
+                    str(current_path),
+                    "remote",
+                    "get-url",
+                    "origin",
+                ],
                 check=False,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.DEVNULL,
@@ -42,7 +49,9 @@ def manifest_for(host, root):
     return {
         "schema_version": 1,
         "host": host,
-        "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "generated_at": datetime.now(timezone.utc).isoformat(
+            timespec="seconds"
+        ),
         "source": str(root),
         "repositories": find_repositories(root),
     }
@@ -73,9 +82,11 @@ def scan(args):
     host = args.host or socket.gethostname()
     manifest = manifest_for(host, root)
     output = write_manifest(args.manifest_dir.expanduser(), manifest)
-    print("{}: recorded {} repositories in {}".format(
-        host, len(manifest["repositories"]), output
-    ))
+    print(
+        "{}: recorded {} repositories in {}".format(
+            host, len(manifest["repositories"]), output
+        )
+    )
     return manifest
 
 
@@ -85,22 +96,34 @@ def load_manifests(directory):
         try:
             with path.open(encoding="utf-8") as source:
                 manifest = json.load(source)
-            if (manifest.get("schema_version") != 1 or
-                    not isinstance(manifest.get("host"), str) or
-                    not isinstance(manifest.get("repositories"), list) or
-                    any(
-                        not isinstance(entry, dict) or
-                        not isinstance(entry.get("path"), str) or
-                        Path(entry.get("path", "")).is_absolute() or
-                        ".." in Path(entry.get("path", "")).parts or
-                        (entry.get("origin") is not None and
-                         not isinstance(entry.get("origin"), str))
-                        for entry in manifest.get("repositories", [])
-                    )):
+            if (
+                manifest.get("schema_version") != 1
+                or not isinstance(manifest.get("host"), str)
+                or not isinstance(manifest.get("repositories"), list)
+                or any(
+                    not isinstance(entry, dict)
+                    or not isinstance(entry.get("path"), str)
+                    or Path(entry.get("path", "")).is_absolute()
+                    or ".." in Path(entry.get("path", "")).parts
+                    or (
+                        entry.get("origin") is not None
+                        and not isinstance(entry.get("origin"), str)
+                    )
+                    for entry in manifest.get("repositories", [])
+                )
+            ):
                 raise ValueError("unsupported or malformed manifest")
             manifests.append(manifest)
-        except (OSError, json.JSONDecodeError, ValueError, AttributeError) as error:
-            print("repo-map: skipping {}: {}".format(path, error), file=sys.stderr)
+        except (
+            OSError,
+            json.JSONDecodeError,
+            ValueError,
+            AttributeError,
+        ) as error:
+            print(
+                "repo-map: skipping {}: {}".format(path, error),
+                file=sys.stderr,
+            )
     return manifests
 
 
@@ -150,7 +173,11 @@ def reconcile(args):
 
     for manifest in manifests:
         generated = manifest.get("generated_at", "unknown age")
-        print("Host {} (manifest generated {})".format(manifest["host"], generated))
+        print(
+            "Host {} (manifest generated {})".format(
+                manifest["host"], generated
+            )
+        )
 
     local_repositories = current["repositories"]
     local_by_origin = defaultdict(list)
@@ -170,39 +197,59 @@ def reconcile(args):
             appearances[origin].append((manifest["host"], paths))
 
     proposals = 0
-    print("\nRepository comparison ({} hosts; strict majority requires more than {}).".format(
-        total_hosts, total_hosts / 2
-    ))
+    print(
+        "\nRepository comparison ({} hosts; strict majority requires "
+        "more than {}).".format(total_hosts, total_hosts / 2)
+    )
     for origin in sorted(appearances):
         host_entries = appearances[origin]
         present_hosts = len(host_entries)
         local_paths_for_origin = local_by_origin.get(origin, [])
         label = origin
         if any(len(paths) > 1 for _host, paths in host_entries):
-            print("\n{}: duplicate checkouts found; path consensus may be ambiguous".format(label))
+            print(
+                "\n{}: duplicate checkouts found; path consensus may be "
+                "ambiguous".format(label)
+            )
         host_votes = Counter(
             paths[0] for _host, paths in host_entries if len(paths) == 1
         )
         path_winner = next(
-            (path for path, votes in host_votes.items() if votes > present_hosts / 2),
+            (
+                path
+                for path, votes in host_votes.items()
+                if votes > present_hosts / 2
+            ),
             None,
         )
         if present_hosts <= total_hosts / 2:
-            print("\n{}: present on {}/{} hosts (no strict majority)".format(
-                label, present_hosts, total_hosts
-            ))
+            print(
+                "\n{}: present on {}/{} hosts (no strict majority)".format(
+                    label, present_hosts, total_hosts
+                )
+            )
             continue
-        print("\n{}: present on {}/{} hosts".format(label, present_hosts, total_hosts))
+        print(
+            "\n{}: present on {}/{} hosts".format(
+                label, present_hosts, total_hosts
+            )
+        )
         if path_winner is None:
-            print("  No strict-majority path; locations: {}".format(
-                ", ".join("{}:{}".format(host, "/".join(paths))
-                          for host, paths in host_entries)
-            ))
+            print(
+                "  No strict-majority path; locations: {}".format(
+                    ", ".join(
+                        "{}:{}".format(host, "/".join(paths))
+                        for host, paths in host_entries
+                    )
+                )
+            )
             continue
         if len(local_paths_for_origin) > 1:
-            print("  Local duplicate checkouts; resolve manually: {}".format(
-                ", ".join(local_paths_for_origin)
-            ))
+            print(
+                "  Local duplicate checkouts; resolve manually: {}".format(
+                    ", ".join(local_paths_for_origin)
+                )
+            )
             continue
         if local_paths_for_origin:
             source = local_paths_for_origin[0]
@@ -213,15 +260,24 @@ def reconcile(args):
                     args.src_dir.expanduser(), path_winner, local_paths
                 )
                 if problem:
-                    print("  Cannot move {} to {}: {}".format(
-                        source, path_winner, problem
-                    ))
+                    print(
+                        "  Cannot move {} to {}: {}".format(
+                            source, path_winner, problem
+                        )
+                    )
                 else:
-                    print("  Suggested move: {}".format(suggested_command(
-                        args.src_dir.expanduser(), path_winner,
-                        "mv", "--", args.src_dir.expanduser() / source,
-                        args.src_dir.expanduser() / path_winner
-                    )))
+                    print(
+                        "  Suggested move: {}".format(
+                            suggested_command(
+                                args.src_dir.expanduser(),
+                                path_winner,
+                                "mv",
+                                "--",
+                                args.src_dir.expanduser() / source,
+                                args.src_dir.expanduser() / path_winner,
+                            )
+                        )
+                    )
                     proposals += 1
         else:
             problem = destination_problem(
@@ -230,11 +286,19 @@ def reconcile(args):
             if problem:
                 print("  Cannot clone to {}: {}".format(path_winner, problem))
             else:
-                print("  Suggested clone: {}".format(suggested_command(
-                    args.src_dir.expanduser(), path_winner,
-                    "git", "clone", "--", origin,
-                    args.src_dir.expanduser() / path_winner
-                )))
+                print(
+                    "  Suggested clone: {}".format(
+                        suggested_command(
+                            args.src_dir.expanduser(),
+                            path_winner,
+                            "git",
+                            "clone",
+                            "--",
+                            origin,
+                            args.src_dir.expanduser() / path_winner,
+                        )
+                    )
+                )
                 proposals += 1
     if not appearances:
         print("No repositories with an origin were found in the manifests.")
@@ -244,15 +308,26 @@ def reconcile(args):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--src-dir", type=Path, default=Path.home() / "src",
-                        help="repository scan root (default: ~/src)")
-    parser.add_argument("--manifest-dir", type=Path,
-                        default=Path.home() / "data" / "repo-manifests",
-                        help="manifest directory (default: ~/data/repo-manifests)")
-    parser.add_argument("--host", help="manifest host name (default: system hostname)")
+    parser.add_argument(
+        "--src-dir",
+        type=Path,
+        default=Path.home() / "src",
+        help="repository scan root (default: ~/src)",
+    )
+    parser.add_argument(
+        "--manifest-dir",
+        type=Path,
+        default=Path.home() / "data" / "repo-manifests",
+        help="manifest directory (default: ~/data/repo-manifests)",
+    )
+    parser.add_argument(
+        "--host", help="manifest host name (default: system hostname)"
+    )
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("scan", help="write this host's repository manifest")
-    commands.add_parser("reconcile", help="refresh this host and compare manifests")
+    commands.add_parser(
+        "reconcile", help="refresh this host and compare manifests"
+    )
     args = parser.parse_args()
     try:
         if args.command == "scan":

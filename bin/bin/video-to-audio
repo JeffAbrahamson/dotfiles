@@ -32,7 +32,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--accurate-seek",
         action="store_true",
-        help="put seeking after the input and use duration instead of end time",
+        help=(
+            "put seeking after the input and use duration instead of "
+            "end time"
+        ),
     )
     parser.add_argument(
         "--matroska",

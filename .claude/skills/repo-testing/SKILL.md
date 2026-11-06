@@ -35,4 +35,6 @@ description: Run repository build, test, lint, and format checks with the correc
 
 * Run the project's lint and format checks before every commit, even for
   changes that appear unrelated. `make test` includes Black and flake8
-  for Python files; run any relevant directory-specific checks too.
+  for Python files, including extensionless scripts with a Python
+  shebang (e.g. `bin/bin/tsd-bicycle`); run any relevant
+  directory-specific checks too.
