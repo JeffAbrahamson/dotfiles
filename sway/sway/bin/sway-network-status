@@ -19,6 +19,7 @@ import logging
 import math
 import os
 import socket
+import stat
 import subprocess
 import sys
 import time
@@ -253,6 +254,23 @@ def write_status_atomically(line: str) -> None:
         os.replace(NETWORK_STATUS_TMP_PATH, NETWORK_STATUS_PATH)
     except Exception as exc:
         logging.error("Failed to write network status file: %s", exc)
+
+
+def sway_has_exited() -> bool:
+    """
+    Return True once the sway session that started us is gone.
+
+    Sway starts us detached, so its exit doesn't stop us; left running, we
+    keep the logind session open after logout.  Sway removes its socket on
+    exit, so watch that.  Without SWAYSOCK (run by hand) never stop.
+    """
+    swaysock = os.environ.get("SWAYSOCK")
+    if not swaysock:
+        return False
+    try:
+        return not stat.S_ISSOCK(os.stat(swaysock).st_mode)
+    except FileNotFoundError:
+        return True
 
 
 # ---------------------------------------------------------------------------
@@ -1115,6 +1133,9 @@ def run_continuous(
     last_network_id: Optional[str] = None
 
     while True:
+        if sway_has_exited():
+            logging.info("Sway has exited; exiting.")
+            return
         loop_start = time.time()
         now_ts = int(loop_start)
 

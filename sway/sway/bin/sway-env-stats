@@ -129,28 +129,43 @@ record_disk_usage() {
     done
 }
 
+# Sway starts us detached, so its exit doesn't stop us; left running, we
+# keep the logind session open after logout.  Sway removes its socket on
+# exit, so watch that.  Without SWAYSOCK (run by hand) never stop.
+sway_running()
+{
+    [ -z "${SWAYSOCK-}" ] || [ -S "$SWAYSOCK" ]
+}
+
+# Sleep $1 seconds in short steps, exiting as soon as sway has gone.
+nap()
+{
+    local remaining=$1 step
+    while [ "$remaining" -gt 0 ]; do
+	if ! sway_running; then
+	    log_line "Sway has exited; exiting."
+	    exit 0
+	fi
+	step=$(( remaining < 15 ? remaining : 15 ))
+	sleep $step
+	remaining=$(( remaining - step ))
+    done
+}
+
 log_line "Starting..."
-sway_pid=$(pidof sway)
 SERIES_BASE=$HOME/data/hosts/$(hostname -s)/disk-
 TEMPERATURE_SERIES_DIR=$HOME/data/hosts/$(hostname -s)
 TEMPERATURE_STATUS=$HOME/.temperature-status
 record_frequency_minutes=11
 # time_delta=$(( $record_frequency_minutes * 60 ))
-log_line "SWAY pid = $sway_pid"
 log_line "Log frequency = $record_frequency_minutes minutes."
 # Temperature collection is cheap and gives swaybar useful data immediately.
 record_temperatures "$TEMPERATURE_SERIES_DIR" "$TEMPERATURE_STATUS"
 # First recording should not be immediate.  On session start, we may
 # not have a network connection.  In addition, it's annoying for
 # starting daemons immediately to monopolise resources.
-sleep 300
+nap 300
 while true; do
-    ## When SWAY exits, this script should quit as well.  I'm not sure
-    ## if I need this or not.  So watch for sway exit and quit when
-    ## no longer needed.
-    if [ ! -e /proc/$sway_pid ]; then
-	exit 0
-    fi
     log_line Recording
     record_disk_usage $SERIES_BASE
     speedtest
@@ -169,7 +184,7 @@ while true; do
 	# integer in [0, 32767].
 	sleep_time=$(( 45 + $RANDOM / 3277 ))
 	log_line Sleeping $sleep_time seconds.
-	sleep $sleep_time
+	nap $sleep_time
 	loop_index=$(( $loop_index - 1 ))
     done
 done
