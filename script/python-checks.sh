@@ -9,7 +9,10 @@ mapfile -t python_targets < <(
     {
         rg --files -g '*.py'
         # Extensionless scripts (bin/bin, sway/sway/bin) are Python too.
-        rg --files-with-matches --multiline -g '!*.py' '\A#![^\n]*python'
+        # Given no path, rg searches a non-tty stdin instead of the tree,
+        # and blocks if that stdin never closes.
+        rg --files-with-matches --multiline -g '!*.py' '\A#![^\n]*python' \
+            < /dev/null
     } | sort -u
 )
 
