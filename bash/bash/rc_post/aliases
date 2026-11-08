@@ -320,18 +320,6 @@ ssh-jelly() {
     fi
 }
 
-ssh-setup() {
-    srd-here-e ssh
-    srd-here gith
-    srd-here-e p27-ssh
-    srd-here ssh
-    ssh-add
-    ssh-github
-    ssh-p27
-    ssh-jelly
-    ssh-add -l
-}
-
 ssl-status() {
     name="$1"
     echo | openssl s_client -servername "$name" -connect "$name":443 2>/dev/null | openssl x509 -noout -dates

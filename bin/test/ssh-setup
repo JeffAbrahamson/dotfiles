@@ -1,0 +1,168 @@
+#!/bin/bash
+#
+# Test ssh-setup against a private ssh-agent, throwaway keys, and a fake
+# srd and hostname.
+
+set -u
+
+script_dir=$(cd "$(dirname "$0")" && pwd)
+ssh_setup="$script_dir/../bin/ssh-setup"
+
+if ! command -v ssh-agent > /dev/null || ! command -v ssh-keygen > /dev/null; then
+    echo "ssh-setup: skipping test, no ssh-agent or ssh-keygen."
+    exit 0
+fi
+
+test_dir=$(mktemp -d /tmp/ssh-setup-test_XXXXXX)
+trap 'rm -rf "$test_dir"' EXIT
+# Never fall back on the real agent:  we add keys to ours and kill it.
+unset SSH_AUTH_SOCK SSH_AGENT_PID
+if ! eval "$(ssh-agent -s)" > /dev/null || [[ -z ${SSH_AGENT_PID-} ]]; then
+    echo "ssh-setup: test failed: can't start a private ssh-agent." >&2
+    exit 1
+fi
+trap 'ssh-agent -k > /dev/null; rm -rf "$test_dir"' EXIT
+
+export HOME="$test_dir/home"
+export SRD_LOG="$test_dir/srd.log"
+export FAKE_SRD=ok
+mkdir -p "$HOME/.ssh" "$test_dir/path"
+PATH="$test_dir/path:$PATH"
+
+cat > "$test_dir/path/hostname" <<'EOF'
+#!/bin/sh
+echo tau-ceti
+EOF
+# Like srd, print records in key order, those whose keys contain any -m
+# pattern.  Unlike srd, ignore -E, so that ssh-setup's own exact matching
+# meets the decoy record [old-ssh].  Both databases are this one:  ssh-setup
+# asks each for [ssh], and the Jellybooks test key shares its passphrase.
+cat > "$test_dir/path/srd" <<'EOF'
+#!/bin/bash
+echo "$*" >> "$SRD_LOG"
+[[ $FAKE_SRD == fail ]] && exit 1
+patterns=()
+while (( $# > 0 )); do
+    [[ $1 == -m ]] && { patterns+=("$2"); shift; }
+    shift
+done
+p27=p27-pass
+[[ $FAKE_SRD == bad ]] && p27=not-the-pass
+github_host=tau-ceti
+[[ $FAKE_SRD == nohost ]] && github_host=other-host
+trailing='  '
+db="[github.com]
+    $github_host:  github pass
+[old-ssh]
+  tau-ceti: decoy-pass
+[p27-ssh]
+  tau-cetix: wrong host
+  tau-ceti:  $p27$trailing
+[ssh]
+    other-host: not this one
+    tau-ceti: ssh-pass"
+show=false
+while IFS= read -r line; do
+    if [[ $line == '['* ]]; then
+        show=false
+        for pattern in "${patterns[@]}"; do
+            [[ $line == *"$pattern"* ]] && show=true
+        done
+    fi
+    if $show; then printf '%s\n' "$line"; fi
+done <<< "$db"
+exit 0
+EOF
+chmod +x "$test_dir/path/hostname" "$test_dir/path/srd"
+
+for pair in id_ed25519:ssh-pass "id_ed25519.github:github pass" \
+            id_ed25519.p27:p27-pass id_ed25519.jellybooks:ssh-pass; do
+    ssh-keygen -q -t ed25519 -N "${pair#*:}" -C "${pair%%:*}" \
+        -f "$HOME/.ssh/${pair%%:*}"
+done
+
+failures=0
+fail() {
+    echo "ssh-setup: test failed: $*" >&2
+    failures=$((failures + 1))
+}
+
+# Run ssh-setup, setting $output, $status, and $srd_calls.
+run() {
+    : > "$SRD_LOG"
+    output=$(timeout 60 "$ssh_setup" 2>&1)
+    status=$?
+    srd_calls=$(wc -l < "$SRD_LOG")
+}
+
+# A per-key line of ssh-setup's report.
+line() { printf '  %-24s %s' "$1" "$2"; }
+
+expect() {
+    local what=$1 want_status=$2 want_calls=$3 before=$failures
+    shift 3
+    [[ $status == "$want_status" ]] ||
+        fail "$what: exit $status, want $want_status"
+    [[ $srd_calls == "$want_calls" ]] ||
+        fail "$what: $srd_calls srd calls, want $want_calls"
+    local text
+    for text in "$@"; do
+        [[ $output == *"$text"* ]] || fail "$what: output lacks '$text'"
+    done
+    (( failures == before )) || printf '%s\n' "$output" >&2
+}
+
+run
+expect "fresh agent" 0 2 "Added 4, already held 0, failed 0" \
+       "now holds 4 keys"
+
+run
+expect "all held" 0 0 "Added 0, already held 4, failed 0"
+
+ssh-add -q -d "$HOME/.ssh/id_ed25519.github" 2> /dev/null
+run
+expect "one missing" 0 1 "$(line id_ed25519.github 'added')" \
+       "Added 1, already held 3, failed 0"
+
+ssh-add -q -d "$HOME/.ssh/id_ed25519.p27" 2> /dev/null
+FAKE_SRD=bad run
+expect "wrong passphrase" 1 1 "$(line id_ed25519.p27 'failed: ssh-add refused')" \
+       "Added 0, already held 3, failed 1"
+
+FAKE_SRD=fail run
+expect "srd fails" 1 1 "failed: srd failed"
+
+ssh-add -q -d "$HOME/.ssh/id_ed25519.jellybooks" 2> /dev/null
+mv "$HOME/.ssh/id_ed25519.jellybooks" "$test_dir/"
+run
+expect "missing key file" 1 1 "$(line id_ed25519.jellybooks 'failed: no key file')" \
+       "Added 1, already held 2, failed 1"
+
+mv "$test_dir/id_ed25519.jellybooks" "$HOME/.ssh/"
+run
+expect "key file back" 0 1 "$(line id_ed25519.jellybooks 'added')" \
+       "Added 1, already held 3, failed 0"
+
+ssh-add -q -d "$HOME/.ssh/id_ed25519.github" 2> /dev/null
+FAKE_SRD=nohost run
+expect "no host line" 1 1 \
+       "$(line id_ed25519.github 'failed: no tau-ceti line in srd [github.com]')"
+
+# A .pub that belongs to a held key mustn't make this one look held.
+cp "$HOME/.ssh/id_ed25519.pub" "$HOME/.ssh/id_ed25519.github.pub"
+run
+expect "mismatched .pub" 0 1 "$(line id_ed25519.github 'added')"
+
+# A stray SSH_SETUP_ASKPASS in the environment mustn't switch modes.
+SSH_SETUP_ASKPASS=askpass run < /dev/null
+expect "stray askpass variable" 0 0 "Added 0, already held 4, failed 0"
+
+SSH_AUTH_SOCK="$test_dir/no-agent" run
+expect "no agent" 2 0 "can't reach an ssh agent"
+
+"$ssh_setup" --help > /dev/null || fail "--help exits 0"
+
+if (( failures > 0 )); then
+    exit 1
+fi
+echo "ssh-setup: all tests passed."

@@ -35,6 +35,12 @@ that names a commit or path is passed through instead. `glw` (a symlink to
 optionally with each commit's first-parent diff (`-p`), prompting between
 commits unless given `--no-prompt`. Both accept `-h` for details.
 
+`ssh-setup` adds my ssh keys to the agent, taking their passphrases from
+srd records holding a `HOST: PASSPHRASE` line per host. It skips keys the
+agent already holds, asks for a srd master password only for a database
+with keys still to add, and reports each key's outcome. The script serves
+as its own `SSH_ASKPASS` program, so passphrases travel only through pipes.
+
 `git-remote-changes [DIRECTORY]` recursively fetches Git worktrees at or below
 the directory (the current directory by default) and lists repositories whose
 remote-tracking branches changed. It does not fetch or prune tags, pull, or

@@ -1,0 +1,168 @@
+#!/usr/bin/env bash
+#
+# Load my ssh keys into the agent, taking their passphrases from srd.
+#
+# Keys the agent already holds are left alone, and a srd database is
+# opened (one master-password prompt) only if it has a key to add.
+# Passphrases go from srd to ssh-add through pipes, never through argv
+# or the environment:  ssh-add runs this script again as its askpass
+# program, and that copy answers with the passphrase from its stdin.
+#
+# Exit status:  0 if every key is in the agent, 1 if any key couldn't
+# be added, 2 if there is no agent or on a usage error.
+
+set -u
+# Tracing would print every passphrase, so refuse it, even when asked
+# for with bash -x or an exported SHELLOPTS.
+set +x
+
+# Askpass mode.  ssh-add passes its prompt as $1, which we ignore.  If
+# ssh-add asks again (wrong passphrase), stdin is at EOF, we answer
+# nothing, and ssh-add gives up on that key.  Requiring ssh-add's call
+# shape keeps a stray SSH_SETUP_ASKPASS from hijacking a normal run.
+if [[ ${SSH_SETUP_ASKPASS-} == askpass && $# == 1 && ! -t 0 ]]; then
+    IFS= read -r line_ && printf '%s\n' "$line_"
+    exit 0
+fi
+
+# Each database's keys, as KEYFILE:RECORD with KEYFILE under ~/.ssh.
+# srd records hold a line "HOST: PASSPHRASE" per host.
+personal_keys=(
+    id_ed25519:ssh
+    id_ed25519.github:github.com
+    id_ed25519.p27:p27-ssh
+)
+jellybooks_keys=(
+    id_ed25519.jellybooks:ssh
+)
+
+usage() {
+    cat <<EOF
+Usage:  ssh-setup
+
+Add my ssh keys to the agent, with passphrases from srd.  Asks for the
+master password of each srd database that has a key not yet loaded:
+personal (${personal_keys[*]%%:*}) and Jellybooks (${jellybooks_keys[*]%%:*}).
+EOF
+}
+
+self_=$(readlink -f -- "${BASH_SOURCE[0]}")
+host_=$(hostname)
+added_=0
+held_=0
+failed_=0
+held_fingerprints_=""
+
+report() {
+    # Report key $1's outcome $2, and count it.
+    local key_=$1 outcome_=$2
+    case $outcome_ in
+        added) added_=$((added_ + 1)) ;;
+        "already held") held_=$((held_ + 1)) ;;
+        *) failed_=$((failed_ + 1)) ;;
+    esac
+    printf '  %-24s %s\n' "$key_" "$outcome_"
+}
+
+# Read `srd -f` output on stdin and print this host's value from record
+# $1:  the rest of a payload line "HOST: VALUE", trimmed of surrounding
+# whitespace.
+host_value() {
+    local wanted_=$1 line_ in_record_=false
+    while IFS= read -r line_; do
+        # srd indents payload lines, so only a key starts in column 1.
+        if [[ $line_ =~ ^\[(.*)\]$ ]]; then
+            in_record_=false
+            [[ ${BASH_REMATCH[1]} == "$wanted_" ]] && in_record_=true
+            continue
+        fi
+        $in_record_ || continue
+        line_=${line_#"${line_%%[![:space:]]*}"}
+        [[ $line_ == "$host_:"* ]] || continue
+        line_=${line_#"$host_:"}
+        line_=${line_#"${line_%%[![:space:]]*}"}
+        line_=${line_%"${line_##*[![:space:]]}"}
+        [[ -n $line_ ]] || continue
+        printf '%s\n' "$line_"
+        return 0
+    done
+    return 1
+}
+
+# Add key file $1 with the passphrase on stdin.
+add_key() {
+    SSH_SETUP_ASKPASS=askpass SSH_ASKPASS=$self_ SSH_ASKPASS_REQUIRE=force \
+        ssh-add -q -- "$1"
+}
+
+is_held() {
+    # Whether the agent holds key file $1.
+    local fingerprint_
+    # Given a path, ssh-keygen reads KEY.pub if it exists, which might
+    # not match KEY.  On stdin, it reads the private key's public part.
+    fingerprint_=$(ssh-keygen -l -f /dev/stdin < "$1" 2>/dev/null) || return 1
+    fingerprint_=$(awk '{ print $2 }' <<< "$fingerprint_")
+    [[ -n $fingerprint_ && $held_fingerprints_ == *" $fingerprint_ "* ]]
+}
+
+# Load database $1's keys, $2...
+setup_database() {
+    local name_=$1 entry_ key_ record_ records_ pass_
+    local -a pending_=() srd_args_=(-f -E -g "$host_")
+    shift
+
+    for entry_ in "$@"; do
+        key_=${entry_%%:*}
+        record_=${entry_#*:}
+        if [[ ! -r ~/.ssh/$key_ ]]; then
+            report "$key_" "failed: no key file"
+        elif is_held ~/.ssh/"$key_"; then
+            report "$key_" "already held"
+        else
+            pending_+=("$entry_")
+            srd_args_+=(-m "$record_")
+        fi
+    done
+    (( ${#pending_[@]} > 0 )) || return 0
+
+    echo "srd, $name_ database:" >&2
+    if ! records_=$(srd "${srd_args_[@]}"); then
+        for entry_ in "${pending_[@]}"; do
+            report "${entry_%%:*}" "failed: srd failed"
+        done
+        return 0
+    fi
+    for entry_ in "${pending_[@]}"; do
+        key_=${entry_%%:*}
+        record_=${entry_#*:}
+        if ! pass_=$(printf '%s\n' "$records_" | host_value "$record_"); then
+            report "$key_" "failed: no $host_ line in srd [$record_]"
+        elif ! printf '%s\n' "$pass_" | add_key ~/.ssh/"$key_"; then
+            report "$key_" "failed: ssh-add refused (wrong passphrase?)"
+        else
+            report "$key_" added
+        fi
+    done
+}
+
+if (( $# > 0 )); then
+    usage
+    [[ $1 == -h || $1 == --help ]] && exit 0
+    exit 2
+fi
+
+# ssh-add -l exits 1 for an empty agent and 2 for no agent.
+agent_list_=$(ssh-add -l 2>/dev/null)
+if (( $? == 2 )); then
+    echo "ssh-setup:  can't reach an ssh agent (is SSH_AUTH_SOCK set?)." >&2
+    exit 2
+fi
+held_fingerprints_=" $(awk '$2 ~ /:/ { printf "%s ", $2 }' <<< "$agent_list_")"
+
+setup_database personal "${personal_keys[@]}"
+setup_database Jellybooks "${jellybooks_keys[@]}"
+
+total_=$(ssh-add -l 2>/dev/null | grep -c SHA256)
+echo "Added ${added_}, already held ${held_}, failed ${failed_}." \
+     "The agent now holds ${total_} keys."
+(( failed_ == 0 ))
