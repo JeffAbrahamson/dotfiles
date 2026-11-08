@@ -1,7 +1,23 @@
 #!/bin/bash
 
+## Warn when the battery is running low, and keep the status bar's power
+## line up to date.
+##
+## Each warning fires once per discharge: at 30, 20, 10 and 5 per cent, and at
+## 30, 20, 10 and 5 minutes remaining.  The 10 and 5 warnings are critical;
+## mako keeps critical notifications until dismissed, and this dismisses them
+## when the battery stops discharging.
+##
+## The time remaining comes from a smoothed discharge rate.  The
+## instantaneous rate swings between a fraction of a watt and over ten watts
+## within seconds, so estimates based on it give false alarms.
+##
+## Usage:
+##   sway-power-monitor                          show the log
+##   sway-power-monitor (daemon|once) [verbose]
+
 PATH=/usr/bin:/bin
-renice -n 19 $$
+renice -n 19 $$ > /dev/null
 
 logfile=$HOME/.sway/sway-power-monitor.log
 mkdir -p "$(dirname "$logfile")"
@@ -13,107 +29,183 @@ if [ $# -eq 0 ]; then
     exit 0
 fi
 
-# Below what time (to empty) when discharging should we display battery status?
-threshold=$1
+case "$1" in
+    daemon) loop=1 ;;
+    once) loop=0 ;;
+    *)
+        echo "Usage: sway-power-monitor [(daemon|once) [verbose]]" >&2
+        exit 1
+        ;;
+esac
+verbose=
+if [ "${2-}" = verbose ]; then
+    verbose=1
+fi
 
-# First argument "daemon" means to loop.
-# First argument "once" means to run once.
-# Any other value is an error.
-if [ "X$2" = Xdaemon ]; then
-    loop=1
-elif [ "X$2" = Xonce ]; then
-    loop=0
-else
-    echo "Usage: sway-power-monitor threshold (daemon|once) [verbose]"
-    exit 1
-fi
-if [ "X$3" = "Xverbose" ]; then
-    logging=1
-else
-    logging=
-fi
+poll_seconds=30
+thresholds=(30 20 10 5)
+critical_at_or_below=10
+# Weight, in per cent, given to each new rate sample.  With 30 s polls this
+# averages over roughly the last two and a half minutes.
+rate_weight=20
+# Samples needed before trusting the time estimate.
+min_rate_samples=3
 
 log_message() {
-    echo "$(date)   $*" >> $logfile;
+    echo "$(date '+%F %T')   $*" >> "$logfile"
 }
-log_cat() {
-    log_message "Long message:"
-    sed -e 's/^/  /;' >> $logfile;
-}
-reset_log_if_ephemeral() {
-    if [ "X$logging" != X1 ]; then
-	: > $logfile
+
+# The log only records events unless verbose, but still keep it bounded.
+if [ -f "$logfile" ]; then
+    tail -n 500 "$logfile" > "$logfile.tmp" && mv "$logfile.tmp" "$logfile"
+fi
+
+## System batteries, excluding peripherals such as mice and headsets, which
+## the kernel marks with scope Device.
+batteries=()
+for supply in /sys/class/power_supply/*; do
+    [ "$(cat "$supply/type" 2> /dev/null)" = Battery ] || continue
+    [ "$(cat "$supply/scope" 2> /dev/null)" = Device ] && continue
+    batteries+=("$supply")
+done
+if [ ${#batteries[@]} -eq 0 ]; then
+    log_message "No battery, I have no role here."
+    exit 0
+fi
+
+## Sets state (discharging, mains or unknown), percent, level and rate.
+## Level and rate are summed over batteries, in µWh and µW, or in µAh and µA
+## when the battery reports charge rather than energy; only their ratio
+## matters.
+read_batteries() {
+    local b now full draw
+    local level_sum=0 full_sum=0 rate_sum=0
+    state=unknown
+    for b in "${batteries[@]}"; do
+        case "$(cat "$b/status" 2> /dev/null)" in
+            Discharging) state=discharging ;;
+            Charging | Full | "Not charging") [ $state = unknown ] && state=mains ;;
+        esac
+        if [ -r "$b/energy_now" ]; then
+            now=$(cat "$b/energy_now" 2> /dev/null)
+            full=$(cat "$b/energy_full" 2> /dev/null)
+            draw=$(cat "$b/power_now" 2> /dev/null)
+        else
+            now=$(cat "$b/charge_now" 2> /dev/null)
+            full=$(cat "$b/charge_full" 2> /dev/null)
+            draw=$(cat "$b/current_now" 2> /dev/null)
+        fi
+        # Some firmware reports the discharge rate as negative.
+        draw=${draw#-}
+        level_sum=$((level_sum + ${now:-0}))
+        full_sum=$((full_sum + ${full:-0}))
+        rate_sum=$((rate_sum + ${draw:-0}))
+    done
+    level=$level_sum
+    rate=$rate_sum
+    if [ "$full_sum" -gt 0 ]; then
+        percent=$((level_sum * 100 / full_sum))
+    else
+        percent=$(cat "${batteries[0]}/capacity" 2> /dev/null)
+        percent=${percent:-100}
     fi
 }
 
-check_status()
-{
-    batteries=$(upower -e | grep battery)
-    if [ "X$batteries" = X ]; then
-	# If no batteries now, don't expect any batteries later.
-	log_message "No battery, I have no role here."
-	exit 0
-    fi
-    # Normally I have only one battery, but watch out for multiple
-    # entries some day.
-    for battery in $batteries; do
-	delay_message=""
-	upower -i $battery | log_cat
-	state=$(upower -i $battery | grep state | awk -F: '{print $2}' | tr -d ' \t')
-	log_message $state
-	if [ "X$state" = Xdischarging ]; then
-	    delay_minutes=$(upower -i $battery | grep "time to empty" | grep minutes | awk -F: '{print $2}' | \
-		sed -e 's/^\s\+//; s/ minutes//; s/[\.,][0-9]\+//;')
-	    if [ "X$delay_minutes" = X ]; then
-		delay_hours=$(upower -i $battery | grep "time to empty" | grep hours | awk -F: '{print $2}' | \
-				     sed -e 's/^\s\+//; s/ hours//; s/[\.,][0-9]\+//;')
-		if [ "X$delay_hours" = X ]; then
-		    delay_days=$(upower -i $battery | grep "time to empty" | grep days | awk -F: '{print $2}' | \
-					sed -e 's/^\s\+//; s/ days//; s/[\.,][0-9]\+//;')
-		    if [ "X$delay_days" = X ]; then
-			delay_minutes=0
-			delay_message="(State uncertain.)"
-		    else
-			delay_minutes=$(($delay_days * 60 * 24))
-		    fi
-		else
-		    delay_minutes=$(($delay_hours * 60))
-		fi
-	    fi
-	    percent=$(upower -i $battery | grep percent | awk -F: '{print $2}' | tr -d ' \t%')
-	    log_message "$delay_minutes minutes  =  $percent %"
-	    if [ $delay_minutes -lt $threshold ]; then
-		if [  $delay_minutes -lt $(($threshold / 2)) ]; then
-		    # If it's getting more critical, be more verbose.
-		    notify-send -u critical -t 3000 -- "$(echo; echo; echo "Battery low: $delay_minutes minutes remaining."; echo "$delay_message"; echo ' '; echo ' ')"
-		else
-		    notify-send -u critical -t 3000 -- "$(echo "Battery low: $delay_minutes minutes remaining."; echo "$delay_message")"
-		fi
-	    fi
-	fi
+smoothed_rate=0
+rate_samples=0
+fired=" "
+notification_ids=()
+
+start_discharge_cycle() {
+    local id
+    smoothed_rate=0
+    rate_samples=0
+    fired=" "
+    for id in "${notification_ids[@]}"; do
+        makoctl dismiss -n "$id" 2> /dev/null
+    done
+    notification_ids=()
+}
+
+## Sets hit to the lowest threshold of kind $1 (pct or min) that value $2 has
+## newly reached, or to empty.  Every threshold reached is marked as fired,
+## so a sudden drop gives one warning rather than several.
+mark_reached() {
+    local kind=$1 value=$2 t
+    hit=
+    for t in "${thresholds[@]}"; do
+        if [ "$value" -le "$t" ] && [[ $fired != *" $kind$t "* ]]; then
+            fired+="$kind$t "
+            hit=$t
+        fi
     done
 }
 
-## Periodically watch power status.
-main()
-{
-    if [ $loop = 1 ]; then
-        ## When sway exits, this script should quit as well.  But sway's
-        ## exec seems to do a nice job of leaving us as a daemon.  So
-        ## watch for sway exit and quit when no longer needed.
-	sway_pid=$(pidof sway)
-	while true; do
-	    check_status
-	    $HOME/bin/sway-power-status > $HOME/.power-status # For swaystatus bar.
-	    sleep 60
-	    reset_log_if_ephemeral
-	    if [ ! -e /proc/$sway_pid ]; then
-		return
-	    fi
-	done
-    else
-	check_status
+check_status() {
+    local minutes= pct_hit min_hit urgency=normal summary body id
+    read_batteries
+    # Some firmware reports Unknown for a moment around plugging in; wait
+    # rather than start a new discharge cycle and repeat warnings.
+    [ $state = unknown ] && return
+    if [ $state = mains ]; then
+        if [ "$fired" != " " ] || [ "$rate_samples" -gt 0 ]; then
+            log_message "On mains at $percent %."
+            start_discharge_cycle
+        fi
+        return
     fi
+
+    if [ "$rate" -gt 0 ]; then
+        if [ "$rate_samples" -eq 0 ]; then
+            smoothed_rate=$rate
+        else
+            smoothed_rate=$(((smoothed_rate * (100 - rate_weight) + rate * rate_weight) / 100))
+        fi
+        rate_samples=$((rate_samples + 1))
+    fi
+    if [ "$rate_samples" -ge "$min_rate_samples" ] && [ "$smoothed_rate" -gt 0 ]; then
+        minutes=$((level * 60 / smoothed_rate))
+    fi
+    if [ -n "$verbose" ]; then
+        log_message "Discharging: $percent %, rate $rate, smoothed $smoothed_rate, ${minutes:-?} minutes."
+    fi
+
+    mark_reached pct "$percent"
+    pct_hit=$hit
+    min_hit=
+    if [ -n "$minutes" ]; then
+        mark_reached min "$minutes"
+        min_hit=$hit
+    fi
+    [ -z "$pct_hit$min_hit" ] && return
+
+    if [ "${pct_hit:-100}" -le "$critical_at_or_below" ] ||
+        [ "${min_hit:-100}" -le "$critical_at_or_below" ]; then
+        urgency=critical
+    fi
+    summary="Battery low: $percent %"
+    if [ -n "$minutes" ]; then
+        body="About $minutes minutes remaining."
+    else
+        body="Time remaining not yet known."
+    fi
+    log_message "$summary, ${minutes:-?} minutes, $urgency."
+    if id=$(notify-send -p -u "$urgency" -a sway-power-monitor -- "$summary" "$body"); then
+        notification_ids+=("$id")
+    fi
+}
+
+main() {
+    if [ $loop = 0 ]; then
+        check_status
+        return
+    fi
+    # Sway removes its socket on exit; stop then rather than linger.
+    while [ -z "${SWAYSOCK-}" ] || [ -S "$SWAYSOCK" ]; do
+        check_status
+        "$HOME/bin/sway-power-status" > "$HOME/.power-status" # For the status bar.
+        sleep "$poll_seconds"
+    done
 }
 
 main

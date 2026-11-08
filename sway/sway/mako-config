@@ -33,6 +33,9 @@ default-timeout=10000
 
 [urgency=critical]
 border-color=#801515
+# Stay until dismissed, so a warning such as low battery isn't missed
+# while away from the screen.
+default-timeout=0
 
 # === App-specific ===
 [app-name=Firefox]

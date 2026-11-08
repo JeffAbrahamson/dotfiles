@@ -39,7 +39,7 @@ include /etc/sway/config-vars.d/*
 
 # Run my personal daemons.
 exec --no-startup-id sway-env-stats
-exec --no-startup-id sway-power-monitor 2 daemon
+exec --no-startup-id sway-power-monitor daemon
 exec --no-startup-id sway-network-status
 # Started from here rather than by systemd so that it gets the session's
 # PATH and SSH agent.  ec and emf open frames from it.
