@@ -167,12 +167,41 @@ test_research_directory_helpers() {
     rm -rf "$test_home_"
 }
 
+test_jb_git_status() {
+    local test_home_
+    local output_
+    local repo_
+
+    clear() { :; }
+    glt() { echo "glt $*"; }
+
+    test_home_=$(mktemp -d)
+    for repo_ in analytics candy-wrapper discovery_ingest jellybooks-ng \
+                 production streamer-js-web webpub-viewer; do
+        mkdir -p "${test_home_}/src/jellybooks/${repo_}"
+    done
+
+    output_=$(HOME=$test_home_ jb-git-status)
+    [[ $output_ == "analytics/"$'\n'"glt -1"$'\n\n'"====="* ]] ||
+        fail "jb-git-status runs glt -1 by default"
+    [[ $output_ == *"webpub-viewer/"$'\n'"glt -1"* ]] ||
+        fail "jb-git-status visits every repository"
+
+    output_=$(HOME=$test_home_ jb-git-status 'basename "$PWD"; echo x | tr x y')
+    [[ $output_ == "analytics/"$'\n'"analytics"$'\n'"y"$'\n'* ]] ||
+        fail "jb-git-status runs a compound payload in each repository"
+
+    rm -rf "$test_home_"
+    unset -f clear glt
+}
+
 test_seconds_interval
 test_seconds_default_interval
 test_minutes_interval
 test_minutes_default_interval
 test_invalid_intervals
 test_research_directory_helpers
+test_jb_git_status
 
 if (( failures_ > 0 )); then
     exit 1

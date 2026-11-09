@@ -320,6 +320,25 @@ ssh-jelly() {
     fi
 }
 
+# Run a command in each active Jellybooks repository, like watch:
+#   jb-git-status 'glt -1; echo; gh pr list'
+# Eval (rather than "$@") lets the payload use ;, pipes, functions and aliases.
+jb-git-status() {
+    local payload_="${*:-glt -1}"
+    local repo_
+    clear
+    for repo_ in analytics candy-wrapper discovery_ingest jellybooks-ng \
+                 production streamer-js-web webpub-viewer; do
+        (
+            cd "${HOME}/src/jellybooks/${repo_}" || exit
+            echo "${repo_}/"
+            eval "$payload_"
+            echo
+            separator
+        )
+    done
+}
+
 ssl-status() {
     name="$1"
     echo | openssl s_client -servername "$name" -connect "$name":443 2>/dev/null | openssl x509 -noout -dates
