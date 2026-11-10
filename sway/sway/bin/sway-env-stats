@@ -157,8 +157,14 @@ SERIES_BASE=$HOME/data/hosts/$(hostname -s)/disk-
 TEMPERATURE_SERIES_DIR=$HOME/data/hosts/$(hostname -s)
 TEMPERATURE_STATUS=$HOME/.temperature-status
 record_frequency_minutes=11
+# Ookla rejects runs it considers too frequent ("Limit reached: Too many
+# requests") without saying what the limit is, and counts every host on
+# the same connection together.  Hourly seems to stay under it.
+speedtest_frequency_minutes=60
+last_speedtest=0
 # time_delta=$(( $record_frequency_minutes * 60 ))
 log_line "Log frequency = $record_frequency_minutes minutes."
+log_line "Speedtest frequency = $speedtest_frequency_minutes minutes."
 # Temperature collection is cheap and gives swaybar useful data immediately.
 record_temperatures "$TEMPERATURE_SERIES_DIR" "$TEMPERATURE_STATUS"
 # First recording should not be immediate.  On session start, we may
@@ -168,13 +174,16 @@ nap 300
 while true; do
     log_line Recording
     record_disk_usage $SERIES_BASE
-    speedtest
-    # I'd like to monitor connectivity more frequently than I run
-    # speedtest, as it's a lighter test.  So rather than sleeping for
+    now=$(date +%s)
+    if (( now - last_speedtest >= speedtest_frequency_minutes * 60 )); then
+	speedtest
+	last_speedtest=$now
+    fi
+    # I'd like to monitor connectivity more frequently than I record
+    # disk usage, as it's a lighter test.  So rather than sleeping for
     #     $(( $record_frequency_minutes * 60 + $RANDOM / 3277 ))
     # I loop and call up-monitor about once a minute.  The end result
-    # is sleeping about $record_frequency_minutes between calls to
-    # speedtest.
+    # is sleeping about $record_frequency_minutes between recordings.
     loop_index=$record_frequency_minutes
     while [[ $loop_index -gt 0 ]]; do
 	up-monitor
