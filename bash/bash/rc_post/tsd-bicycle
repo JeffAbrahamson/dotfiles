@@ -26,12 +26,12 @@ _tsd_bicycle() {
         cword=$COMP_CWORD
     }
 
-    local commands="year bike plot-bike plot-cumulative plot-density"
+    local commands="year to-date bike plot-bike plot-cumulative plot-density"
     local subcommand=""
     local i
     for (( i=1; i<cword; i++ )); do
         case "${words[$i]}" in
-            year|bike|plot-bike|plot-cumulative|plot-density)
+            year|to-date|bike|plot-bike|plot-cumulative|plot-density)
                 subcommand="${words[$i]}"
                 break
                 ;;
@@ -39,6 +39,15 @@ _tsd_bicycle() {
     done
 
     case "$subcommand" in
+        to-date)
+            case "$prev" in
+                --date)
+                    return 0
+                    ;;
+            esac
+            COMPREPLY=( $(compgen -W "--date" -- "$cur") )
+            return 0
+            ;;
         plot-cumulative)
             case "$prev" in
                 --comparison-year)
