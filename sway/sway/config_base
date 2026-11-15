@@ -42,8 +42,10 @@ exec --no-startup-id sway-env-stats
 exec --no-startup-id sway-power-monitor daemon
 exec --no-startup-id sway-network-status
 # Started from here rather than by systemd so that it gets the session's
-# PATH and SSH agent.  ec and emf open frames from it.
-exec --no-startup-id emacs --daemon
+# PATH and SSH agent.  ec and emf open frames from it.  Drop the startup
+# token sway gives everything it execs: otherwise every frame carries it
+# and sway puts each one on the workspace that was current at login.
+exec --no-startup-id env -u DESKTOP_STARTUP_ID -u XDG_ACTIVATION_TOKEN emacs --daemon
 
 # Cf. https://wiki.archlinux.org/title/Sway (3.5: Input Devices)
 input type:touchpad {

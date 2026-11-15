@@ -50,8 +50,13 @@ mcm() { make clean; make; }
 # A new frame from the Emacs daemon, on the given files or else on the
 # current directory.  Starts the daemon if it isn't running.  Run emacs
 # directly for an instance that uses this shell's environment (a venv,
-# say): the daemon keeps the environment it started with.
-ec() { emacsclient -c -n -a '' "${@:-.}"; }
+# say): the daemon keeps the environment it started with.  The shell's
+# startup token is stale; a daemon started here would stamp it on every
+# frame, and sway would send them all to the workspace it names.
+ec() {
+    env -u DESKTOP_STARTUP_ID -u XDG_ACTIVATION_TOKEN \
+        emacsclient -c -n -a '' "${@:-.}"
+}
 
 if [ -f $HOME/.dotfiles/bash/rsync ]; then
    . $HOME/.dotfiles/bash/rsync

@@ -49,7 +49,8 @@ emf() {
     local one_less=$((${num} - 1))
     # Frames come from the Emacs daemon (started by the sway config, or
     # here if it isn't running) and open dired on the current directory.
-    emacsclient -c -n -a '' --eval "(progn
+    env -u DESKTOP_STARTUP_ID -u XDG_ACTIVATION_TOKEN \
+        emacsclient -c -n -a '' --eval "(progn
       (dired default-directory)
       (shell-command \"swaymsg -q move left\")
       (dotimes (_ ${one_less})
