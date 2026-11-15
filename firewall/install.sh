@@ -38,9 +38,12 @@ elif [ "$ufw_enable_status" -ne 0 ]; then
 fi
 
 if [ "$hostname_short" = siegfried ]; then
-    ## For pi-hole:
-    sudo ufw allow 80/tcp
+    ## For pi-hole: DNS falls back to TCP for large responses, and the
+    ## v6 built-in web server serves the admin UI on both 80 and 443.
     sudo ufw allow 53/udp
+    sudo ufw allow 53/tcp
+    sudo ufw allow 80/tcp
+    sudo ufw allow 443/tcp
     ## For the CUPS print server:
     sudo ufw allow 631/tcp
 fi
