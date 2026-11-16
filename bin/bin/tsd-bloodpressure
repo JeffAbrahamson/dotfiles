@@ -5,10 +5,14 @@ Reads $TSD_DIR/{bloodpressure-cuff-systolic,bloodpressure-cuff-diastolic,
 bloodpressure-cuff-heartbeat} and plots two panels with a shared x-axis:
 
   Top panel   : barbell lines from diastolic to systolic per reading,
-                monthly-median trend lines, shaded normal-range band
-  Bottom panel: heart rate scatter + monthly-median trend line
+                trend lines, shaded normal-range band
+  Bottom panel: heart rate scatter + trend line
+
+The trend is either the median of each DAYS-day bin (default: 30) or a
+time-aware exponentially weighted moving average.
 """
 
+import argparse
 import os
 import sys
 from pathlib import Path
@@ -54,22 +58,49 @@ def load_tsd(tsd_dir: Path, name: str) -> pd.DataFrame:
     return df
 
 
-def monthly_median(df: pd.DataFrame) -> pd.DataFrame:
-    """Resample to one median value per non-empty calendar month."""
-    return (
+def binned_median(df: pd.DataFrame, days: float) -> pd.DataFrame:
+    """Resample to one median value per non-empty bin of `days` days."""
+    width = pd.Timedelta(days=days)
+    med = (
         df.set_index("date")["value"]
-        .resample("M")
+        .resample(width)
         .median()
         .dropna()
         .reset_index()
-        .rename(columns={"date": "date", "value": "value"})
     )
+    # resample labels each bin by its start; plot it mid-bin instead.
+    med["date"] += width / 2
+    return med
+
+
+def ewma(df: pd.DataFrame, halflife: float) -> pd.DataFrame:
+    """Exponentially weighted moving average with a half-life in days.
+
+    Weighting by time rather than by reading count keeps sparse periods
+    from dragging the trend as far as dense ones.
+    """
+    values = df["value"].ewm(
+        halflife=pd.Timedelta(days=halflife), times=df["date"]
+    )
+    return pd.DataFrame({"date": df["date"], "value": values.mean()})
+
+
+def trend(df: pd.DataFrame, args: argparse.Namespace) -> pd.DataFrame:
+    if args.ewma is not None:
+        return ewma(df, args.ewma)
+    return binned_median(df, args.median)
+
+
+def trend_label(args: argparse.Namespace) -> str:
+    if args.ewma is not None:
+        return f"EWMA, half-life {args.ewma:g} d"
+    return f"{args.median:g}-day median"
 
 
 # ── Plot ─────────────────────────────────────────────────────────────────────
 
 
-def plot(tsd_dir: Path) -> None:
+def plot(tsd_dir: Path, args: argparse.Namespace) -> None:
     sys_df = load_tsd(tsd_dir, "bloodpressure-cuff-systolic")
     dia_df = load_tsd(tsd_dir, "bloodpressure-cuff-diastolic")
     hr_df = load_tsd(tsd_dir, "bloodpressure-cuff-heartbeat")
@@ -128,16 +159,17 @@ def plot(tsd_dir: Path) -> None:
         label="Diastolic",
     )
 
-    # Monthly-median trend lines.
-    sys_med = monthly_median(sys_df)
-    dia_med = monthly_median(dia_df)
+    # Trend lines.
+    label = trend_label(args)
+    sys_med = trend(sys_df, args)
+    dia_med = trend(dia_df, args)
     ax_bp.plot(
         sys_med["date"],
         sys_med["value"],
         color="darkred",
         lw=1.8,
         zorder=3,
-        label="Systolic (monthly median)",
+        label=f"Systolic ({label})",
     )
     ax_bp.plot(
         dia_med["date"],
@@ -145,7 +177,7 @@ def plot(tsd_dir: Path) -> None:
         color="navy",
         lw=1.8,
         zorder=3,
-        label="Diastolic (monthly median)",
+        label=f"Diastolic ({label})",
     )
 
     ax_bp.set_ylabel("mmHg")
@@ -162,13 +194,13 @@ def plot(tsd_dir: Path) -> None:
         alpha=0.6,
         label="Heart rate",
     )
-    hr_med = monthly_median(hr_df)
+    hr_med = trend(hr_df, args)
     ax_hr.plot(
         hr_med["date"],
         hr_med["value"],
         color="darkgreen",
         lw=1.8,
-        label="Heart rate (monthly median)",
+        label=f"Heart rate ({label})",
     )
 
     ax_hr.set_ylabel("bpm")
@@ -186,8 +218,60 @@ def plot(tsd_dir: Path) -> None:
     plt.show()
 
 
+# ── CLI ──────────────────────────────────────────────────────────────────────
+
+
+def positive_float(text: str) -> float:
+    try:
+        value = float(text)
+    except ValueError:
+        value = 0.0
+    if not value > 0:
+        raise argparse.ArgumentTypeError(
+            f"invalid value {text!r}: must be a positive number"
+        )
+    return value
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        prog="tsd-bloodpressure",
+        description=(
+            "Plot blood pressure and heart rate from tsd files, with a"
+            " trend line through each series."
+        ),
+        epilog=(
+            "Data is read from $TSD_DIR, ~/tsd, ~/common/data/tsd or"
+            " ~/data/tsd, whichever exists first."
+        ),
+    )
+    smoothing = parser.add_mutually_exclusive_group()
+    smoothing.add_argument(
+        "--median",
+        type=positive_float,
+        nargs="?",
+        const=30.0,
+        default=30.0,
+        metavar="DAYS",
+        help="Trend is the median of each DAYS-day bin (default: 30)",
+    )
+    smoothing.add_argument(
+        "--ewma",
+        type=positive_float,
+        nargs="?",
+        const=14.0,
+        metavar="HALFLIFE",
+        help=(
+            "Trend is an exponentially weighted moving average with a"
+            " half-life of HALFLIFE days (default: 14)"
+        ),
+    )
+    return parser.parse_args()
+
+
 # ── Entry point ──────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
+    args = parse_args()
     tsd_dir = find_tsd_dir()
-    plot(tsd_dir)
+    plot(tsd_dir, args)

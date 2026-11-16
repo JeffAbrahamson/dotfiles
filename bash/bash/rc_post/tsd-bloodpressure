@@ -1,0 +1,30 @@
+# Bash completion for tsd-bloodpressure.
+
+_tsd_bloodpressure() {
+    local cur prev words cword
+    _init_completion 2>/dev/null || {
+        COMPREPLY=()
+        cur="${COMP_WORDS[COMP_CWORD]}"
+        prev="${COMP_WORDS[COMP_CWORD-1]}"
+        words=("${COMP_WORDS[@]}")
+        cword=$COMP_CWORD
+    }
+
+    case "$prev" in
+        --median|--ewma)
+            # The number is optional, so offer nothing until one is begun.
+            [[ "$cur" == -* ]] || return 0
+            ;;
+    esac
+
+    # --median and --ewma are mutually exclusive.
+    local opts="--help --median --ewma" i
+    for (( i=1; i<cword; i++ )); do
+        case "${words[$i]}" in
+            --median|--ewma) opts="--help"; break ;;
+        esac
+    done
+    COMPREPLY=( $(compgen -W "$opts" -- "$cur") )
+}
+
+complete -F _tsd_bloodpressure tsd-bloodpressure
