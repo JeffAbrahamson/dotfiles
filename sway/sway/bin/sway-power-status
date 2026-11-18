@@ -25,7 +25,7 @@ for battery in $batteries; do
     percent=$(upower -i $battery | grep percent | awk -F: '{print $2}' | tr -d ' \t')
     if [ "X$1" = Xns ]; then
 	# Include the time, because often I use this in full-screen
-	# mode precisely because I can't see the i3 bar.
+	# mode precisely because I can't see swaybar.
 	date_string=$(date "+%Y-%m-%d \t  %R \t %z   %Z   (%A)")
 	notify-send "$state ($delay, $percent)" "$(echo; echo $date_string)"
     else

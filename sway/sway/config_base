@@ -1,7 +1,3 @@
-# i3 config file (v4)
-#
-# Please see http://i3wm.org/docs/userguide.html for a complete reference!
-
 ### Variables
 #
 set $mod Mod1
@@ -22,13 +18,6 @@ for_window [shell="xwayland"] title_format "[XWayland] %title"
 # text rendering and scalability on retina/hidpi displays (thanks to pango).
 # font pango:DejaVu Sans Mono 8
 font pango:DejaVu Sans Mono {% window_title_font_size %}
-
-# Before i3 v4.8, we used to recommend this one as the default:
-# font -misc-fixed-medium-r-normal--13-120-75-75-C-70-iso10646-1
-# The font above is very space-efficient, that is, it looks good, sharp and
-# clear in small sizes. However, its unicode glyph coverage is limited, the old
-# X core fonts rendering does not support right-to-left and this being a bitmap
-# font, it doesn’t scale on retina/hidpi displays.
 
 focus_on_window_activation urgent
 
@@ -67,7 +56,6 @@ input 1:1:AT_Translated_Set_2_keyboard {
     xkb_options "fnmode:2"
 }
 
-# bindsym $mod+Control+L exec i3lock --dpms --inactivity-timeout 10 --color=220022
 bindsym $mod+Control+L exec swaylock
 # This will be ignored on hosts that don't support it.
 # E.g., it's only meant for desktop use.
@@ -249,10 +237,10 @@ mode "$shutdown_mode" {
     bindsym Escape     mode default
 }
 
-# Start swaybar to display a workspace bar (plus the system information i3status
-# finds out, if available)
+# Start swaybar to display a workspace bar, plus the system information that
+# sway-status gets from i3status.
 bar {
-    status_command sway-status ~/.config/sway/i3status.conf
+    status_command sway-status ~/.config/sway/sway-status.conf
 
     font pango:DejaVu Sans Mono {% bar_font_size %}
     colors {
