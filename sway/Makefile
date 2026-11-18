@@ -87,11 +87,17 @@ install:
 test:
 	@runtime_dir="$$(mktemp -d)"
 	trap 'rm -rf "$$runtime_dir"' EXIT
+	# The wallpaper command fails to parse when it finds no image, so point
+	# it at a placeholder; ~/.desktop-images doesn't exist in CI.
+	images_dir="$$runtime_dir/desktop-images"
+	mkdir "$$images_dir"
+	touch "$$images_dir/placeholder.png"
 	for host_config in sway/config.*; do
 	    case "$$host_config" in *~) continue ;; esac
 	    test_config="$$runtime_dir/config"
 	    cat sway/config_base "$$host_config" \
 	        | sed -e 's/{% window_title_font_size %}/8.0/; s/{% bar_font_size %}/9/;' \
+	              -e "s|/home/jeff/\.desktop-images|$$images_dir|g" \
 	        > "$$test_config"
 	    if ! output="$$(env -u WAYLAND_DISPLAY -u DISPLAY \
 	            WLR_BACKENDS=headless WLR_RENDERER=pixman WLR_LIBINPUT_NO_DEVICES=1 \
