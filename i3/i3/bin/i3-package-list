@@ -1,4 +1,5 @@
 #!/bin/bash
+echo "$0" >> "$HOME/.i3-utilities-post-2026-11.txt"
 
 . $HOME/bin/p27.sh
 log_to_file i3-package-list

@@ -1,4 +1,5 @@
 #!/bin/bash
+echo "$0" >> "$HOME/.i3-utilities-post-2026-11.txt"
 
 PATH=/usr/bin:/bin:$HOME/bin
 

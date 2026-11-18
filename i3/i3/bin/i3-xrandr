@@ -1,4 +1,5 @@
 #!/bin/bash
+echo "$0" >> "$HOME/.i3-utilities-post-2026-11.txt"
 for output in $(xrandr | grep '\Wconnected' | awk '{ print $1 }'); do
     if [[ ! $output =~ ^LVDS.*$ ]]; then
 	other=$output

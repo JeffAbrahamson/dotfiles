@@ -1,4 +1,5 @@
 #!/bin/bash
+echo "$0" >> "$HOME/.i3-utilities-post-2026-11.txt"
 
 i3-msg "append_layout $HOME/.i3/workspace-2.json"
 emacs --eval='(progn

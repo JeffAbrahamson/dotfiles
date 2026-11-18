@@ -1,4 +1,5 @@
 #!/bin/bash
+echo "$0" >> "$HOME/.i3-utilities-post-2026-11.txt"
 
 # I generally want two xload processes running on my desktop.  One I
 # start with i3-restore-2b.  The other I start here after I've added

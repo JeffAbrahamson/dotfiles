@@ -1,4 +1,5 @@
 #!/bin/bash
+echo "$0" >> "$HOME/.i3-utilities-post-2026-11.txt"
 
 # Show battery status.  If first argument is "ns", then use
 # notify-send instead of echo.
