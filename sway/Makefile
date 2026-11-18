@@ -81,15 +81,24 @@ install:
 	rsync -av --exclude 'README' --exclude 'README.*' bash/ "$$bash_dest/"
 	./install-system.sh
 
+# Validate every host's config, not just this host's, so CI covers them all.
+# sway -C still starts a backend; the headless one needs no display, and
+# unsetting WAYLAND_DISPLAY and DISPLAY stops it nesting in a live session.
 test:
 	@runtime_dir="$$(mktemp -d)"
 	trap 'rm -rf "$$runtime_dir"' EXIT
-	output="$$(XDG_RUNTIME_DIR="$$runtime_dir" sway -C -c sway/config 2>&1)" || {
-	    case "$$output" in
-	        *"Unable to create backend"*|*"Could not connect to remote display"*)
-	            echo "Skipping sway config validation: no display backend available."
-	            exit 0 ;;
-	    esac
-	    printf '%s\n' "$$output" >&2
-	    exit 1
-	}
+	for host_config in sway/config.*; do
+	    case "$$host_config" in *~) continue ;; esac
+	    test_config="$$runtime_dir/config"
+	    cat sway/config_base "$$host_config" \
+	        | sed -e 's/{% window_title_font_size %}/8.0/; s/{% bar_font_size %}/9/;' \
+	        > "$$test_config"
+	    if ! output="$$(env -u WAYLAND_DISPLAY -u DISPLAY \
+	            WLR_BACKENDS=headless WLR_RENDERER=pixman WLR_LIBINPUT_NO_DEVICES=1 \
+	            XDG_RUNTIME_DIR="$$runtime_dir" sway -C -c "$$test_config" 2>&1)"; then
+	        echo "sway config invalid for $$host_config:" >&2
+	        printf '%s\n' "$$output" | grep -F '[ERROR]' >&2 || printf '%s\n' "$$output" >&2
+	        exit 1
+	    fi
+	done
+	echo "sway configs valid."
