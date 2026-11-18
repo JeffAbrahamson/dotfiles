@@ -15,13 +15,16 @@ _tsd_bloodpressure() {
             # The number is optional, so offer nothing until one is begun.
             [[ "$cur" == -* ]] || return 0
             ;;
+        --density-days)
+            return 0
+            ;;
     esac
 
     # --median and --ewma are mutually exclusive.
-    local opts="--help --median --ewma" i
+    local opts="--help --median --ewma --density-days" i
     for (( i=1; i<cword; i++ )); do
         case "${words[$i]}" in
-            --median|--ewma) opts="--help"; break ;;
+            --median|--ewma) opts="${opts/ --median --ewma/}" ;;
         esac
     done
     COMPREPLY=( $(compgen -W "$opts" -- "$cur") )

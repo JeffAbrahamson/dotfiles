@@ -2,14 +2,17 @@
 """tsd-bloodpressure — Blood pressure time series visualiser.
 
 Reads $TSD_DIR/{bloodpressure-cuff-systolic,bloodpressure-cuff-diastolic,
-bloodpressure-cuff-heartbeat} and plots two panels with a shared x-axis:
+bloodpressure-cuff-heartbeat} and plots three panels with a shared x-axis:
 
   Top panel   : barbell lines from diastolic to systolic per reading,
                 trend lines, shaded normal-range band
-  Bottom panel: heart rate scatter + trend line
+  Middle panel: heart rate scatter + trend line
+  Bottom strip: readings per week (a Gaussian density estimate) and a
+                rug of reading dates
 
 The trend is either the median of each DAYS-day bin (default: 30) or a
-time-aware exponentially weighted moving average.
+time-aware exponentially weighted moving average; the EWMA is drawn with
+a lighter, faster-responding one alongside it.
 """
 
 import argparse
@@ -19,7 +22,14 @@ from pathlib import Path
 
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
+
+# Half-life in days of the lighter EWMA drawn beside the main --ewma trend.
+LIGHT_EWMA_HALFLIFE = 20.0
+
+# Share of the density strip's height reserved for the reading rug.
+DENSITY_RUG_FRACTION = 0.3
 
 # ── TSD directory discovery ──────────────────────────────────────────────────
 
@@ -97,6 +107,92 @@ def trend_label(args: argparse.Namespace) -> str:
     return f"{args.median:g}-day median"
 
 
+def plot_trends(
+    ax: plt.Axes,
+    df: pd.DataFrame,
+    args: argparse.Namespace,
+    colour: str,
+    name: str,
+) -> None:
+    """Draw the main trend and, for EWMA, a lighter faster one."""
+    main = trend(df, args)
+    ax.plot(
+        main["date"],
+        main["value"],
+        color=colour,
+        lw=1.8,
+        zorder=3,
+        label=f"{name} ({trend_label(args)})",
+    )
+    if args.ewma is None or args.ewma == LIGHT_EWMA_HALFLIFE:
+        return
+    light = ewma(df, LIGHT_EWMA_HALFLIFE)
+    ax.plot(
+        light["date"],
+        light["value"],
+        color=colour,
+        lw=1.2,
+        alpha=0.45,
+        zorder=3,
+        label=f"{name} (EWMA, half-life {LIGHT_EWMA_HALFLIFE:g} d)",
+    )
+
+
+def reading_density(
+    dates: pd.Series, sigma_days: float
+) -> tuple[pd.DatetimeIndex, np.ndarray]:
+    """Estimate readings per week with a Gaussian kernel on a daily grid.
+
+    Near the first and last readings the kernel is renormalised over the
+    days in between, so a steady rate does not appear to tail off at the
+    ends of the record. This mirrors tsd-plot's density strip.
+    """
+    days = dates.dt.normalize()
+    first, last = days.min(), days.max()
+    grid = pd.date_range(first, last, freq="D")
+    counts = days.value_counts().reindex(grid, fill_value=0).to_numpy(float)
+    # Offsets beyond the grid never contribute, so cap the kernel there.
+    radius = min(max(1, round(4 * sigma_days)), len(grid))
+    offsets = np.arange(-radius, radius + 1, dtype=float)
+    kernel = np.exp(-0.5 * (offsets / sigma_days) ** 2)
+    # "full" then slicing keeps the grid's length even when the kernel is
+    # longer than the grid, which "same" would not.
+    window = slice(radius, radius + len(grid))
+    smoothed = np.convolve(counts, kernel, mode="full")[window]
+    support = np.convolve(np.ones(len(grid)), kernel, mode="full")[window]
+    return grid, 7.0 * smoothed / support
+
+
+def plot_density(ax: plt.Axes, dates: pd.Series, sigma_days: float) -> None:
+    """Draw the reading density curve with a rug of reading dates."""
+    colour = "slategray"
+    grid, rates = reading_density(dates, sigma_days)
+    ax.fill_between(grid, rates, color=colour, alpha=0.25, linewidth=0)
+    ax.plot(
+        grid,
+        rates,
+        color=colour,
+        lw=1.2,
+        label=f"Readings ({sigma_days:g} day bandwidth)",
+    )
+    # The rug sits in a band below zero so its ticks never hide the curve.
+    ax.vlines(
+        dates,
+        0.1 * DENSITY_RUG_FRACTION,
+        0.9 * DENSITY_RUG_FRACTION,
+        transform=ax.get_xaxis_transform(),
+        color=colour,
+        lw=0.8,
+    )
+    peak = rates.max()
+    top = peak * 1.1 if peak > 0 else 1.0
+    ticks = plt.MaxNLocator(nbins=3).tick_values(0, top)
+    ax.set_yticks([tick for tick in ticks if 0 <= tick <= top])
+    ax.set_ylim(-top * DENSITY_RUG_FRACTION / (1 - DENSITY_RUG_FRACTION), top)
+    ax.set_ylabel("Readings/week")
+    ax.legend(fontsize=8, loc="upper left")
+
+
 # ── Plot ─────────────────────────────────────────────────────────────────────
 
 
@@ -113,12 +209,12 @@ def plot(tsd_dir: Path, args: argparse.Namespace) -> None:
         how="inner",
     )
 
-    fig, (ax_bp, ax_hr) = plt.subplots(
-        2,
+    fig, (ax_bp, ax_hr, ax_density) = plt.subplots(
+        3,
         1,
-        figsize=(14, 8),
+        figsize=(14, 9),
         sharex=True,
-        gridspec_kw={"height_ratios": [2, 1]},
+        gridspec_kw={"height_ratios": [2, 1, 0.6]},
     )
     fig.suptitle("Blood pressure & heart rate", fontsize=13)
 
@@ -159,26 +255,8 @@ def plot(tsd_dir: Path, args: argparse.Namespace) -> None:
         label="Diastolic",
     )
 
-    # Trend lines.
-    label = trend_label(args)
-    sys_med = trend(sys_df, args)
-    dia_med = trend(dia_df, args)
-    ax_bp.plot(
-        sys_med["date"],
-        sys_med["value"],
-        color="darkred",
-        lw=1.8,
-        zorder=3,
-        label=f"Systolic ({label})",
-    )
-    ax_bp.plot(
-        dia_med["date"],
-        dia_med["value"],
-        color="navy",
-        lw=1.8,
-        zorder=3,
-        label=f"Diastolic ({label})",
-    )
+    plot_trends(ax_bp, sys_df, args, "darkred", "Systolic")
+    plot_trends(ax_bp, dia_df, args, "navy", "Diastolic")
 
     ax_bp.set_ylabel("mmHg")
     ax_bp.set_title("Blood pressure")
@@ -194,24 +272,21 @@ def plot(tsd_dir: Path, args: argparse.Namespace) -> None:
         alpha=0.6,
         label="Heart rate",
     )
-    hr_med = trend(hr_df, args)
-    ax_hr.plot(
-        hr_med["date"],
-        hr_med["value"],
-        color="darkgreen",
-        lw=1.8,
-        label=f"Heart rate ({label})",
-    )
+    plot_trends(ax_hr, hr_df, args, "darkgreen", "Heart rate")
 
     ax_hr.set_ylabel("bpm")
     ax_hr.set_title("Heart rate")
     ax_hr.legend(fontsize=8, loc="upper left")
 
+    # ── Bottom strip: reading density ────────────────────────────────────────
+
+    plot_density(ax_density, bp["date"], args.density_days)
+
     # ── Shared x-axis formatting ─────────────────────────────────────────────
 
-    ax_hr.xaxis.set_major_locator(mdates.YearLocator())
-    ax_hr.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
-    for ax in (ax_bp, ax_hr):
+    ax_density.xaxis.set_major_locator(mdates.YearLocator())
+    ax_density.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
+    for ax in (ax_bp, ax_hr, ax_density):
         plt.setp(ax.xaxis.get_majorticklabels(), visible=True)
 
     fig.tight_layout()
@@ -259,11 +334,22 @@ def parse_args() -> argparse.Namespace:
         "--ewma",
         type=positive_float,
         nargs="?",
-        const=14.0,
+        const=60.0,
         metavar="HALFLIFE",
         help=(
             "Trend is an exponentially weighted moving average with a"
-            " half-life of HALFLIFE days (default: 14)"
+            " half-life of HALFLIFE days (default: 60), drawn with a"
+            f" lighter {LIGHT_EWMA_HALFLIFE:g}-day one alongside it"
+        ),
+    )
+    parser.add_argument(
+        "--density-days",
+        type=positive_float,
+        default=15.0,
+        metavar="DAYS",
+        help=(
+            "Gaussian bandwidth in days for the reading-density strip"
+            " (default: 15)"
         ),
     )
     return parser.parse_args()
