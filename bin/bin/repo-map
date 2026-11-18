@@ -157,152 +157,168 @@ def suggested_command(root, relative_path, *command):
     return " && ".join(parts)
 
 
+def short_time(manifest):
+    """Return a manifest's generation time to the minute, for headers."""
+    return str(manifest.get("generated_at", "unknown age"))[:16]
+
+
+def host_list(hosts):
+    return ", ".join(hosts)
+
+
+def print_group(title, rows):
+    """Print one line per repository, aligning the host column."""
+    if not rows:
+        return
+    print("\n{} ({}):".format(title, len(rows)))
+    rows = sorted(rows)
+    width = min(max(len(name) for name, _detail in rows), 60)
+    for name, detail in rows:
+        print("  {}  {}".format(name.ljust(width), detail))
+
+
 def reconcile(args):
     current = scan(args)
-    directory = args.manifest_dir.expanduser()
-    manifests = load_manifests(directory)
+    root = args.src_dir.expanduser()
+    manifests = load_manifests(args.manifest_dir.expanduser())
     # Prefer the just-written copy if a malformed or stale duplicate host file
     # was present under a different filename.
     by_host = {manifest["host"]: manifest for manifest in manifests}
     by_host[current["host"]] = current
-    manifests = [by_host[name] for name in sorted(by_host)]
-    total_hosts = len(manifests)
-    if total_hosts < 2:
+    others = [
+        by_host[name] for name in sorted(by_host) if name != current["host"]
+    ]
+    if not others:
         print("Only one host manifest is available; scan other hosts first.")
         return current
 
-    for manifest in manifests:
-        generated = manifest.get("generated_at", "unknown age")
-        print(
-            "Host {} (manifest generated {})".format(
-                manifest["host"], generated
-            )
+    # "Majority" means a strict majority of the other hosts, so that the
+    # comparison is useful with two hosts as well as with many.
+    print(
+        "Comparing {} with {} other host(s): {}".format(
+            current["host"],
+            len(others),
+            ", ".join(
+                "{} ({})".format(m["host"], short_time(m)) for m in others
+            ),
         )
+    )
 
-    local_repositories = current["repositories"]
+    local_paths = {entry["path"]: entry for entry in current["repositories"]}
     local_by_origin = defaultdict(list)
-    local_paths = {entry["path"]: entry for entry in local_repositories}
-    for entry in local_repositories:
+    for entry in current["repositories"]:
         if entry.get("origin"):
             local_by_origin[entry["origin"]].append(entry["path"])
+    unlinked = len(current["repositories"]) - sum(
+        len(paths) for paths in local_by_origin.values()
+    )
 
-    appearances = defaultdict(list)
-    for manifest in manifests:
+    elsewhere = defaultdict(list)
+    for manifest in others:
         per_host = defaultdict(list)
         for entry in manifest["repositories"]:
-            origin = entry.get("origin")
-            if origin:
-                per_host[origin].append(entry.get("path", ""))
+            if entry.get("origin"):
+                per_host[entry["origin"]].append(entry["path"])
         for origin, paths in per_host.items():
-            appearances[origin].append((manifest["host"], paths))
+            elsewhere[origin].append((manifest["host"], paths))
 
-    proposals = 0
-    print(
-        "\nRepository comparison ({} hosts; strict majority requires "
-        "more than {}).".format(total_hosts, total_hosts / 2)
-    )
-    for origin in sorted(appearances):
-        host_entries = appearances[origin]
-        present_hosts = len(host_entries)
-        local_paths_for_origin = local_by_origin.get(origin, [])
-        label = origin
-        if any(len(paths) > 1 for _host, paths in host_entries):
-            print(
-                "\n{}: duplicate checkouts found; path consensus may be "
-                "ambiguous".format(label)
-            )
-        host_votes = Counter(
-            paths[0] for _host, paths in host_entries if len(paths) == 1
+    majority = len(others) / 2
+    only_here, missing, moved, attention = [], [], [], []
+    clones, moves = [], []
+    in_place = minority = 0
+    for origin in sorted(set(local_by_origin) | set(elsewhere)):
+        here = local_by_origin.get(origin, [])
+        there = elsewhere.get(origin, [])
+        hosts = [host for host, _paths in there]
+        votes = Counter(paths[0] for _host, paths in there if len(paths) == 1)
+        winner = next(
+            (path for path, n in votes.items() if n > len(there) / 2), None
         )
-        path_winner = next(
-            (
-                path
-                for path, votes in host_votes.items()
-                if votes > present_hosts / 2
-            ),
-            None,
+        locations = ", ".join(
+            "{}:{}".format(host, "|".join(paths)) for host, paths in there
         )
-        if present_hosts <= total_hosts / 2:
-            print(
-                "\n{}: present on {}/{} hosts (no strict majority)".format(
-                    label, present_hosts, total_hosts
+
+        if here and len(there) <= majority:
+            only_here.append(
+                (
+                    " | ".join(here),
+                    "also on " + host_list(hosts) if hosts else "only here",
                 )
             )
-            continue
-        print(
-            "\n{}: present on {}/{} hosts".format(
-                label, present_hosts, total_hosts
-            )
-        )
-        if path_winner is None:
-            print(
-                "  No strict-majority path; locations: {}".format(
-                    ", ".join(
-                        "{}:{}".format(host, "/".join(paths))
-                        for host, paths in host_entries
-                    )
+        elif not here and len(there) > majority:
+            if winner is None:
+                attention.append(
+                    (origin, "missing here; paths differ: " + locations)
                 )
-            )
-            continue
-        if len(local_paths_for_origin) > 1:
-            print(
-                "  Local duplicate checkouts; resolve manually: {}".format(
-                    ", ".join(local_paths_for_origin)
-                )
-            )
-            continue
-        if local_paths_for_origin:
-            source = local_paths_for_origin[0]
-            if source == path_winner:
-                print("  In place at {}".format(source))
-            else:
-                problem = destination_problem(
-                    args.src_dir.expanduser(), path_winner, local_paths
-                )
-                if problem:
-                    print(
-                        "  Cannot move {} to {}: {}".format(
-                            source, path_winner, problem
-                        )
-                    )
-                else:
-                    print(
-                        "  Suggested move: {}".format(
-                            suggested_command(
-                                args.src_dir.expanduser(),
-                                path_winner,
-                                "mv",
-                                "--",
-                                args.src_dir.expanduser() / source,
-                                args.src_dir.expanduser() / path_winner,
-                            )
-                        )
-                    )
-                    proposals += 1
-        else:
-            problem = destination_problem(
-                args.src_dir.expanduser(), path_winner, local_paths
-            )
+                continue
+            problem = destination_problem(root, winner, local_paths)
             if problem:
-                print("  Cannot clone to {}: {}".format(path_winner, problem))
-            else:
-                print(
-                    "  Suggested clone: {}".format(
-                        suggested_command(
-                            args.src_dir.expanduser(),
-                            path_winner,
-                            "git",
-                            "clone",
-                            "--",
-                            origin,
-                            args.src_dir.expanduser() / path_winner,
-                        )
-                    )
+                attention.append(
+                    (winner, "missing here, cannot clone: " + problem)
                 )
-                proposals += 1
-    if not appearances:
-        print("No repositories with an origin were found in the manifests.")
-    print("\n{} command suggestion(s); none were executed.".format(proposals))
+                continue
+            missing.append((winner, "on " + host_list(hosts)))
+            clones.append(
+                (
+                    winner,
+                    suggested_command(
+                        root,
+                        winner,
+                        "git",
+                        "clone",
+                        "--",
+                        origin,
+                        root / winner,
+                    ),
+                )
+            )
+        elif not here:
+            minority += 1
+        elif len(here) > 1:
+            attention.append(
+                (
+                    " | ".join(here),
+                    "duplicate checkouts here; elsewhere: " + locations,
+                )
+            )
+        elif winner is None:
+            attention.append(
+                (here[0], "no majority path elsewhere: " + locations)
+            )
+        elif winner == here[0]:
+            in_place += 1
+        else:
+            name = "{} -> {}".format(here[0], winner)
+            agreeing = [host for host, paths in there if paths == [winner]]
+            problem = destination_problem(root, winner, local_paths)
+            if problem:
+                attention.append((name, "cannot move: " + problem))
+                continue
+            moved.append((name, "on " + host_list(agreeing)))
+            moves.append(
+                (
+                    here[0],
+                    suggested_command(
+                        root, winner, "mv", "--", root / here[0], root / winner
+                    ),
+                )
+            )
+
+    print_group("Here, missing on most other hosts", only_here)
+    print_group("Missing here, present on most other hosts", missing)
+    print_group("Here, at a different path from most other hosts", moved)
+    print_group("Needs attention", attention)
+    print(
+        "\nIn place: {}. Elsewhere on a minority of hosts: {}. "
+        "Here without an origin: {}.".format(in_place, minority, unlinked)
+    )
+    commands = sorted(clones) + sorted(moves)
+    if commands:
+        print("\nSuggested commands (not executed):")
+        for _path, command in commands:
+            print("  " + command)
+    else:
+        print("\nNo command suggestions.")
     return current
 
 

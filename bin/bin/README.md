@@ -74,9 +74,13 @@ worktrees are preserved.
 
 `repo-map scan` writes a JSON inventory of repositories under `~/src` to
 `~/data/repo-manifests/{hostname}.json`. `repo-map reconcile` refreshes the
-local inventory, compares all host manifests, and prints suggested `git clone`
-or `mv` commands only when a strict majority agrees. Suggestions are never
-executed; old manifests continue to count until removed.
+local inventory and compares it with the other hosts' manifests, printing one
+line per repository in three groups: present here but missing on most other
+hosts, missing here but present on most, and present here at a different path
+from most. "Most" means a strict majority of the other hosts. Ambiguous cases
+(duplicate checkouts, no majority path, occupied destinations) are listed
+separately, followed by suggested `git clone` and `mv` commands. Suggestions
+are never executed; old manifests continue to count until removed.
 
 `video-to-audio VIDEO [START [END]]` accepts times as seconds, `MM:SS`, or
 `HH:MM:SS`. It requires `ffmpeg` and `ffprobe`. The output extension follows

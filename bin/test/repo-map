@@ -13,6 +13,8 @@ mkdir -p "$src/old place"
 git init --quiet "$src/old place"
 git -C "$src/old place" remote add origin 'https://example.invalid/main.git'
 git init --quiet "$src/local only"
+git init --quiet "$src/only here"
+git -C "$src/only here" remote add origin 'https://example.invalid/only.git'
 
 "$program" --src-dir "$src" --manifest-dir "$manifests" --host alpha scan
 manifest="$manifests/alpha.json"
@@ -29,6 +31,7 @@ assert len(manifest["generated_at"]) > 10
 assert manifest["repositories"] == [
     {"path": "local only", "origin": None},
     {"path": "old place", "origin": "https://example.invalid/main.git"},
+    {"path": "only here", "origin": "https://example.invalid/only.git"},
 ]
 PY
 
@@ -62,13 +65,25 @@ write_host_manifest gamma 'preferred place' yes
 output="$test_dir/reconcile.txt"
 "$program" --src-dir "$src" --manifest-dir "$manifests" --host alpha \
     reconcile > "$output"
-grep -F 'present on 3/3 hosts' "$output" >/dev/null
-grep -F 'Suggested move:' "$output" >/dev/null
-grep -F "mv -- '$src/old place' '$src/preferred place'" "$output" >/dev/null
-grep -F 'Suggested clone:' "$output" >/dev/null
-grep -F 'git clone -- https://example.invalid/new.git' "$output" >/dev/null
-grep -F "mkdir -p -- '$src/new parent' &&" "$output" >/dev/null
-grep -F 'manifest generated 2020-01-01T00:00:00+00:00' "$output" >/dev/null
+expect()
+{
+    if ! grep -E "$1" "$output" >/dev/null; then
+        echo "repo-map: expected output matching: $1" >&2
+        cat "$output" >&2
+        exit 1
+    fi
+}
+
+expect '^Comparing alpha with 2 other host\(s\): beta \(2020-01-01T00:00\), gamma'
+expect '^Here, missing on most other hosts \(1\):$'
+expect '^  only here +only here$'
+expect '^Missing here, present on most other hosts \(1\):$'
+expect '^  new parent/new checkout +on beta, gamma$'
+expect '^Here, at a different path from most other hosts \(1\):$'
+expect '^  old place -> preferred place +on beta, gamma$'
+expect 'Here without an origin: 1\.'
+grep -F "  mv -- '$src/old place' '$src/preferred place'" "$output" >/dev/null
+grep -F "  mkdir -p -- '$src/new parent' && git clone -- https://example.invalid/new.git '$src/new parent/new checkout'" "$output" >/dev/null
 test -d "$src/old place"
 test ! -e "$src/preferred place"
 test ! -e "$src/new parent"
@@ -77,10 +92,7 @@ test ! -e "$src/new parent"
 mkdir "$src/preferred place"
 "$program" --src-dir "$src" --manifest-dir "$manifests" --host alpha \
     reconcile > "$output"
-if ! grep -F 'destination already exists' "$output" >/dev/null; then
-    cat "$output" >&2
-    exit 1
-fi
+expect '^  old place -> preferred place +cannot move: destination already exists$'
 rmdir "$src/preferred place"
 
 # Duplicate local checkouts are called out instead of choosing one to move.
@@ -88,15 +100,22 @@ git init --quiet "$src/duplicate place"
 git -C "$src/duplicate place" remote add origin 'https://example.invalid/main.git'
 "$program" --src-dir "$src" --manifest-dir "$manifests" --host alpha \
     reconcile > "$output"
-grep -F 'duplicate checkouts found' "$output" >/dev/null
-grep -F 'Local duplicate checkouts; resolve manually' "$output" >/dev/null
+expect '^  duplicate place \| old place +duplicate checkouts here; elsewhere: beta:preferred place, gamma:preferred place$'
+if grep -F 'mv --' "$output" >/dev/null; then
+    echo 'repo-map: proposed a move for duplicate local checkouts.' >&2
+    exit 1
+fi
+rm -rf "$src/duplicate place"
 
-# A 2-to-2 vote has no majority and must not produce either command.
+# A 2-to-2 vote elsewhere has no majority path and must not produce a move.
 write_host_manifest delta 'other place' no
+write_host_manifest epsilon 'yet another place' no
 "$program" --src-dir "$src" --manifest-dir "$manifests" --host alpha \
     reconcile > "$output"
-grep -F 'No strict-majority path' "$output" >/dev/null
-if grep -F 'Suggested move:' "$output" >/dev/null; then
+expect '^  old place +no majority path elsewhere: beta:preferred place, delta:other place'
+# The new repository is now on 2 of 4 other hosts, which is not a majority.
+expect 'Elsewhere on a minority of hosts: 1\.'
+if grep -F 'mv --' "$output" >/dev/null; then
     echo 'repo-map: proposed a move without a strict path majority.' >&2
     exit 1
 fi
