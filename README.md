@@ -62,7 +62,7 @@ The repo is broad enough now that it helps to navigate by area:
 * [git](git/README.md) for git configuration.
 * [i3](i3/README.md), [ratpoison](ratpoison/README.md), [notion](notion/README.md), and [sway](sway/README.md) for window-manager setups.
 * [irssi](irssi/README.md), [mutt](mutt/README.md), [screen](screen/README.md), and [tmux](tmux/README.md) for terminal communication and session tools.
-* [misc](misc/README.md), [readline](readline/README.md), [postgresql](postgresql/README.md), and [touchegg](touchegg/README.md) for smaller focused configs.
+* [misc](misc/README.md), [readline](readline/README.md), and [postgresql](postgresql/README.md) for smaller focused configs.
 * [python](python/README.md), [src](src/README.md), and [tests](tests/README.md) for the Python libraries, command implementations, and automated tests behind the more complex scripts.
 * [script](script/README.md) for repository maintenance helpers.
 
