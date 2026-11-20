@@ -111,7 +111,13 @@ Return non-nil when the load succeeds."
   (tool-bar-mode 0)
   (jma-safe-require 'iso-cvt)
 
-  ;;(set-default-font ("9x15"))
+  ;; Wayland-native (pgtk) Emacs ignores Xft.dpi, and sway reports no
+  ;; physical size for vogel's 4K monitors, so fonts come out at 96 dpi.
+  ;; Set the size here rather than through GTK's text-scaling-factor,
+  ;; which would enlarge every GTK app.  default-frame-alist also covers
+  ;; frames that emacsclient opens from the daemon.
+  (when (string= (car (split-string (system-name) "\\.")) "vogel")
+    (add-to-list 'default-frame-alist '(font . "Ubuntu Sans Mono-14")))
   (setq inhibit-startup-message t)
   (setq use-gtags nil)
   (setq-default show-trailing-whitespace t)
