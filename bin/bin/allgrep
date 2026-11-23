@@ -5,15 +5,27 @@ import os
 import re
 import subprocess
 import sys
-from collections import defaultdict
+
+SEE_ALSO = """\
+See also:
+  resgrep    run allgrep over every research directory (bash function)
+  resfind    list research directories (bash function)
+  rg(1)"""
 
 
-def parse_args():
+def parse_args(argv=None):
     parser = argparse.ArgumentParser(
         description=(
-            "Search files under the current directory, but only print matches "
-            "from files that contain every keyword."
-        )
+            "Search files under the current directory, or under each DIR, "
+            "and print matches only from files in which every keyword "
+            "occurs, either in the file's path or in its contents.  A file "
+            "whose keywords all occur only in its path, or that is binary, "
+            "is listed by name alone.  Emacs backup files (ending in ~) and "
+            "PDFs beside a Markdown file of the same name are skipped as "
+            "copies of other files."
+        ),
+        epilog=SEE_ALSO,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
         "-i",
@@ -22,21 +34,59 @@ def parse_args():
         help="match keywords case-insensitively",
     )
     parser.add_argument(
+        "-l",
+        "--files-with-matches",
+        action="store_true",
+        help="print only the names of matching files",
+    )
+    parser.add_argument(
+        "--dir",
+        action="append",
+        dest="dirs",
+        metavar="DIR",
+        help=(
+            "search under DIR instead of the current directory; may be "
+            "repeated, and a DIR inside another one is searched only once"
+        ),
+    )
+    parser.add_argument(
         "keywords",
         nargs="+",
         help=(
             "literal keywords that must all occur somewhere in each "
-            "result file"
+            "result file's path or contents"
         ),
     )
-    return parser.parse_args()
+    args = parser.parse_args(argv)
+    for directory in args.dirs or []:
+        if not os.path.isdir(directory):
+            parser.error(f"not a directory: {directory}")
+    return args
 
 
-def rg_files():
+def outermost_dirs(dirs):
+    """Drop any directory that lies within another.
+
+    Nested directories would otherwise have their files read twice.
+    """
+    kept = []
+    for directory in sorted(dirs, key=lambda d: len(os.path.realpath(d))):
+        real = os.path.realpath(directory)
+        if not any(
+            real == os.path.realpath(outer)
+            or real.startswith(os.path.realpath(outer).rstrip(os.sep) + os.sep)
+            for outer in kept
+        ):
+            kept.append(directory)
+    return kept
+
+
+def rg_files(root):
     try:
         result = subprocess.run(
             ["rg", "--files"],
             check=False,
+            cwd=root,
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
             text=True,
@@ -50,20 +100,43 @@ def rg_files():
     return [line for line in result.stdout.splitlines() if line]
 
 
-def find_files():
-    files = rg_files()
+def files_under(root):
+    """Return the paths of files under root, relative to root."""
+    files = rg_files(root)
     if files is not None:
         return files
 
     paths = []
-    for root, dirs, filenames in os.walk("."):
+    for walk_root, dirs, filenames in os.walk(root):
         dirs[:] = [name for name in dirs if name != ".git"]
         for filename in filenames:
-            path = os.path.join(root, filename)
-            if path.startswith("./"):
-                path = path[2:]
-            paths.append(path)
+            path = os.path.join(walk_root, filename)
+            paths.append(os.path.relpath(path, root))
     return sorted(paths)
+
+
+def is_copy(path):
+    """Report whether path only repeats another file's content.
+
+    A PDF beside a same-named Markdown file is taken to be generated from
+    it (by md2pdf, say); the Markdown is the one worth showing.
+    """
+    if path.endswith("~"):
+        return True
+    stem, extension = os.path.splitext(path)
+    return extension.lower() == ".pdf" and os.path.isfile(stem + ".md")
+
+
+def find_files(dirs=None):
+    if not dirs:
+        return files_under(".")
+
+    paths = []
+    for root in outermost_dirs(dirs):
+        prefix = os.path.normpath(root)
+        for path in files_under(root):
+            paths.append(path if prefix == "." else os.path.join(prefix, path))
+    return paths
 
 
 def read_text(path):
@@ -93,31 +166,37 @@ def matching_lines(keyword, text, ignore_case):
             yield number, line
 
 
-def main():
-    args = parse_args()
-    matches_by_file = defaultdict(list)
+def main(argv=None):
+    args = parse_args(argv)
+    matches_by_file = {}
 
-    for path in find_files():
-        text = read_text(path)
-        if text is None:
+    for path in find_files(args.dirs):
+        if is_copy(path):
             continue
-
+        text = read_text(path)
         if not all(
-            keyword_in_text(keyword, text, args.ignore_case)
+            keyword_in_text(keyword, path, args.ignore_case)
+            or (
+                text is not None
+                and keyword_in_text(keyword, text, args.ignore_case)
+            )
             for keyword in args.keywords
         ):
             continue
 
+        lines = matches_by_file[path] = []
+        if text is None or args.files_with_matches:
+            continue
         for keyword in args.keywords:
-            for line_number, line in matching_lines(
-                keyword, text, args.ignore_case
-            ):
-                matches_by_file[path].append((line_number, line))
+            lines.extend(matching_lines(keyword, text, args.ignore_case))
 
     if not matches_by_file:
         return 1
 
     for path in sorted(matches_by_file):
+        if not matches_by_file[path]:
+            print(path)
+            continue
         seen = set()
         for line_number, line in sorted(matches_by_file[path]):
             key = (line_number, line)

@@ -6,6 +6,9 @@ This directory contains the actual executables installed from the repository. Mo
 
 * Network and connectivity: [`bandwidth`](bandwidth), [`bandwidth_history.py`](bandwidth_history.py), [`speedtest`](speedtest), [`up-monitor`](up-monitor), [`wifi-qr`](wifi-qr), and [`wifi_summary.py`](wifi_summary.py).
 * Time-series and personal data: [`tsd-bicycle`](tsd-bicycle) and [`tsd-sleep`](tsd-sleep); general tsd plotting commands (`tsd-plot`, `tsd-season-plot`) are installed with the `tsd` package.
+* Search: [`allgrep`](allgrep) lists files in which every keyword occurs
+  in the path or the contents; the `resgrep` shell function runs it over
+  every research directory.
 * File and package comparison: [`compare-file-lists`](compare-file-lists), [`compare-sum-lists`](compare-sum-lists), [`dedup`](dedup), and [`disk-usage.sh`](disk-usage.sh).
 * Git helpers: [`gc`](gc), [`glt`](glt), [`glw`](glw),
   [`git-this-week`](git-this-week),

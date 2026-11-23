@@ -110,18 +110,51 @@ seconds() {
     done
 }
 
+# Research directories are directories under ~/work that contain a
+# .research marker file.  A marker, unlike a naming convention, moves with
+# the directory when it is refiled and leaves directory names free.
+_research_marker_=.research
+
+# Print help for one research helper, ending with the others as a see-also
+# list so that each helper leads to the rest.
+_research_help() {
+    local name_=$1
+    local usage_=$2
+    local description_=$3
+    local other_
+    local -a others_=()
+
+    for other_ in resfind rescd resgrep resmake allgrep; do
+        [[ $other_ == "$name_" ]] || others_+=("$other_")
+    done
+    printf 'usage: %s\n\n%s\n\n' "$usage_" "$description_"
+    printf 'Research directories are directories under ~/work containing a %s file.\n\n' \
+        "$_research_marker_"
+    printf 'See also: %s\n' "${others_[*]}"
+}
+
 # Find research directories, optionally filtering their paths by substring.
 resfind() {
+    if [[ ${1-} == -h || ${1-} == --help ]]; then
+        _research_help resfind "resfind [SUBSTRING]" \
+            "List research directories relative to ~/work, keeping only those whose path contains SUBSTRING."
+        return 0
+    fi
+
     local substring_=${1-}
+    local marker_
     local directory_
 
     (
         cd "${HOME}/work" || return
-        while IFS= read -r directory_; do
-            if [[ $directory_ == *"$substring_"* ]]; then
+        # Ignore files must not hide a marker, or its directory could never
+        # be found.
+        while IFS= read -r marker_; do
+            directory_=${marker_%"$_research_marker_"}
+            if [[ -n $directory_ && $directory_ == *"$substring_"* ]]; then
                 printf '%s\n' "$directory_"
             fi
-        done < <(fdfind --type d research)
+        done < <(fdfind --hidden --no-ignore --type f --glob "$_research_marker_" | sort)
     )
 }
 
@@ -131,6 +164,12 @@ rescd() {
     local directory_
     local substring_
     local matches_all_
+
+    if [[ ${1-} == -h || ${1-} == --help ]]; then
+        _research_help rescd "rescd SUBSTRING [SUBSTRING ...]" \
+            "Change to the one research directory whose path contains every SUBSTRING; if several match, list them."
+        return 0
+    fi
 
     if (( $# == 0 )); then
         echo "usage: rescd SUBSTRING [SUBSTRING ...]" >&2
@@ -174,6 +213,80 @@ rescd() {
             return 1
             ;;
     esac
+}
+
+# Search every research directory with allgrep.
+resgrep() {
+    local argument_
+    local directory_
+    local -a dirs_=()
+
+    for argument_ in "$@"; do
+        [[ $argument_ == -- ]] && break
+        if [[ $argument_ == -h || $argument_ == --help ]]; then
+            _research_help resgrep "resgrep [-i] [-l] KEYWORD..." \
+                "Run allgrep over every research directory: list files in which every KEYWORD occurs in the path or the contents.  Paths are relative to ~/work.  -i ignores case; -l prints only file names."
+            return 0
+        fi
+    done
+
+    if (( $# == 0 )); then
+        echo "usage: resgrep [-i] [-l] KEYWORD..." >&2
+        return 2
+    fi
+
+    while IFS= read -r directory_; do
+        dirs_+=(--dir "$directory_")
+    done < <(resfind)
+
+    if (( ${#dirs_[@]} == 0 )); then
+        echo "resgrep: no research directories; mark one with resmake" >&2
+        return 1
+    fi
+
+    (cd "${HOME}/work" && allgrep "${dirs_[@]}" "$@")
+}
+
+# Mark directories as research directories.  Creating the marker here
+# avoids a misspelt marker leaving a directory silently unfindable.
+resmake() {
+    local directory_
+    local path_
+    local work_
+    local status_=0
+
+    if [[ ${1-} == -h || ${1-} == --help ]]; then
+        _research_help resmake "resmake [DIRECTORY ...]" \
+            "Mark each DIRECTORY (default: the current one) as a research directory.  It must be under ~/work, where resfind looks.  To unmark one, remove its ${_research_marker_} file."
+        return 0
+    fi
+
+    work_=$(realpath -- "${HOME}/work") || return
+    (( $# > 0 )) || set -- .
+
+    for directory_ in "$@"; do
+        if [[ ! -d $directory_ ]]; then
+            echo "resmake: not a directory: $directory_" >&2
+            status_=1
+            continue
+        fi
+        path_=$(realpath -- "$directory_")
+        if [[ $path_ != "$work_"/* ]]; then
+            echo "resmake: not under ~/work, so resfind would not find it: $directory_" >&2
+            status_=1
+            continue
+        fi
+        if [[ -e ${path_}/${_research_marker_} ]]; then
+            printf 'already marked: %s/\n' "${path_#"$work_"/}"
+            continue
+        fi
+        if touch -- "${path_}/${_research_marker_}"; then
+            printf 'marked: %s/\n' "${path_#"$work_"/}"
+        else
+            status_=1
+        fi
+    done
+    return "$status_"
 }
 
 ###########################################################################

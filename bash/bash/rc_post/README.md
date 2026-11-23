@@ -5,7 +5,10 @@ This directory contains hook snippets sourced after the main interactive-shell s
 ## Contents
 
 * [`.present`](.present) is a marker file used by the surrounding bash configuration layout.
-* [`aliases`](aliases) defines shell aliases.
+* [`aliases`](aliases) defines shell aliases.  Its research helpers
+  (`resfind`, `rescd`, `resgrep`, `resmake`) work on directories under
+  `~/work` that contain a `.research` marker file; `resmake` creates the
+  marker, and each helper's `--help` lists the others.
 * [`aws`](aws) defines AWS profile and S3 inventory/audit helpers.
 * [`docker`](docker) defines `docker-cleanup`, which prunes build cache by age
   first, then size, reporting cache size before each step and on exit.
