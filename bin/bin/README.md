@@ -25,6 +25,13 @@ This directory contains the actual executables installed from the repository. Mo
   Fenced `mermaid` blocks are rendered as fitted vector diagrams when Mermaid
   CLI is installed with `npm install -g @mermaid-js/mermaid-cli`; otherwise,
   they remain ordinary code blocks and a warning is printed.
+* [`cn2pdf`](cn2pdf) and [`cn2html`](cn2html) (a symlink) show a Chinese
+  study text — hanzi with pinyin underneath, beside the English, with
+  optional speaker labels and timestamps — as a PDF (via XeLaTeX) or an
+  HTML page. The text is a `.cn.yaml` file, summarised in `cn2pdf -h` and
+  documented in the `cn-yaml` skill of the AI repository. Unlike `md2pdf`,
+  they only open a viewer on a temporary file by default; `-w` or `-o`
+  saves the output.
 * [`tsd-bicycle`](tsd-bicycle) focuses on bicycle mileage logs and can report totals or generate year-over-year plots.
 
 `glt [-N] [ROWS] [git-log-arguments...]` prints a one-line-per-commit

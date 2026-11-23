@@ -6,6 +6,7 @@ This directory contains the repository's Python test suite.
 
 * [`conftest.py`](conftest.py) contains shared pytest fixtures and setup.
 * [`test_bandwidth.py`](test_bandwidth.py) covers the bandwidth measurement library and CLI behavior.
+* [`test_cn2pdf.py`](test_cn2pdf.py) covers the `cn2pdf`/`cn2html` Chinese study-text renderer.
 * [`test_tsd_plot.py`](test_tsd_plot.py) covers the general time-series plotting package.
 * [`test_tsd_seasonal.py`](test_tsd_seasonal.py) covers the seasonal projection and heatmap plotting logic.
 

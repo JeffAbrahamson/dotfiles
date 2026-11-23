@@ -1,0 +1,719 @@
+#!/usr/bin/env python3
+"""cn2pdf / cn2html — view a Chinese study text (.cn.yaml) as PDF or HTML.
+
+Usage:
+    cn2pdf  [OPTIONS] [FILE | -]
+    cn2html [OPTIONS] [FILE | -]
+
+Each line of the text is shown with its hanzi, then pinyin underneath, on
+the left and its English on the right, with a rule between lines.  By
+default the result goes to a temporary file that is opened in a viewer
+and removed later; nothing is written next to FILE unless -w or -o is
+given.  With no FILE, or with -, the text is read from stdin.
+
+Options:
+    -w, --write       Also save FILE's output beside it (foo.cn.yaml ->
+                      foo.pdf or foo.html)
+    -o OUTPUT         Save the output as OUTPUT
+    -f, --force       Regenerate a saved output even if it is up to date
+    -D, --no-display  Don't launch the viewer
+    -S, --source      Print the generated LaTeX (cn2pdf) or HTML (cn2html)
+                      to stdout instead of rendering it
+    -h, --help        Show this help
+
+Environment:
+    PDF_VIEWER         PDF viewer command (default: evince, else xdg-open)
+    BROWSER            HTML viewer command (default: xdg-open)
+    PDF_MAINFONT       Latin font (default: Linux Libertine O)
+    PDF_CJKFONT        CJK font (default: Noto Serif CJK SC)
+    PDF_CLEANUP_DELAY  Seconds before a temporary output is removed
+                       (default: 3600)
+    CN_TMPDIR          Directory for temporary outputs (default: the
+                       system's, or for a snap browser its own common
+                       directory, since snaps can't read /tmp)
+
+File format (YAML; every field but one of hanzi/english is optional):
+
+    version: 1
+    title: {hanzi: 家庭成员, pinyin: jiātíng chéngyuán,
+            english: Family members}
+    source: where the text comes from
+    notes: free text shown under the title
+    labels:                     # speakers etc., referred to by key
+      T: {hanzi: 老师, pinyin: lǎoshī, english: Teacher}
+    sections:                   # or a top-level "items:" list
+      - title: {english: Dialogue}
+        items:
+          - label: T
+            time: "0:04"
+            hanzi: 今天我们来学一下。
+            pinyin: Jīntiān wǒmen lái xué yíxià.
+            english: Today we're going to learn.
+            note: an optional comment
+          - heading: {hanzi: 第二天, english: The next day}
+
+A text field may be a plain string, meaning {english: ...}.  Text may use
+*italic* and **bold**.  The full description is in the cn-yaml skill.
+"""
+
+import argparse
+import html
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+from dataclasses import dataclass, field
+from pathlib import Path
+
+import yaml
+
+FORMAT_VERSION = 1
+TEXT_KEYS = ("hanzi", "pinyin", "english")
+LINE_KEYS = {"label", "time", "note", *TEXT_KEYS}
+SECTION_KEYS = {"title", "items"}
+TOP_KEYS = {"version", "title", "source", "notes", "labels", "sections"}
+TOP_KEYS_ITEMS = TOP_KEYS - {"sections"} | {"items"}
+
+
+class FormatError(Exception):
+    pass
+
+
+@dataclass
+class Text:
+    hanzi: str = ""
+    pinyin: str = ""
+    english: str = ""
+
+    def __bool__(self):
+        return bool(self.hanzi or self.pinyin or self.english)
+
+
+@dataclass
+class Line:
+    text: Text
+    label: Text = field(default_factory=Text)
+    time: str = ""
+    note: str = ""
+
+
+@dataclass
+class Heading:
+    text: Text
+
+
+@dataclass
+class Section:
+    title: Text
+    items: list
+
+
+@dataclass
+class Document:
+    title: Text
+    source: str
+    notes: str
+    sections: list
+
+
+def parse_text(value, where):
+    if value is None:
+        return Text()
+    if isinstance(value, str):
+        return Text(english=value)
+    if not isinstance(value, dict):
+        raise FormatError(f"{where}: expected a string or a mapping")
+    unknown = set(value) - set(TEXT_KEYS)
+    if unknown:
+        raise FormatError(f"{where}: unknown keys {sorted(unknown)}")
+    return Text(**{k: scalar(value.get(k), f"{where}.{k}") for k in TEXT_KEYS})
+
+
+def scalar(value, where):
+    if value is None:
+        return ""
+    if isinstance(value, (str, int, float)):
+        return str(value).strip()
+    raise FormatError(f"{where}: expected text")
+
+
+def parse_item(item, labels, where):
+    if not isinstance(item, dict):
+        raise FormatError(f"{where}: expected a mapping")
+    if "heading" in item:
+        if len(item) != 1:
+            raise FormatError(f"{where}: a heading has no other keys")
+        return Heading(parse_text(item["heading"], f"{where}.heading"))
+    unknown = set(item) - LINE_KEYS
+    if unknown:
+        raise FormatError(f"{where}: unknown keys {sorted(unknown)}")
+    text = Text(**{k: scalar(item.get(k), f"{where}.{k}") for k in TEXT_KEYS})
+    if not (text.hanzi or text.english):
+        raise FormatError(f"{where}: needs hanzi or english")
+    label = item.get("label")
+    if isinstance(label, str) and labels:
+        # With labels defined, a bare string must name one, so that a
+        # mistyped key fails instead of being shown as English.
+        if label not in labels:
+            raise FormatError(f"{where}.label: unknown label {label!r}")
+        label = labels[label]
+    elif label is not None:
+        label = parse_text(label, f"{where}.label")
+    return Line(
+        text=text,
+        label=label or Text(),
+        time=scalar(item.get("time"), f"{where}.time"),
+        note=scalar(item.get("note"), f"{where}.note"),
+    )
+
+
+def parse_document(data):
+    if not isinstance(data, dict):
+        raise FormatError("top level: expected a mapping")
+    allowed = TOP_KEYS_ITEMS if "items" in data else TOP_KEYS
+    unknown = set(data) - allowed
+    if unknown:
+        raise FormatError(f"top level: unknown keys {sorted(unknown)}")
+    version = data.get("version", FORMAT_VERSION)
+    if version != FORMAT_VERSION:
+        raise FormatError(f"unsupported version {version!r}")
+    raw_labels = data.get("labels") or {}
+    if not isinstance(raw_labels, dict):
+        raise FormatError("labels: expected a mapping")
+    labels = {
+        str(k): parse_text(v, f"labels.{k}") for k, v in raw_labels.items()
+    }
+    raw_sections = (
+        [{"items": data["items"]}]
+        if "items" in data
+        else data.get("sections") or []
+    )
+    if not isinstance(raw_sections, list):
+        raise FormatError("sections: expected a list")
+    sections = []
+    for i, raw in enumerate(raw_sections, 1):
+        where = f"sections[{i}]"
+        if not isinstance(raw, dict):
+            raise FormatError(f"{where}: expected a mapping")
+        unknown = set(raw) - SECTION_KEYS
+        if unknown:
+            raise FormatError(f"{where}: unknown keys {sorted(unknown)}")
+        items = raw.get("items") or []
+        if not isinstance(items, list):
+            raise FormatError(f"{where}.items: expected a list")
+        sections.append(
+            Section(
+                title=parse_text(raw.get("title"), f"{where}.title"),
+                items=[
+                    parse_item(item, labels, f"{where}.items[{j}]")
+                    for j, item in enumerate(items, 1)
+                ],
+            )
+        )
+    return Document(
+        title=parse_text(data.get("title"), "title"),
+        source=scalar(data.get("source"), "source"),
+        notes=scalar(data.get("notes"), "notes"),
+        sections=sections,
+    )
+
+
+def load(source_text):
+    try:
+        data = yaml.safe_load(source_text)
+    except yaml.YAMLError as error:
+        raise FormatError(f"invalid YAML: {error}") from error
+    return parse_document(data)
+
+
+# Inline markup shared by both renderers: **bold** and *italic*.
+BOLD = re.compile(r"\*\*(.+?)\*\*")
+ITALIC = re.compile(r"\*(.+?)\*")
+
+LATEX_SPECIALS = {
+    "\\": r"\textbackslash{}",
+    "{": r"\{",
+    "}": r"\}",
+    "$": r"\$",
+    "&": r"\&",
+    "#": r"\#",
+    "^": r"\textasciicircum{}",
+    "_": r"\_",
+    "%": r"\%",
+    "~": r"\textasciitilde{}",
+}
+
+
+# xeCJK typesets these as CJK punctuation (centred dots, spaced dashes),
+# which suits hanzi but not pinyin or English.
+LATIN_PUNCTUATION = re.compile("([\u2026\u2013\u2014]+)")
+
+
+def tex(text, latin=False):
+    escaped = "".join(LATEX_SPECIALS.get(c, c) for c in text)
+    if latin:
+        escaped = LATIN_PUNCTUATION.sub(r"\\latinpunct{\1}", escaped)
+    escaped = BOLD.sub(r"\\textbf{\1}", escaped)
+    return ITALIC.sub(r"\\emph{\1}", escaped)
+
+
+def htm(text):
+    escaped = html.escape(text)
+    escaped = BOLD.sub(r"<strong>\1</strong>", escaped)
+    return ITALIC.sub(r"<em>\1</em>", escaped)
+
+
+LATEX_PREAMBLE = r"""\documentclass[11pt]{article}
+\usepackage[a4paper,margin=2cm]{geometry}
+\usepackage{fontspec}
+\usepackage{xeCJK}
+\setmainfont{%(mainfont)s}
+\setCJKmainfont{%(cjkfont)s}
+%% xeCJK claims Western curly quotes as CJK punctuation and spaces them
+%% out ("don' t"); give them back to the Latin font.
+\xeCJKDeclareCharClass{Default}{"2018,"2019,"201C,"201D}
+\usepackage{longtable,booktabs,array}
+\usepackage[table]{xcolor}
+\definecolor{soft}{gray}{0.4}
+\definecolor{rule}{gray}{0.75}
+\setlength{\parindent}{0pt}
+\setlength{\LTpre}{0.5em}
+\setlength{\LTleft}{0pt}
+\renewcommand{\arraystretch}{1.25}
+\newcommand{\hz}[1]{{\large #1}}
+\newcommand{\py}[1]{{\color{soft}#1}}
+\newcommand{\lab}[1]{\textbf{#1}: }
+\newcommand{\latinpunct}[1]{{\makexeCJKinactive#1}}
+\newcommand{\cnrule}{\arrayrulecolor{rule}\specialrule{0.4pt}{3pt}{3pt}}
+\pagestyle{plain}
+\begin{document}
+"""
+
+
+def latex_block(text):
+    lines = []
+    if text.hanzi:
+        lines.append(r"\hz{%s}" % tex(text.hanzi))
+    if text.pinyin:
+        lines.append(r"\py{%s}" % tex(text.pinyin, latin=True))
+    if text.english:
+        lines.append(r"\emph{%s}" % tex(text.english, latin=True))
+    return r" \\ ".join(lines)
+
+
+def latex_cell_left(line):
+    label = line.label
+    parts = []
+    if line.text.hanzi:
+        prefix = r"\textbf{%s}：" % tex(label.hanzi) if label.hanzi else ""
+        parts.append(r"\hz{%s%s}" % (prefix, tex(line.text.hanzi)))
+    if line.text.pinyin:
+        prefix = (
+            r"\lab{%s}" % tex(label.pinyin, latin=True) if label.pinyin else ""
+        )
+        parts.append(
+            r"\py{%s%s}" % (prefix, tex(line.text.pinyin, latin=True))
+        )
+    return r"\newline ".join(parts)
+
+
+def latex_cell_right(line):
+    text = tex(line.text.english, latin=True)
+    if line.label.english and text:
+        text = r"\lab{%s}%s" % (tex(line.label.english, latin=True), text)
+    elif line.label.english:
+        text = r"\textbf{%s}" % tex(line.label.english, latin=True)
+    if line.note:
+        text += r"\newline{\small\color{soft}%s}" % tex(line.note, latin=True)
+    return text
+
+
+def latex_section(section):
+    out = []
+    if section.title:
+        title = " ".join(
+            tex(t) for t in (section.title.hanzi, section.title.english) if t
+        )
+        out.append(r"\section*{%s}" % title)
+    if not section.items:
+        return out
+    timed = any(isinstance(i, Line) and i.time for i in section.items)
+    if timed:
+        spec = (
+            r">{\raggedright\small\leavevmode\color{soft}}p{0.08\linewidth}"
+            r">{\raggedright}p{0.44\linewidth}"
+            r">{\raggedright\arraybackslash}p{0.40\linewidth}"
+        )
+        span = 3
+    else:
+        spec = (
+            r">{\raggedright}p{0.48\linewidth}"
+            r">{\raggedright\arraybackslash}p{0.46\linewidth}"
+        )
+        span = 2
+    out.append(r"\begin{longtable}{@{}%s@{}}" % spec)
+    for n, item in enumerate(section.items):
+        if n:
+            out.append(r"\cnrule")
+        if isinstance(item, Heading):
+            out.append(
+                r"\multicolumn{%d}{@{}c@{}}{\parbox{\linewidth}"
+                r"{\centering\bfseries %s}} \\"
+                % (span, latex_block(item.text))
+            )
+            continue
+        cells = [latex_cell_left(item), latex_cell_right(item)]
+        if timed:
+            cells.insert(0, tex(item.time, latin=True))
+        out.append(" & ".join(cells) + r" \\")
+    out.append(r"\end{longtable}")
+    return out
+
+
+def render_latex(doc, mainfont, cjkfont):
+    out = [LATEX_PREAMBLE % {"mainfont": mainfont, "cjkfont": cjkfont}]
+    if doc.title:
+        title = doc.title
+        out.append(r"\begin{center}")
+        if title.hanzi:
+            out.append(r"{\LARGE\bfseries %s}\\[0.3em]" % tex(title.hanzi))
+        if title.pinyin:
+            out.append(
+                r"{\large\color{soft}%s}\\[0.2em]"
+                % tex(title.pinyin, latin=True)
+            )
+        if title.english:
+            out.append(
+                r"{\large\itshape %s}\\" % tex(title.english, latin=True)
+            )
+        out.append(r"\end{center}")
+    if doc.source:
+        out.append(r"{\small\color{soft}%s}\par" % tex(doc.source, latin=True))
+    if doc.notes:
+        out.append(r"\medskip %s\par" % tex(doc.notes, latin=True))
+    for section in doc.sections:
+        out.extend(latex_section(section))
+    out.append(r"\end{document}")
+    return "\n".join(out) + "\n"
+
+
+HTML_STYLE = """
+:root { --fg: #1d1d1f; --soft: #6b6b70; --rule: #d6d6da; --bg: #fff; }
+@media (prefers-color-scheme: dark) {
+  :root { --fg: #e8e8ea; --soft: #a0a0a8; --rule: #3a3a40; --bg: #18181b; }
+}
+body { margin: 0 auto; max-width: 60rem; padding: 1.5rem 1rem;
+  background: var(--bg); color: var(--fg);
+  font: 17px/1.5 "Linux Libertine O", "Noto Serif", Georgia, serif; }
+[lang="zh-Hans"] {
+  font-family: "Noto Serif CJK SC", "Noto Sans CJK SC", serif;
+}
+header { text-align: center; margin-bottom: 1.5rem; }
+header .hz { font-size: 2rem; font-weight: bold; }
+.soft, .py, .time, .note { color: var(--soft); }
+.hz { font-size: 1.15em; }
+.note { font-size: 0.9em; }
+table { width: 100%; border-collapse: collapse; }
+td { vertical-align: top; padding: 0.45rem 0.5rem;
+  border-top: 1px solid var(--rule); }
+tr:first-child td { border-top: none; }
+td.time { width: 4rem; font-size: 0.85em; white-space: nowrap; }
+td.cn { width: 50%; }
+td.heading { text-align: center; font-weight: bold; padding: 0.8rem; }
+@media (max-width: 40rem) {
+  tr { display: block; border-top: 1px solid var(--rule); }
+  tr:first-child { border-top: none; }
+  td { display: block; width: auto !important; border: none; }
+}
+"""
+
+
+def html_block(text):
+    out = []
+    if text.hanzi:
+        out.append(f'<div class="hz" lang="zh-Hans">{htm(text.hanzi)}</div>')
+    if text.pinyin:
+        out.append(
+            f'<div class="py" lang="zh-Latn-pinyin">{htm(text.pinyin)}</div>'
+        )
+    if text.english:
+        out.append(f'<div class="en"><em>{htm(text.english)}</em></div>')
+    return "".join(out)
+
+
+def html_section(section):
+    out = []
+    if section.title:
+        title = " ".join(
+            htm(t) for t in (section.title.hanzi, section.title.english) if t
+        )
+        out.append(f"<h2>{title}</h2>")
+    if not section.items:
+        return out
+    timed = any(isinstance(i, Line) and i.time for i in section.items)
+    out.append("<table>")
+    for item in section.items:
+        if isinstance(item, Heading):
+            span = 3 if timed else 2
+            out.append(
+                f'<tr><td class="heading" colspan="{span}">'
+                f"{html_block(item.text)}</td></tr>"
+            )
+            continue
+        label, text = item.label, item.text
+        cells = []
+        if timed:
+            cells.append(f'<td class="time">{htm(item.time)}</td>')
+        left = ""
+        if text.hanzi:
+            prefix = (
+                f"<strong>{htm(label.hanzi)}</strong>：" if label.hanzi else ""
+            )
+            left += (
+                f'<div class="hz" lang="zh-Hans">{prefix}'
+                f"{htm(text.hanzi)}</div>"
+            )
+        if text.pinyin:
+            prefix = (
+                f"<strong>{htm(label.pinyin)}</strong>: "
+                if label.pinyin
+                else ""
+            )
+            left += (
+                f'<div class="py" lang="zh-Latn-pinyin">{prefix}'
+                f"{htm(text.pinyin)}</div>"
+            )
+        cells.append(f'<td class="cn">{left}</td>')
+        right = htm(text.english)
+        if label.english:
+            sep = ": " if right else ""
+            right = f"<strong>{htm(label.english)}</strong>{sep}{right}"
+        if item.note:
+            right += f'<div class="note">{htm(item.note)}</div>'
+        cells.append(f'<td class="en" lang="en">{right}</td>')
+        out.append("<tr>" + "".join(cells) + "</tr>")
+    out.append("</table>")
+    return out
+
+
+def render_html(doc):
+    page_title = " — ".join(
+        t for t in (doc.title.hanzi, doc.title.english) if t
+    )
+    out = [
+        "<!doctype html>",
+        '<html lang="en">',
+        '<head><meta charset="utf-8">',
+        '<meta name="viewport" content="width=device-width,'
+        ' initial-scale=1">',
+        f"<title>{html.escape(page_title or 'cn2html')}</title>",
+        f"<style>{HTML_STYLE}</style></head>",
+        "<body>",
+    ]
+    if doc.title or doc.source or doc.notes:
+        out.append("<header>")
+        out.append(html_block(doc.title))
+        if doc.source:
+            out.append(f'<div class="soft">{htm(doc.source)}</div>')
+        if doc.notes:
+            out.append(f"<p>{htm(doc.notes)}</p>")
+        out.append("</header>")
+    for section in doc.sections:
+        out.extend(html_section(section))
+    out.append("</body></html>")
+    return "\n".join(out) + "\n"
+
+
+def run_xelatex(latex, output):
+    with tempfile.TemporaryDirectory(prefix="cn2pdf-") as tmp:
+        source = Path(tmp) / "cn.tex"
+        source.write_text(latex, encoding="utf-8")
+        result = subprocess.run(
+            [
+                "xelatex",
+                "-interaction=nonstopmode",
+                "-halt-on-error",
+                "cn.tex",
+            ],
+            cwd=tmp,
+            capture_output=True,
+            text=True,
+        )
+        pdf = Path(tmp) / "cn.pdf"
+        if result.returncode != 0 or not pdf.exists():
+            log = (Path(tmp) / "cn.log").read_text(errors="replace")
+            sys.stderr.write("\n".join(log.splitlines()[-30:]) + "\n")
+            raise SystemExit("cn2pdf: xelatex failed")
+        missing = [
+            line
+            for line in result.stdout.splitlines()
+            if "Missing character" in line
+        ]
+        for line in missing:
+            sys.stderr.write(f"cn2pdf: {line}\n")
+        shutil.copyfile(pdf, output)
+
+
+def viewer_command(mode):
+    if mode == "pdf":
+        if os.environ.get("PDF_VIEWER"):
+            return os.environ["PDF_VIEWER"].split()
+        if shutil.which("evince"):
+            return ["evince"]
+        return ["xdg-open"]
+    if os.environ.get("BROWSER"):
+        return os.environ["BROWSER"].split()
+    return ["xdg-open"]
+
+
+def temporary_directory(mode):
+    """Where to put a temporary output so that its viewer can read it."""
+    if os.environ.get("CN_TMPDIR"):
+        return os.environ["CN_TMPDIR"]
+    if mode != "html" or os.environ.get("BROWSER"):
+        return None
+    # A snap browser has a private /tmp and can't read most of the home
+    # directory, but it can always read its own $SNAP_USER_COMMON.
+    try:
+        browser = subprocess.run(
+            ["xdg-settings", "get", "default-web-browser"],
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+    except OSError:
+        return None
+    match = re.fullmatch(r"([a-z0-9-]+)_.+\.desktop", browser)
+    if not match:
+        return None
+    common = Path.home() / "snap" / match.group(1) / "common"
+    if not common.is_dir():
+        return None
+    directory = common / "cn2html"
+    directory.mkdir(exist_ok=True)
+    return str(directory)
+
+
+def delayed_removal(path):
+    delay = os.environ.get("PDF_CLEANUP_DELAY", "3600")
+    subprocess.Popen(
+        ["sh", "-c", 'sleep "$1"; rm -f "$2"', "sh", delay, str(path)],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
+    )
+
+
+def default_output(input_path, suffix):
+    name = input_path.name
+    for ext in (".yaml", ".yml"):
+        if name.endswith(ext):
+            name = name[: -len(ext)]
+            break
+    if name.endswith(".cn"):
+        name = name[:-3]
+    return input_path.with_name(name + suffix)
+
+
+def parse_args(prog, argv):
+    parser = argparse.ArgumentParser(
+        prog=prog,
+        add_help=False,
+        usage=f"{prog} [OPTIONS] [FILE | -]",
+    )
+    parser.add_argument("file", nargs="?", default="-")
+    parser.add_argument("-w", "--write", action="store_true")
+    parser.add_argument("-o", dest="output")
+    parser.add_argument("-f", "--force", action="store_true")
+    parser.add_argument("-D", "--no-display", action="store_true")
+    parser.add_argument("-S", "--source", action="store_true")
+    parser.add_argument("-h", "--help", action="store_true")
+    return parser.parse_args(argv)
+
+
+def main(argv=None):
+    prog = Path(sys.argv[0]).name
+    mode = "html" if prog.endswith("html") else "pdf"
+    args = parse_args(prog, sys.argv[1:] if argv is None else argv)
+    if args.help:
+        print(__doc__.strip())
+        return 0
+
+    reading_stdin = args.file == "-"
+    if reading_stdin and args.write:
+        raise SystemExit(f"{prog}: -w needs a FILE; use -o with stdin")
+    input_path = None if reading_stdin else Path(args.file)
+    if input_path is not None and not input_path.is_file():
+        raise SystemExit(f"{prog}: no such file: {args.file}")
+
+    output = None
+    temporary = False
+    if args.output:
+        output = Path(args.output)
+    elif args.write:
+        output = default_output(input_path, "." + mode)
+
+    if (
+        output is not None
+        and input_path is not None
+        and not args.force
+        and not args.source
+        and output.exists()
+        and output.stat().st_mtime > input_path.stat().st_mtime
+    ):
+        print(f"Using existing {output}")
+    else:
+        source_text = (
+            sys.stdin.read()
+            if reading_stdin
+            else input_path.read_text(encoding="utf-8")
+        )
+        try:
+            doc = load(source_text)
+        except FormatError as error:
+            name = "stdin" if reading_stdin else args.file
+            raise SystemExit(f"{prog}: {name}: {error}") from error
+
+        if mode == "pdf":
+            rendered = render_latex(
+                doc,
+                os.environ.get("PDF_MAINFONT", "Linux Libertine O"),
+                os.environ.get("PDF_CJKFONT", "Noto Serif CJK SC"),
+            )
+        else:
+            rendered = render_html(doc)
+        if args.source:
+            sys.stdout.write(rendered)
+            return 0
+
+        if output is None:
+            fd, name = tempfile.mkstemp(
+                prefix="cn2" + mode + "-",
+                suffix="." + mode,
+                dir=temporary_directory(mode),
+            )
+            os.close(fd)
+            output = Path(name)
+            temporary = True
+        if mode == "pdf":
+            run_xelatex(rendered, output)
+        else:
+            output.write_text(rendered, encoding="utf-8")
+        if not temporary:
+            print(f"Wrote {output}")
+        elif args.no_display:
+            output.unlink()
+            return 0
+
+    if not args.no_display:
+        result = subprocess.run(viewer_command(mode) + [str(output)])
+        if temporary:
+            delayed_removal(output)
+        return result.returncode
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
