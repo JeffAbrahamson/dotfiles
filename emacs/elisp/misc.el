@@ -18,8 +18,25 @@
 ;(setq calendar-location-name "Urbana, IL")
 
 ;;;;;;;;;;;;;;;;;;;;
-;; set up unicode
-(prefer-coding-system       'utf-8)
+;; Set up Unicode
+
+(prefer-coding-system 'utf-8)
+
+;; Work around a Chromium/Electron Wayland clipboard bug.
+;; Chromium requests TEXT even when UTF8_STRING is available,
+;; but interprets the returned ISO-8859-1 bytes as UTF-8.
+;; Force UTF-8 for TEXT and text/plain selection requests.
+;; Confirmed with Signal Desktop, November 2026.
+
+(with-eval-after-load 'select
+  (defun my-selection-convert-to-utf8 (selection _type value)
+    "Export text selections as UTF-8 regardless of the requested text type."
+    (xselect-convert-to-string selection 'UTF8_STRING value))
+
+  (dolist (target '(TEXT text/plain))
+    (setf (alist-get target selection-converter-alist)
+          #'my-selection-convert-to-utf8)))
+
 ;(set-default-coding-systems 'utf-8)
 ;; From Emacs wiki
 ;(setq x-select-request-type '(UTF8_STRING COMPOUND_TEXT TEXT STRING))
